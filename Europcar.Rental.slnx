@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Europcar.Rental.Api/Europcar.Rental.Api.csproj" />
+    <Project Path="src/Europcar.Rental.Business/Europcar.Rental.Business.csproj" />
+    <Project Path="src/Europcar.Rental.DataAccess/Europcar.Rental.DataAccess.csproj" />
+    <Project Path="src/Europcar.Rental.DataManagement/Europcar.Rental.DataManagement.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,6 @@
+@Europcar.Rental.Api_HostAddress = http://localhost:5207
+
+GET {{Europcar.Rental.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

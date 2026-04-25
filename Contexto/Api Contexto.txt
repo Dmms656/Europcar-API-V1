@@ -1,0 +1,336 @@
+Cómo debes contextualizarla para tu proyecto
+
+Tu caso ya no es Microservicio.Clientes con SQL Server, sino un backend .NET para renta de autos con PostgreSQL. Entonces la arquitectura correcta sería esta:
+
+Europcar.Rental.Api
+Europcar.Rental.Business
+Europcar.Rental.DataManagement
+Europcar.Rental.DataAccess
+
+Esa separación sigue exactamente la lógica del documento:
+
+DataAccess persiste y consulta datos
+DataManagement coordina repositorios y transacciones
+Business aplica reglas de negocio
+Api expone endpoints, JWT, CORS, Swagger y versionado.
+Adaptación correcta a PostgreSQL
+
+En el archivo se repite varias veces “SQL Server” como motor de persistencia y proveedor de EF Core. Pero en tu proyecto debes cambiar eso por:
+
+PostgreSQL
+EF Core + Npgsql
+opcionalmente Dapper para consultas complejas, porque el documento también contempla consultas especiales fuera del CRUD simple.
+
+Entonces, en vez de:
+
+Microsoft.EntityFrameworkCore.SqlServer
+
+vas a usar:
+
+Npgsql.EntityFrameworkCore.PostgreSQL
+
+Y tu DbContext ya no debe pensarse para tablas tipo crm.Cliente, sino para tus esquemas reales:
+
+rental
+security
+audit
+
+que son los que ya dejaste en la base.
+
+Contextualización de cada capa para tu proyecto
+1. DataAccess
+
+Esta capa debe conectarse a PostgreSQL, mapear tablas y encapsular persistencia. Eso coincide exactamente con el objetivo descrito en el documento para la capa de acceso a datos: conectar, mapear tablas a clases, ejecutar CRUD, encapsular consultas, abstraer persistencia y soportar auditoría, seguridad y trazabilidad.
+
+En tu proyecto, aquí deberían vivir:
+
+RentalDbContext
+entidades EF Core
+configuraciones IEntityTypeConfiguration<>
+repositorios
+query repositories
+Entidades mínimas que sí deberías modelar primero
+
+Para no arrancar gigante, yo empezaría con estas:
+
+ClienteEntity
+ConductorEntity
+VehiculoEntity
+ReservaEntity
+ReservaExtraEntity
+LocalizacionEntity
+CategoriaVehiculoEntity
+ExtraEntity
+UsuarioAppEntity
+RolEntity
+UsuarioRolEntity
+AudEventoEntity
+
+Eso ya te deja lista la base para login, seguridad y flujo de reserva.
+
+DbContext sugerido
+
+Tu contexto debería verse conceptualmente así:
+
+public class RentalDbContext : DbContext
+{
+    public RentalDbContext(DbContextOptions<RentalDbContext> options) : base(options) { }
+
+    public DbSet<ClienteEntity> Clientes => Set<ClienteEntity>();
+    public DbSet<ConductorEntity> Conductores => Set<ConductorEntity>();
+    public DbSet<VehiculoEntity> Vehiculos => Set<VehiculoEntity>();
+    public DbSet<ReservaEntity> Reservas => Set<ReservaEntity>();
+    public DbSet<UsuarioAppEntity> UsuariosApp => Set<UsuarioAppEntity>();
+    public DbSet<RolEntity> Roles => Set<RolEntity>();
+    public DbSet<UsuarioRolEntity> UsuariosRoles => Set<UsuarioRolEntity>();
+    public DbSet<AudEventoEntity> AuditoriaEventos => Set<AudEventoEntity>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.HasDefaultSchema("public");
+
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(RentalDbContext).Assembly);
+
+        base.OnModelCreating(modelBuilder);
+    }
+}
+Diferencia importante con PostgreSQL
+
+En SQL Server el documento usa rowversion e IsRowVersion().
+En PostgreSQL eso no existe igual. En tu caso conviene manejar concurrencia con:
+
+columna numérica row_version
+o token de concurrencia configurado con EF Core
+
+No debes copiar literalmente esa parte del documento.
+
+2. DataManagement
+
+El archivo propone esta capa como intermediaria entre persistencia y negocio, usando servicios de datos y Unit of Work.
+
+Para ti, esta capa debe:
+
+coordinar repositorios
+centralizar SaveChangesAsync
+manejar transacciones
+devolver modelos desacoplados de EF
+
+Aquí yo pondría:
+
+IUnitOfWork
+IClienteDataService
+IReservaDataService
+IVehiculoDataService
+IUsuarioDataService
+IAuditoriaDataService
+
+Y sus implementaciones.
+
+Ejemplo realista para tu dominio
+
+ReservaDataService debería poder:
+
+obtener reservas por código
+crear reserva
+asociar conductores
+asociar extras
+confirmar reserva
+cancelar reserva
+guardar una sola vez con Unit of Work
+
+Eso calza perfecto con la intención del documento: coordinar persistencia y no dejar que negocio toque EF Core directamente.
+
+3. Business
+
+La capa Business, según el archivo, es el cerebro del sistema: aplica reglas, validaciones, seguridad funcional y transforma datos para la API.
+
+En tu caso aquí deben vivir reglas como:
+
+no crear reserva si el vehículo no está disponible
+no confirmar contrato si falta conductor principal
+no permitir reservas solapadas
+validar edad mínima del conductor
+validar que el usuario tenga rol para la operación
+validar extras con stock
+validar estados del vehículo y de la reserva
+Servicios de negocio mínimos
+IAuthService
+IClienteService
+IVehiculoService
+IReservaService
+IContratoService
+DTOs iniciales
+LoginRequest, LoginResponse
+CrearClienteRequest, ClienteResponse
+BuscarVehiculosRequest, VehiculoDisponibleResponse
+CrearReservaRequest, ReservaResponse
+ConfirmarReservaRequest
+CancelarReservaRequest
+
+El documento plantea exactamente esta idea de DTOs, validadores, excepciones y mappers en la capa de negocio.
+
+4. API
+
+La capa API del archivo es muy útil para ti porque ya define la estructura correcta:
+
+controllers versionados
+JWT
+autorización por roles
+CORS
+HTTPS
+Swagger
+middleware global de excepciones
+Program.cs limpio con extensiones.
+
+En tu caso no haría ClientesController solamente. Yo arrancaría con:
+
+AuthController
+ClientesController
+VehiculosController
+ReservasController
+
+Y luego:
+
+ContratosController
+PagosController
+Endpoints iniciales recomendados
+
+Basados en tu base y pensando en frontend futuro:
+
+Auth
+
+POST /api/v1/auth/login
+
+Clientes
+
+GET /api/v1/clientes
+GET /api/v1/clientes/{id}
+POST /api/v1/clientes
+PUT /api/v1/clientes/{id}
+DELETE /api/v1/clientes/{id}
+
+Vehículos
+
+GET /api/v1/vehiculos/disponibles
+GET /api/v1/vehiculos/{id}
+
+Reservas
+
+POST /api/v1/reservas
+GET /api/v1/reservas/{codigo}
+POST /api/v1/reservas/{codigo}/confirmar
+POST /api/v1/reservas/{codigo}/cancelar
+Qué debes cambiar del documento para que quede bien con PostgreSQL
+1. Proveedor de EF Core
+
+Donde el documento usa SQL Server, debes usar PostgreSQL.
+
+Paquetes recomendados:
+
+Microsoft.EntityFrameworkCore
+Npgsql.EntityFrameworkCore.PostgreSQL
+Microsoft.EntityFrameworkCore.Design
+Microsoft.EntityFrameworkCore.Tools
+Microsoft.AspNetCore.Authentication.JwtBearer
+Asp.Versioning.Mvc
+Asp.Versioning.Mvc.ApiExplorer
+Swashbuckle.AspNetCore
+2. Connection string
+
+En vez de la del ejemplo con UseSqlServer, tu API debe usar UseNpgsql. El documento muestra que Program.cs debe centralizar DI y DbContext.
+
+Ejemplo:
+
+{
+  "ConnectionStrings": {
+    "RentalDb": "Host=localhost;Port=5432;Database=europcar_db;Username=postgres;Password=admin"
+  }
+}
+
+Y en DI:
+
+services.AddDbContext<RentalDbContext>(options =>
+    options.UseNpgsql(configuration.GetConnectionString("RentalDb")));
+3. Esquemas reales
+
+El documento usa crm.
+Tú debes mapear:
+
+rental.clientes
+rental.conductores
+rental.vehiculos
+rental.reservas
+security.usuarios_app
+security.roles
+security.usuarios_roles
+audit.aud_eventos
+4. Autenticación
+
+El archivo separa muy bien usuarios de aplicación y seguridad de base, y eso te conviene conservar: los usuarios de PostgreSQL no son los usuarios funcionales de la API; la API debe autenticarse contra security.usuarios_app y roles relacionados.
+
+Estructura final recomendada para arrancar
+Europcar.Rental
+│
+├── src
+│   ├── Europcar.Rental.DataAccess
+│   │   ├── Context
+│   │   ├── Entities
+│   │   ├── Configurations
+│   │   ├── Repositories
+│   │   ├── Repositories/Interfaces
+│   │   ├── Queries
+│   │   └── Common
+│   │
+│   ├── Europcar.Rental.DataManagement
+│   │   ├── Interfaces
+│   │   ├── Services
+│   │   ├── Models
+│   │   ├── Mappers
+│   │   └── Common
+│   │
+│   ├── Europcar.Rental.Business
+│   │   ├── Interfaces
+│   │   ├── Services
+│   │   ├── DTOs
+│   │   ├── Validators
+│   │   ├── Exceptions
+│   │   └── Mappers
+│   │
+│   └── Europcar.Rental.Api
+│       ├── Controllers/V1
+│       ├── Middleware
+│       ├── Extensions
+│       ├── Models/Common
+│       ├── Models/Settings
+│       ├── appsettings.json
+│       └── Program.cs
+│
+└── tests
+
+Esta estructura es la adaptación directa de la propuesta del archivo, pero ya aterrizada a tu dominio y motor.
+
+Recomendación para no complicarte
+
+No empieces con todo el sistema. Empieza con esta vertical mínima:
+
+login
+CRUD de clientes
+consulta de vehículos disponibles
+creación de reserva
+
+Con eso ya tendrás:
+
+autenticación JWT
+arquitectura limpia
+conexión a PostgreSQL
+reglas de negocio básicas
+frontend listo para consumir luego
+Conclusión
+
+La arquitectura del PDF sí te sirve, pero debes recontextualizarla así:
+
+mantener las 4 capas
+cambiar SQL Server por PostgreSQL
+cambiar el dominio de Clientes a Rental
+mantener EF Core + repositorios + Unit of Work + Business + API REST
+conservar JWT, roles, Swagger, CORS, versionado y middleware de errores
