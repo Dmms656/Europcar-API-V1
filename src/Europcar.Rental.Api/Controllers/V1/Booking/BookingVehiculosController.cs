@@ -12,7 +12,7 @@ namespace Europcar.Rental.Api.Controllers.V1.Booking;
 /// </summary>
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/vehiculos")]
+[Route("api/v{version:apiVersion}/booking/vehiculos")]
 public class BookingVehiculosController : ControllerBase
 {
     private readonly IBookingService _bookingService;
