@@ -221,9 +221,16 @@ export default function ReservarPage() {
   const handlePagar = async () => {
     setProcessing(true);
     try {
+      // Validate idCliente exists
+      if (!user?.idCliente) {
+        toast.error('Tu cuenta no tiene un perfil de cliente vinculado. Cierra sesión, regístrate de nuevo o contacta soporte.');
+        setProcessing(false);
+        return;
+      }
+
       // ── STEP 1: Create Reservation ──
       const reservaPayload = {
-        idCliente: user?.idCliente || 0,
+        idCliente: user.idCliente,
         idVehiculo: Number(id),
         idLocalizacionRecogida: Number(form.idLocalizacionRecogida),
         idLocalizacionDevolucion: Number(form.idLocalizacionDevolucion),
@@ -262,7 +269,7 @@ export default function ReservarPage() {
       try {
         const pagoPayload = {
           idReserva: idReserva,
-          idCliente: user?.idCliente || 0,
+          idCliente: user.idCliente,
           tipoPago: 'COBRO',
           metodoPago: 'TARJETA',
           monto: totalFinal,

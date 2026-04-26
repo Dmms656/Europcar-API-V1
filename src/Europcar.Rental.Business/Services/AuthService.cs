@@ -81,14 +81,32 @@ public class AuthService : IAuthService
         // Hash password
         var (hash, salt) = CreatePasswordHash(request.Password);
 
-        // Create user
+        // If no existing client linked, create one from registration data
+        int? idCliente = request.IdCliente;
+        if (!idCliente.HasValue && !string.IsNullOrEmpty(request.Nombre))
+        {
+            var newCliente = await _clienteDataService.CreateAsync(new DataManagement.Models.ClienteModel
+            {
+                TipoIdentificacion = "CED",
+                NumeroIdentificacion = request.Cedula ?? "",
+                Nombre1 = request.Nombre ?? "",
+                Apellido1 = request.Apellido ?? "",
+                Telefono = request.Telefono ?? "",
+                Correo = request.Correo,
+                DireccionPrincipal = request.Direccion,
+                FechaNacimiento = DateOnly.FromDateTime(DateTime.Today.AddYears(-25)) // Default
+            });
+            idCliente = newCliente.IdCliente;
+        }
+
+        // Create user linked to client
         var userId = await _usuarioDataService.CreateUserAsync(
-            request.Username, request.Correo, hash, salt, request.IdCliente);
+            request.Username, request.Correo, hash, salt, idCliente);
 
         // Assign CLIENTE role
         await _usuarioDataService.AssignRoleAsync(userId, "CLIENTE");
 
-        return new { userId, username = request.Username, message = "Usuario registrado exitosamente" };
+        return new { userId, username = request.Username, idCliente, message = "Usuario registrado exitosamente" };
     }
 
     private static bool VerifyPassword(string password, string storedHash, string storedSalt)
