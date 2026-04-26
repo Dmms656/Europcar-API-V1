@@ -43,12 +43,27 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      // Simulate registration - in production this would call a real API
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const payload = {
+        username: form.username,
+        correo: form.correo,
+        password: form.password,
+      };
+
+      if (mode === 'nuevo') {
+        payload.nombre = form.nombre;
+        payload.apellido = form.apellido;
+        payload.cedula = form.cedula;
+        payload.telefono = form.telefono;
+        payload.direccion = form.direccion;
+      }
+
+      await authApi.register(payload);
       setStep(2);
       toast.success('¡Cuenta creada exitosamente!');
     } catch (err) {
-      setError(err.response?.data?.message || 'Error al crear la cuenta');
+      const msg = err.response?.data?.message || err.response?.data?.title || 'Error al crear la cuenta';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

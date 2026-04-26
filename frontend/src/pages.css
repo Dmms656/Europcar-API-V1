@@ -192,9 +192,9 @@
 .sidebar__cta { padding: 0 var(--spacing-md) var(--spacing-md); }
 .sidebar__user-avatar--cliente { background: linear-gradient(135deg, #3b82f6, #2563eb); }
 .topbar--cliente { border-bottom-color: rgba(59,130,246,0.15); }
-.topbar__actions { display: flex; align-items: center; gap: 1rem; }
-.topbar__cta { display: flex; align-items: center; gap: 6px; color: var(--color-primary-light); text-decoration: none; font-size: 0.85rem; padding: 6px 12px; background: var(--color-primary-ghost); border-radius: var(--radius-sm); }
-.topbar__user-name { color: var(--color-text-secondary); font-size: 0.85rem; }
+.topbar__actions { display: flex; align-items: center; gap: 1rem; margin-left: auto; }
+.topbar__cta { display: flex; align-items: center; gap: 6px; color: var(--color-primary-light); text-decoration: none; font-size: 0.85rem; padding: 6px 12px; background: var(--color-primary-ghost); border-radius: var(--radius-sm); white-space: nowrap; }
+.topbar__user-name { color: var(--color-text-secondary); font-size: 0.85rem; white-space: nowrap; }
 .btn--accent { background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark)); color: white; border: none; }
 
 /* Mi Cuenta */
@@ -247,8 +247,13 @@
 }
 
 /* Hero search datetime override */
-.hero-search__field--datetime { padding: 6px 10px; border: none; background: none; }
-.hero-search__field--datetime .datetime-picker__field { background: var(--color-bg-secondary); }
+.hero-search__field--datetime { padding: 4px 0; border: none; background: none; min-width: 240px; }
+.hero-search__field--datetime .form-label { display: none; }
+.hero-search__field--datetime .datetime-picker__row { gap: 6px; }
+.hero-search__field--datetime .datetime-picker__field { background: var(--color-bg-secondary); padding: 0 10px; }
+.hero-search__field--datetime .datetime-picker__input { padding: 8px 0; font-size: 0.82rem; }
+.hero-search__field--datetime .datetime-picker__select { padding: 8px 2px; font-size: 0.9rem; }
+.hero-search__field--datetime .datetime-picker__preview { display: none; }
 
 /* =============================================
    Register Page

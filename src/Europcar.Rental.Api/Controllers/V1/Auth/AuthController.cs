@@ -27,4 +27,14 @@ public class AuthController : ControllerBase
         var result = await _authService.LoginAsync(request);
         return Ok(ApiResponse<object>.Ok(result, "Login exitoso"));
     }
+
+    /// <summary>
+    /// Registrar un nuevo usuario (cliente).
+    /// </summary>
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+    {
+        var result = await _authService.RegisterAsync(request);
+        return Ok(ApiResponse<object>.Ok(result, "Registro exitoso"));
+    }
 }

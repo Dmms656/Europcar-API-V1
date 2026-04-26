@@ -58,6 +58,25 @@ public class AuthService : IAuthService
         };
     }
 
+    public async Task<object> RegisterAsync(RegisterRequest request)
+    {
+        // Check if username already exists
+        if (await _usuarioDataService.ExistsByUsernameAsync(request.Username))
+            throw new BusinessException("El nombre de usuario ya está en uso");
+
+        // Hash password
+        var (hash, salt) = CreatePasswordHash(request.Password);
+
+        // Create user
+        var userId = await _usuarioDataService.CreateUserAsync(
+            request.Username, request.Correo, hash, salt, request.IdCliente);
+
+        // Assign CLIENTE role
+        await _usuarioDataService.AssignRoleAsync(userId, "CLIENTE");
+
+        return new { userId, username = request.Username, message = "Usuario registrado exitosamente" };
+    }
+
     private static bool VerifyPassword(string password, string storedHash, string storedSalt)
     {
         var saltBytes = Convert.FromBase64String(storedSalt);

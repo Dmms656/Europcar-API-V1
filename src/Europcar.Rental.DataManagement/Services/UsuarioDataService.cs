@@ -61,4 +61,50 @@ public class UsuarioDataService : IUsuarioDataService
             user.ModificadoPorUsuario = "LOGIN_OK";
         }
     }
+
+    public async Task<bool> ExistsByUsernameAsync(string username)
+    {
+        return await _context.UsuariosApp.AnyAsync(u => u.Username == username);
+    }
+
+    public async Task<int> CreateUserAsync(string username, string correo, string passwordHash, string passwordSalt, int? idCliente)
+    {
+        var entity = new Europcar.Rental.DataAccess.Entities.Security.UsuarioAppEntity
+        {
+            UsuarioGuid = Guid.NewGuid(),
+            Username = username,
+            Correo = correo,
+            PasswordHash = passwordHash,
+            PasswordSalt = passwordSalt,
+            EstadoUsuario = "ACT",
+            Activo = true,
+            RequiereCambioPassword = false,
+            IdCliente = idCliente,
+            CreadoPorUsuario = "REGISTRO_WEB",
+            ModificadoPorUsuario = "REGISTRO_WEB"
+        };
+
+        _context.UsuariosApp.Add(entity);
+        await _context.SaveChangesAsync();
+        return entity.IdUsuario;
+    }
+
+    public async Task AssignRoleAsync(int idUsuario, string roleName)
+    {
+        var role = await _context.Roles.FirstOrDefaultAsync(r => r.NombreRol == roleName);
+        if (role == null) return;
+
+        var userRole = new Europcar.Rental.DataAccess.Entities.Security.UsuarioRolEntity
+        {
+            IdUsuario = idUsuario,
+            IdRol = role.IdRol,
+            EstadoUsuarioRol = "ACT",
+            Activo = true,
+            CreadoPorUsuario = "REGISTRO_WEB",
+            ModificadoPorUsuario = "REGISTRO_WEB"
+        };
+
+        _context.UsuariosRoles.Add(userRole);
+        await _context.SaveChangesAsync();
+    }
 }
