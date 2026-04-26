@@ -1,4 +1,14 @@
 /* =============================================
+   Form Validation
+   ============================================= */
+.form-group--error .form-input, .form-group--error .form-input-wrapper .form-input { border-color: var(--color-danger); }
+.form-group--error .form-input:focus { box-shadow: 0 0 0 3px rgba(239,68,68,0.15); }
+.form-error { font-size: 0.75rem; color: var(--color-danger); margin-top: 4px; display: flex; align-items: center; gap: 4px; animation: fadeInError 0.2s ease; }
+@keyframes fadeInError { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+.form-shake { animation: formShake 0.4s ease; }
+@keyframes formShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+/* =============================================
    Login Tabs
    ============================================= */
 .login-tabs { display: flex; gap: 4px; margin-bottom: var(--spacing-lg); background: var(--color-bg); border-radius: var(--radius-md); padding: 4px; }

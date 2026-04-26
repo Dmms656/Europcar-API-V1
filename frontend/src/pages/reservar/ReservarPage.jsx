@@ -7,7 +7,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import {
   Car, MapPin, Calendar, Package, CreditCard, Check,
   ArrowLeft, ArrowRight, Fuel, Users, Settings2, Plus,
-  Minus, ShieldCheck, Loader2, CheckCircle2, X
+  Minus, ShieldCheck, Loader2, CheckCircle2, X, AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -27,6 +27,8 @@ export default function ReservarPage() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [reservaConfirmada, setReservaConfirmada] = useState(null);
+  const [stepErrors, setStepErrors] = useState({});
+  const [shake, setShake] = useState(false);
 
   // Form state
   const [form, setForm] = useState({
@@ -148,6 +150,40 @@ export default function ReservarPage() {
         pago.mesExpiracion && pago.anioExpiracion && pago.cvv.length >= 3;
       default: return false;
     }
+  };
+
+  const getStepErrors = () => {
+    const errs = {};
+    if (step === 0) {
+      if (!form.fechaRecogida) errs.fechaRecogida = 'Selecciona fecha de recogida';
+      if (!form.fechaDevolucion) errs.fechaDevolucion = 'Selecciona fecha de devolución';
+      if (form.fechaRecogida && form.fechaDevolucion && new Date(form.fechaDevolucion) <= new Date(form.fechaRecogida))
+        errs.fechaDevolucion = 'La devolución debe ser posterior a la recogida';
+      if (!form.idLocalizacionRecogida) errs.idLocalizacionRecogida = 'Selecciona sucursal de recogida';
+      if (!form.idLocalizacionDevolucion) errs.idLocalizacionDevolucion = 'Selecciona sucursal de devolución';
+    }
+    if (step === 3) {
+      if (!pago.nombreTitular.trim()) errs.nombreTitular = 'Nombre del titular requerido';
+      if (!pago.numeroTarjeta || pago.numeroTarjeta.replace(/\s/g, '').length < 16) errs.numeroTarjeta = 'Número de tarjeta inválido (16 dígitos)';
+      if (!pago.mesExpiracion) errs.mesExpiracion = 'Mes requerido';
+      if (!pago.anioExpiracion) errs.anioExpiracion = 'Año requerido';
+      if (!pago.cvv || pago.cvv.length < 3) errs.cvv = 'CVV inválido';
+    }
+    return errs;
+  };
+
+  const handleNext = () => {
+    const errs = getStepErrors();
+    if (Object.keys(errs).length > 0) {
+      setStepErrors(errs);
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
+      const first = Object.values(errs)[0];
+      toast.error(first);
+      return;
+    }
+    setStepErrors({});
+    if (step < STEPS.length - 1) setStep(step + 1);
   };
 
   const handlePagar = async () => {
@@ -318,23 +354,29 @@ export default function ReservarPage() {
               <div className="reservar-step-content">
                 <h2><Calendar size={24} /> Fechas y Ubicación</h2>
                 <div className="reservar-form-grid">
-                  <DateTimePicker
-                    id="fecha-recogida"
-                    label="Fecha y hora de Recogida *"
-                    value={form.fechaRecogida}
-                    onChange={(val) => setForm({ ...form, fechaRecogida: val })}
-                  />
-                  <DateTimePicker
-                    id="fecha-devolucion"
-                    label="Fecha y hora de Devolución *"
-                    value={form.fechaDevolucion}
-                    minDate={form.fechaRecogida}
-                    onChange={(val) => setForm({ ...form, fechaDevolucion: val })}
-                  />
-                  <div className="form-group">
+                  <div className={stepErrors.fechaRecogida ? 'form-group--error' : ''}>
+                    <DateTimePicker
+                      id="fecha-recogida"
+                      label="Fecha y hora de Recogida *"
+                      value={form.fechaRecogida}
+                      onChange={(val) => { setForm({ ...form, fechaRecogida: val }); setStepErrors(e => ({...e, fechaRecogida: ''})); }}
+                    />
+                    {stepErrors.fechaRecogida && <span className="form-error"><AlertCircle size={13} /> {stepErrors.fechaRecogida}</span>}
+                  </div>
+                  <div className={stepErrors.fechaDevolucion ? 'form-group--error' : ''}>
+                    <DateTimePicker
+                      id="fecha-devolucion"
+                      label="Fecha y hora de Devolución *"
+                      value={form.fechaDevolucion}
+                      minDate={form.fechaRecogida}
+                      onChange={(val) => { setForm({ ...form, fechaDevolucion: val }); setStepErrors(e => ({...e, fechaDevolucion: ''})); }}
+                    />
+                    {stepErrors.fechaDevolucion && <span className="form-error"><AlertCircle size={13} /> {stepErrors.fechaDevolucion}</span>}
+                  </div>
+                  <div className={`form-group ${stepErrors.idLocalizacionRecogida ? 'form-group--error' : ''}`}>
                     <label className="form-label"><MapPin size={16} /> Sucursal de Recogida *</label>
                     <select className="form-input" value={form.idLocalizacionRecogida}
-                      onChange={(e) => setForm({ ...form, idLocalizacionRecogida: e.target.value })}>
+                      onChange={(e) => { setForm({ ...form, idLocalizacionRecogida: e.target.value }); setStepErrors(er => ({...er, idLocalizacionRecogida: ''})); }}>
                       <option value="">Seleccionar...</option>
                       {localizaciones.map((l) => (
                         <option key={l.idLocalizacion || l.id} value={l.idLocalizacion || l.id}>
@@ -342,11 +384,12 @@ export default function ReservarPage() {
                         </option>
                       ))}
                     </select>
+                    {stepErrors.idLocalizacionRecogida && <span className="form-error"><AlertCircle size={13} /> {stepErrors.idLocalizacionRecogida}</span>}
                   </div>
-                  <div className="form-group">
+                  <div className={`form-group ${stepErrors.idLocalizacionDevolucion ? 'form-group--error' : ''}`}>
                     <label className="form-label"><MapPin size={16} /> Sucursal de Devolución *</label>
                     <select className="form-input" value={form.idLocalizacionDevolucion}
-                      onChange={(e) => setForm({ ...form, idLocalizacionDevolucion: e.target.value })}>
+                      onChange={(e) => { setForm({ ...form, idLocalizacionDevolucion: e.target.value }); setStepErrors(er => ({...er, idLocalizacionDevolucion: ''})); }}>
                       <option value="">Seleccionar...</option>
                       {localizaciones.map((l) => (
                         <option key={l.idLocalizacion || l.id} value={l.idLocalizacion || l.id}>
@@ -354,6 +397,7 @@ export default function ReservarPage() {
                         </option>
                       ))}
                     </select>
+                    {stepErrors.idLocalizacionDevolucion && <span className="form-error"><AlertCircle size={13} /> {stepErrors.idLocalizacionDevolucion}</span>}
                   </div>
                 </div>
                 {isOneWay && (
@@ -473,23 +517,25 @@ export default function ReservarPage() {
                   </div>
 
                   <div className="pago-form">
-                    <div className="form-group">
+                    <div className={`form-group ${stepErrors.nombreTitular ? 'form-group--error' : ''}`}>
                       <label className="form-label">Nombre del Titular *</label>
                       <input type="text" className="form-input" placeholder="Como aparece en la tarjeta"
                         value={pago.nombreTitular}
-                        onChange={(e) => setPago({ ...pago, nombreTitular: e.target.value.toUpperCase() })} />
+                        onChange={(e) => { setPago({ ...pago, nombreTitular: e.target.value.toUpperCase() }); setStepErrors(er => ({...er, nombreTitular: ''})); }} />
+                      {stepErrors.nombreTitular && <span className="form-error"><AlertCircle size={13} /> {stepErrors.nombreTitular}</span>}
                     </div>
-                    <div className="form-group">
+                    <div className={`form-group ${stepErrors.numeroTarjeta ? 'form-group--error' : ''}`}>
                       <label className="form-label">Número de Tarjeta *</label>
                       <input type="text" className="form-input" placeholder="4242 4242 4242 4242"
                         maxLength={19} value={pago.numeroTarjeta}
-                        onChange={(e) => setPago({ ...pago, numeroTarjeta: e.target.value.replace(/\D/g, '').slice(0, 16) })} />
+                        onChange={(e) => { setPago({ ...pago, numeroTarjeta: e.target.value.replace(/\D/g, '').slice(0, 16) }); setStepErrors(er => ({...er, numeroTarjeta: ''})); }} />
+                      {stepErrors.numeroTarjeta && <span className="form-error"><AlertCircle size={13} /> {stepErrors.numeroTarjeta}</span>}
                     </div>
                     <div className="pago-form__row">
-                      <div className="form-group">
+                      <div className={`form-group ${stepErrors.mesExpiracion ? 'form-group--error' : ''}`}>
                         <label className="form-label">Mes *</label>
                         <select className="form-input" value={pago.mesExpiracion}
-                          onChange={(e) => setPago({ ...pago, mesExpiracion: e.target.value })}>
+                          onChange={(e) => { setPago({ ...pago, mesExpiracion: e.target.value }); setStepErrors(er => ({...er, mesExpiracion: ''})); }}>
                           <option value="">MM</option>
                           {Array.from({ length: 12 }, (_, i) => (
                             <option key={i} value={String(i + 1).padStart(2, '0')}>
@@ -497,22 +543,25 @@ export default function ReservarPage() {
                             </option>
                           ))}
                         </select>
+                        {stepErrors.mesExpiracion && <span className="form-error"><AlertCircle size={13} /> {stepErrors.mesExpiracion}</span>}
                       </div>
-                      <div className="form-group">
+                      <div className={`form-group ${stepErrors.anioExpiracion ? 'form-group--error' : ''}`}>
                         <label className="form-label">Año *</label>
                         <select className="form-input" value={pago.anioExpiracion}
-                          onChange={(e) => setPago({ ...pago, anioExpiracion: e.target.value })}>
+                          onChange={(e) => { setPago({ ...pago, anioExpiracion: e.target.value }); setStepErrors(er => ({...er, anioExpiracion: ''})); }}>
                           <option value="">AA</option>
                           {Array.from({ length: 10 }, (_, i) => (
                             <option key={i} value={String(26 + i)}>{2026 + i}</option>
                           ))}
                         </select>
+                        {stepErrors.anioExpiracion && <span className="form-error"><AlertCircle size={13} /> {stepErrors.anioExpiracion}</span>}
                       </div>
-                      <div className="form-group">
+                      <div className={`form-group ${stepErrors.cvv ? 'form-group--error' : ''}`}>
                         <label className="form-label">CVV *</label>
                         <input type="password" className="form-input" placeholder="•••" maxLength={4}
                           value={pago.cvv}
-                          onChange={(e) => setPago({ ...pago, cvv: e.target.value.replace(/\D/g, '').slice(0, 4) })} />
+                          onChange={(e) => { setPago({ ...pago, cvv: e.target.value.replace(/\D/g, '').slice(0, 4) }); setStepErrors(er => ({...er, cvv: ''})); }} />
+                        {stepErrors.cvv && <span className="form-error"><AlertCircle size={13} /> {stepErrors.cvv}</span>}
                       </div>
                     </div>
                   </div>
@@ -529,20 +578,20 @@ export default function ReservarPage() {
             )}
 
             {/* Navigation Buttons */}
-            <div className="reservar-nav">
+            <div className={`reservar-nav ${shake ? 'form-shake' : ''}`}>
               {step > 0 && (
-                <button className="btn btn--outline" onClick={() => setStep(step - 1)} disabled={processing}>
+                <button className="btn btn--outline" onClick={() => { setStep(step - 1); setStepErrors({}); }} disabled={processing}>
                   <ArrowLeft size={16} /> Anterior
                 </button>
               )}
               <div className="reservar-nav__spacer" />
               {step < 3 ? (
-                <button className="btn btn--primary" onClick={() => setStep(step + 1)} disabled={!canProceed()}>
+                <button className="btn btn--primary" onClick={handleNext}>
                   Siguiente <ArrowRight size={16} />
                 </button>
               ) : (
-                <button className="btn btn--primary btn--lg" onClick={handlePagar}
-                  disabled={!canProceed() || processing}>
+                <button className="btn btn--primary btn--lg" onClick={() => { const errs = getStepErrors(); if (Object.keys(errs).length > 0) { setStepErrors(errs); setShake(true); setTimeout(() => setShake(false), 500); toast.error(Object.values(errs)[0]); return; } handlePagar(); }}
+                  disabled={processing}>
                   {processing ? (
                     <><Loader2 size={18} className="spin" /> Procesando pago...</>
                   ) : (

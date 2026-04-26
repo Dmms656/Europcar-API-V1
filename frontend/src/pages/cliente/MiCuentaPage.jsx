@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useAuthStore } from '../../store/useAuthStore';
-import { User, Mail, Phone, MapPin, Edit3, Save, X, ShieldCheck, Key, Eye, EyeOff, Lock } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Edit3, Save, X, ShieldCheck, Key, Eye, EyeOff, Lock, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../api/axiosClient';
+import { validators } from '../../utils/validation';
 
 export default function MiCuentaPage() {
   const { user, token } = useAuthStore();
@@ -10,6 +11,7 @@ export default function MiCuentaPage() {
   const [changingPassword, setChangingPassword] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const [form, setForm] = useState({
     nombre: user?.nombreCompleto || user?.username || '',
@@ -25,9 +27,18 @@ export default function MiCuentaPage() {
   });
 
   const handleSave = async () => {
+    const errs = {};
+    const emailErr = validators.required(form.correo, 'El correo') || validators.email(form.correo);
+    if (emailErr) errs.correo = emailErr;
+    if (form.telefono) { const ph = validators.phone(form.telefono); if (ph) errs.telefono = ph; }
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      toast.error(Object.values(errs)[0]);
+      return;
+    }
+    setFieldErrors({});
     setSaving(true);
     try {
-      // Attempt to update user profile via API
       await api.put('/Auth/profile', {
         correo: form.correo,
         telefono: form.telefono,
@@ -36,7 +47,6 @@ export default function MiCuentaPage() {
       toast.success('Datos actualizados correctamente');
       setEditing(false);
     } catch {
-      // Even if backend endpoint isn't ready yet, save locally
       toast.success('Datos actualizados localmente');
       setEditing(false);
     } finally {
@@ -45,14 +55,18 @@ export default function MiCuentaPage() {
   };
 
   const handlePasswordChange = async () => {
-    if (pwdForm.newPassword !== pwdForm.confirmPassword) {
-      toast.error('Las contraseñas no coinciden');
+    const errs = {};
+    if (!pwdForm.currentPassword) errs.currentPassword = 'Contraseña actual requerida';
+    const newPwdErr = validators.required(pwdForm.newPassword, 'Nueva contraseña') || validators.minLength(pwdForm.newPassword, 6, 'Nueva contraseña');
+    if (newPwdErr) errs.newPassword = newPwdErr;
+    const matchErr = validators.match(pwdForm.confirmPassword, pwdForm.newPassword, 'Las contraseñas');
+    if (matchErr) errs.confirmPassword = matchErr;
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      toast.error(Object.values(errs)[0]);
       return;
     }
-    if (pwdForm.newPassword.length < 6) {
-      toast.error('La contraseña debe tener al menos 6 caracteres');
-      return;
-    }
+    setFieldErrors({});
     setSaving(true);
     try {
       await api.put('/Auth/change-password', {
@@ -127,20 +141,26 @@ export default function MiCuentaPage() {
                 <p>{form.nombre || '—'}</p>
               )}
             </div>
-            <div className="cuenta-field">
+            <div className={`cuenta-field ${fieldErrors.correo ? 'form-group--error' : ''}`}>
               <label><Mail size={16} /> Correo Electrónico</label>
               {editing ? (
-                <input className="form-input" type="email" value={form.correo}
-                  onChange={(e) => setForm({ ...form, correo: e.target.value })} />
+                <>
+                  <input className="form-input" type="email" value={form.correo}
+                    onChange={(e) => { setForm({ ...form, correo: e.target.value }); setFieldErrors(er => ({...er, correo: ''})); }} />
+                  {fieldErrors.correo && <span className="form-error"><AlertCircle size={13} /> {fieldErrors.correo}</span>}
+                </>
               ) : (
                 <p>{form.correo || '—'}</p>
               )}
             </div>
-            <div className="cuenta-field">
+            <div className={`cuenta-field ${fieldErrors.telefono ? 'form-group--error' : ''}`}>
               <label><Phone size={16} /> Teléfono</label>
               {editing ? (
-                <input className="form-input" value={form.telefono} placeholder="+593 99 999 9999"
-                  onChange={(e) => setForm({ ...form, telefono: e.target.value })} />
+                <>
+                  <input className="form-input" value={form.telefono} placeholder="+593 99 999 9999"
+                    onChange={(e) => { setForm({ ...form, telefono: e.target.value }); setFieldErrors(er => ({...er, telefono: ''})); }} />
+                  {fieldErrors.telefono && <span className="form-error"><AlertCircle size={13} /> {fieldErrors.telefono}</span>}
+                </>
               ) : (
                 <p>{form.telefono || '—'}</p>
               )}
@@ -161,26 +181,29 @@ export default function MiCuentaPage() {
             <div className="cuenta-password-section">
               <h4><Lock size={16} /> Cambiar Contraseña</h4>
               <div className="cuenta-fields">
-                <div className="cuenta-field">
+                <div className={`cuenta-field ${fieldErrors.currentPassword ? 'form-group--error' : ''}`}>
                   <label>Contraseña Actual</label>
                   <div className="form-input-wrapper">
                     <input type={showPwd ? 'text' : 'password'} className="form-input"
                       value={pwdForm.currentPassword}
-                      onChange={(e) => setPwdForm({ ...pwdForm, currentPassword: e.target.value })} />
+                      onChange={(e) => { setPwdForm({ ...pwdForm, currentPassword: e.target.value }); setFieldErrors(er => ({...er, currentPassword: ''})); }} />
                     <button type="button" className="form-input-toggle" onClick={() => setShowPwd(!showPwd)}>
                       {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
+                  {fieldErrors.currentPassword && <span className="form-error"><AlertCircle size={13} /> {fieldErrors.currentPassword}</span>}
                 </div>
-                <div className="cuenta-field">
+                <div className={`cuenta-field ${fieldErrors.newPassword ? 'form-group--error' : ''}`}>
                   <label>Nueva Contraseña</label>
                   <input type="password" className="form-input" value={pwdForm.newPassword}
-                    onChange={(e) => setPwdForm({ ...pwdForm, newPassword: e.target.value })} />
+                    onChange={(e) => { setPwdForm({ ...pwdForm, newPassword: e.target.value }); setFieldErrors(er => ({...er, newPassword: ''})); }} />
+                  {fieldErrors.newPassword && <span className="form-error"><AlertCircle size={13} /> {fieldErrors.newPassword}</span>}
                 </div>
-                <div className="cuenta-field">
+                <div className={`cuenta-field ${fieldErrors.confirmPassword ? 'form-group--error' : ''}`}>
                   <label>Confirmar Nueva Contraseña</label>
                   <input type="password" className="form-input" value={pwdForm.confirmPassword}
-                    onChange={(e) => setPwdForm({ ...pwdForm, confirmPassword: e.target.value })} />
+                    onChange={(e) => { setPwdForm({ ...pwdForm, confirmPassword: e.target.value }); setFieldErrors(er => ({...er, confirmPassword: ''})); }} />
+                  {fieldErrors.confirmPassword && <span className="form-error"><AlertCircle size={13} /> {fieldErrors.confirmPassword}</span>}
                 </div>
               </div>
               <div className="cuenta-card__actions" style={{ marginTop: '1rem' }}>
