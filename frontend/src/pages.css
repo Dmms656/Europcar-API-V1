@@ -9,22 +9,36 @@
 .login-card__back:hover { text-decoration: underline; }
 
 /* =============================================
-   DateTimePicker Component
+   DateTimePicker Component (Dropdown)
    ============================================= */
-.datetime-picker { margin-bottom: 0; }
-.datetime-picker__row { display: flex; gap: 8px; }
-.datetime-picker__field { display: flex; align-items: center; gap: 6px; background: var(--color-bg); border: 1px solid var(--color-border-light); border-radius: var(--radius-md); padding: 0 12px; transition: border-color 0.2s; }
-.datetime-picker__field:focus-within { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-ghost); }
-.datetime-picker__field--date { flex: 1.2; }
-.datetime-picker__field--time { flex: 0.8; }
-.datetime-picker__icon { color: var(--color-primary-light); flex-shrink: 0; }
-.datetime-picker__input { flex: 1; background: none; border: none; color: var(--color-text); font-size: 0.9rem; padding: 10px 0; outline: none; font-family: inherit; }
-.datetime-picker__input::-webkit-calendar-picker-indicator { filter: invert(0.7); cursor: pointer; }
-.datetime-picker__select { background: none; border: none; color: var(--color-text); font-size: 1rem; font-weight: 600; padding: 10px 2px; outline: none; cursor: pointer; font-family: inherit; appearance: none; text-align: center; width: 36px; }
-.datetime-picker__select option { background: var(--color-surface); color: var(--color-text); }
-.datetime-picker__select--min { width: 36px; }
-.datetime-picker__separator { color: var(--color-primary-light); font-size: 1.2rem; font-weight: 700; }
-.datetime-picker__preview { margin-top: 6px; font-size: 0.78rem; color: var(--color-primary-light); text-transform: capitalize; padding-left: 2px; }
+.dtp { position: relative; }
+.dtp__trigger { width: 100%; display: flex; align-items: center; gap: 8px; padding: 9px 12px; background: var(--color-bg); border: 1px solid var(--color-border-light); border-radius: var(--radius-md); color: var(--color-text); cursor: pointer; font-size: 0.88rem; font-family: inherit; transition: border-color 0.2s; }
+.dtp__trigger:hover, .dtp__trigger--open { border-color: var(--color-primary); }
+.dtp__trigger--open { box-shadow: 0 0 0 3px var(--color-primary-ghost); }
+.dtp__trigger-icon { color: var(--color-primary-light); flex-shrink: 0; }
+.dtp__trigger-text { flex: 1; text-align: left; font-weight: 500; }
+.dtp__trigger-text--empty { color: var(--color-text-muted); font-weight: 400; }
+.dtp__chevron { color: var(--color-text-muted); transition: transform 0.2s; flex-shrink: 0; }
+.dtp__chevron--open { transform: rotate(180deg); }
+
+.dtp__dropdown { position: absolute; top: calc(100% + 6px); left: 0; right: 0; min-width: 240px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 12px; z-index: 200; box-shadow: var(--shadow-lg); animation: dtpSlide 0.15s ease; }
+@keyframes dtpSlide { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+.dtp__section { margin-bottom: 8px; }
+.dtp__section-label { display: flex; align-items: center; gap: 5px; font-size: 0.72rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.dtp__date-input { width: 100%; padding: 8px 10px; background: var(--color-bg); border: 1px solid var(--color-border-light); border-radius: var(--radius-sm); color: var(--color-text); font-size: 0.88rem; font-family: inherit; outline: none; }
+.dtp__date-input:focus { border-color: var(--color-primary); }
+.dtp__date-input::-webkit-calendar-picker-indicator { filter: invert(0.7); cursor: pointer; }
+
+.dtp__divider { height: 1px; background: var(--color-border); margin: 10px 0; }
+
+.dtp__time-row { display: flex; align-items: center; gap: 4px; }
+.dtp__time-select { flex: 1; padding: 8px 6px; background: var(--color-bg); border: 1px solid var(--color-border-light); border-radius: var(--radius-sm); color: var(--color-text); font-size: 1rem; font-weight: 600; text-align: center; outline: none; cursor: pointer; font-family: inherit; appearance: none; }
+.dtp__time-select:focus { border-color: var(--color-primary); }
+.dtp__time-select option { background: var(--color-surface); }
+.dtp__time-colon { font-size: 1.2rem; font-weight: 700; color: var(--color-primary-light); }
+
+.dtp__preview { margin-top: 8px; padding: 6px 10px; background: var(--color-primary-ghost); border-radius: var(--radius-sm); font-size: 0.78rem; color: var(--color-primary-light); text-align: center; text-transform: capitalize; }
 
 /* =============================================
    Catalog Page
@@ -229,6 +243,25 @@
 .reserva-item__code, .contrato-item__code { font-family: monospace; color: var(--color-text-muted); font-size: 0.82rem; }
 .reserva-item__total, .contrato-item__total { font-weight: 700; color: var(--color-primary-light); display: flex; align-items: center; gap: 2px; }
 
+/* Account page extras */
+.cuenta-profile-actions { margin-top: 1.5rem; }
+.cuenta-password-section { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--color-border); }
+.cuenta-password-section h4 { display: flex; align-items: center; gap: 8px; font-size: 1rem; margin-bottom: 1rem; color: var(--color-text); }
+
+/* Detail Modal */
+.detail-modal { max-width: 560px; }
+.detail-badge-row { display: flex; align-items: center; gap: 12px; margin-bottom: 1.5rem; }
+.detail-code { display: flex; align-items: center; gap: 4px; font-family: monospace; color: var(--color-text-muted); font-size: 0.9rem; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+.detail-item { display: flex; flex-direction: column; gap: 4px; }
+.detail-item--full { grid-column: 1 / -1; }
+.detail-label { display: flex; align-items: center; gap: 5px; font-size: 0.75rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.3px; }
+.detail-value { font-size: 0.95rem; font-weight: 500; color: var(--color-text); }
+.detail-extras { display: flex; gap: 6px; flex-wrap: wrap; }
+.detail-extra-tag { padding: 3px 10px; background: var(--color-primary-ghost); border-radius: var(--radius-full); font-size: 0.78rem; color: var(--color-primary-light); font-weight: 500; }
+.detail-total { display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--color-bg-secondary); border-radius: var(--radius-md); border: 1px solid var(--color-border); }
+.detail-total__amount { display: flex; align-items: center; gap: 2px; font-size: 1.3rem; font-weight: 800; color: var(--color-primary-light); }
+
 /* Responsive */
 @media (max-width: 768px) {
   .catalog-grid { grid-template-columns: 1fr; }
@@ -247,13 +280,10 @@
 }
 
 /* Hero search datetime override */
-.hero-search__field--datetime { padding: 4px 0; border: none; background: none; min-width: 240px; }
+.hero-search__field--datetime { padding: 0; border: none; background: none; min-width: 180px; }
 .hero-search__field--datetime .form-label { display: none; }
-.hero-search__field--datetime .datetime-picker__row { gap: 6px; }
-.hero-search__field--datetime .datetime-picker__field { background: var(--color-bg-secondary); padding: 0 10px; }
-.hero-search__field--datetime .datetime-picker__input { padding: 8px 0; font-size: 0.82rem; }
-.hero-search__field--datetime .datetime-picker__select { padding: 8px 2px; font-size: 0.9rem; }
-.hero-search__field--datetime .datetime-picker__preview { display: none; }
+.hero-search__field--datetime .dtp__trigger { background: var(--color-bg-secondary); border-color: transparent; padding: 8px 10px; font-size: 0.82rem; }
+.hero-search__field--datetime .dtp__dropdown { min-width: 260px; }
 
 /* =============================================
    Register Page
