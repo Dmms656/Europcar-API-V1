@@ -78,8 +78,14 @@ export default function ReservarPage() {
           }));
         }
       }
-      if (locRes.status === 'fulfilled') setLocalizaciones(locRes.value.data?.data?.localizaciones || []);
-      if (extRes.status === 'fulfilled') setExtras(extRes.value.data?.data?.extras || []);
+      if (locRes.status === 'fulfilled') {
+        const ld = locRes.value.data?.data;
+        setLocalizaciones(ld?.localizaciones || (Array.isArray(ld) ? ld : []));
+      }
+      if (extRes.status === 'fulfilled') {
+        const ed = extRes.value.data?.data;
+        setExtras(ed?.extras || (Array.isArray(ed) ? ed : []));
+      }
     } catch (e) {
       console.error(e);
       toast.error('Error al cargar el vehículo');
@@ -472,8 +478,8 @@ export default function ReservarPage() {
                   </div>
                   <div className="resumen-section">
                     <h4>Ubicaciones</h4>
-                    <p><strong>Recogida:</strong> {localizaciones.find(l => String(l.idLocalizacion || l.id) === form.idLocalizacionRecogida)?.nombreLocalizacion || form.idLocalizacionRecogida}</p>
-                    <p><strong>Devolución:</strong> {localizaciones.find(l => String(l.idLocalizacion || l.id) === form.idLocalizacionDevolucion)?.nombreLocalizacion || form.idLocalizacionDevolucion}</p>
+                    <p><strong>Recogida:</strong> {(() => { const l = localizaciones.find(l => String(l.idLocalizacion ?? l.id) === String(form.idLocalizacionRecogida)); return l?.nombreLocalizacion || l?.nombre || `ID ${form.idLocalizacionRecogida}`; })()}</p>
+                    <p><strong>Devolución:</strong> {(() => { const l = localizaciones.find(l => String(l.idLocalizacion ?? l.id) === String(form.idLocalizacionDevolucion)); return l?.nombreLocalizacion || l?.nombre || `ID ${form.idLocalizacionDevolucion}`; })()}</p>
                   </div>
                   {form.extrasSeleccionados.length > 0 && (
                     <div className="resumen-section">
