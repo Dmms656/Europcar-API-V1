@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { vehiculosApi } from '../../api/vehiculosApi';
+import DateTimePicker from '../../components/ui/DateTimePicker';
 import { bookingApi } from '../../api/bookingApi';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
@@ -317,18 +318,19 @@ export default function ReservarPage() {
               <div className="reservar-step-content">
                 <h2><Calendar size={24} /> Fechas y Ubicación</h2>
                 <div className="reservar-form-grid">
-                  <div className="form-group">
-                    <label className="form-label">Fecha de Recogida *</label>
-                    <input type="datetime-local" className="form-input" value={form.fechaRecogida}
-                      min={new Date().toISOString().slice(0, 16)}
-                      onChange={(e) => setForm({ ...form, fechaRecogida: e.target.value })} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Fecha de Devolución *</label>
-                    <input type="datetime-local" className="form-input" value={form.fechaDevolucion}
-                      min={form.fechaRecogida || new Date().toISOString().slice(0, 16)}
-                      onChange={(e) => setForm({ ...form, fechaDevolucion: e.target.value })} />
-                  </div>
+                  <DateTimePicker
+                    id="fecha-recogida"
+                    label="Fecha y hora de Recogida *"
+                    value={form.fechaRecogida}
+                    onChange={(val) => setForm({ ...form, fechaRecogida: val })}
+                  />
+                  <DateTimePicker
+                    id="fecha-devolucion"
+                    label="Fecha y hora de Devolución *"
+                    value={form.fechaDevolucion}
+                    minDate={form.fechaRecogida}
+                    onChange={(val) => setForm({ ...form, fechaDevolucion: val })}
+                  />
                   <div className="form-group">
                     <label className="form-label"><MapPin size={16} /> Sucursal de Recogida *</label>
                     <select className="form-input" value={form.idLocalizacionRecogida}

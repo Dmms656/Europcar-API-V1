@@ -6,6 +6,7 @@ import {
   Car, MapPin, Calendar, Search, Shield, Clock, Star,
   ChevronRight, LogIn, Fuel, Users, Settings2, ShoppingBag, User
 } from 'lucide-react';
+import DateTimePicker from '../../components/ui/DateTimePicker';
 
 const isValidImageUrl = (url) => url && (url.startsWith('http://') || url.startsWith('https://'));
 
@@ -112,15 +113,22 @@ export default function HomePage() {
                 ))}
               </select>
             </div>
-            <div className="hero-search__field">
-              <Calendar size={18} className="hero-search__icon" />
-              <input type="datetime-local" className="hero-search__input" value={searchForm.fechaRecogida}
-                onChange={(e) => setSearchForm({ ...searchForm, fechaRecogida: e.target.value })} />
+            <div className="hero-search__field hero-search__field--datetime">
+              <DateTimePicker
+                id="hero-recogida"
+                label="Recogida"
+                value={searchForm.fechaRecogida}
+                onChange={(val) => setSearchForm({ ...searchForm, fechaRecogida: val })}
+              />
             </div>
-            <div className="hero-search__field">
-              <Calendar size={18} className="hero-search__icon" />
-              <input type="datetime-local" className="hero-search__input" value={searchForm.fechaDevolucion}
-                onChange={(e) => setSearchForm({ ...searchForm, fechaDevolucion: e.target.value })} />
+            <div className="hero-search__field hero-search__field--datetime">
+              <DateTimePicker
+                id="hero-devolucion"
+                label="Devolución"
+                value={searchForm.fechaDevolucion}
+                minDate={searchForm.fechaRecogida}
+                onChange={(val) => setSearchForm({ ...searchForm, fechaDevolucion: val })}
+              />
             </div>
             <button type="submit" className="hero-search__btn">
               <Search size={18} />

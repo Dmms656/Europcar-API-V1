@@ -9,6 +9,24 @@
 .login-card__back:hover { text-decoration: underline; }
 
 /* =============================================
+   DateTimePicker Component
+   ============================================= */
+.datetime-picker { margin-bottom: 0; }
+.datetime-picker__row { display: flex; gap: 8px; }
+.datetime-picker__field { display: flex; align-items: center; gap: 6px; background: var(--color-bg); border: 1px solid var(--color-border-light); border-radius: var(--radius-md); padding: 0 12px; transition: border-color 0.2s; }
+.datetime-picker__field:focus-within { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-ghost); }
+.datetime-picker__field--date { flex: 1.2; }
+.datetime-picker__field--time { flex: 0.8; }
+.datetime-picker__icon { color: var(--color-primary-light); flex-shrink: 0; }
+.datetime-picker__input { flex: 1; background: none; border: none; color: var(--color-text); font-size: 0.9rem; padding: 10px 0; outline: none; font-family: inherit; }
+.datetime-picker__input::-webkit-calendar-picker-indicator { filter: invert(0.7); cursor: pointer; }
+.datetime-picker__select { background: none; border: none; color: var(--color-text); font-size: 1rem; font-weight: 600; padding: 10px 2px; outline: none; cursor: pointer; font-family: inherit; appearance: none; text-align: center; width: 36px; }
+.datetime-picker__select option { background: var(--color-surface); color: var(--color-text); }
+.datetime-picker__select--min { width: 36px; }
+.datetime-picker__separator { color: var(--color-primary-light); font-size: 1.2rem; font-weight: 700; }
+.datetime-picker__preview { margin-top: 6px; font-size: 0.78rem; color: var(--color-primary-light); text-transform: capitalize; padding-left: 2px; }
+
+/* =============================================
    Catalog Page
    ============================================= */
 .catalogo-page { min-height: 100vh; background: var(--color-bg); }
@@ -223,7 +241,15 @@
   .reservar-steps { gap: 0.5rem; font-size: 0.8rem; }
   .reservar-step__label { display: none; }
   .hero__ctas { flex-direction: column; }
+  .hero-search { flex-direction: column; }
+  .hero-search__field--datetime { min-width: 100%; }
+  .datetime-picker__row { flex-direction: column; }
 }
+
+/* Hero search datetime override */
+.hero-search__field--datetime { flex-direction: column; align-items: stretch; padding: 8px 12px; }
+.hero-search__field--datetime .datetime-picker__row { flex-wrap: nowrap; }
+.hero-search__field--datetime .form-label { font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: 4px; }
 
 /* Image placeholder label */
 .vehicle-card__img-placeholder, .catalog-card__image-placeholder {
