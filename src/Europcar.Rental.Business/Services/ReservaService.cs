@@ -14,6 +14,7 @@ public class ReservaService : IReservaService
     private readonly IVehiculoDataService _vehiculoDataService;
     private readonly IClienteDataService _clienteDataService;
     private readonly IExtraDataService _extraDataService;
+    private readonly IConductorDataService _conductorDataService;
     private readonly IUnitOfWork _unitOfWork;
 
     public ReservaService(
@@ -21,12 +22,14 @@ public class ReservaService : IReservaService
         IVehiculoDataService vehiculoDataService,
         IClienteDataService clienteDataService,
         IExtraDataService extraDataService,
+        IConductorDataService conductorDataService,
         IUnitOfWork unitOfWork)
     {
         _reservaDataService = reservaDataService;
         _vehiculoDataService = vehiculoDataService;
         _clienteDataService = clienteDataService;
         _extraDataService = extraDataService;
+        _conductorDataService = conductorDataService;
         _unitOfWork = unitOfWork;
     }
 
@@ -141,6 +144,9 @@ public class ReservaService : IReservaService
 
         var created = await _reservaDataService.CreateAsync(model);
 
+        // ── Asignar conductores ──
+        await AssignConductoresAsync(request, created.IdReserva, cliente);
+
         // ── Reservar stock de extras que lo requieran ──
         foreach (var item in request.Extras)
         {
@@ -230,4 +236,68 @@ public class ReservaService : IReservaService
             Subtotal = e.Subtotal
         }).ToList()
     };
+
+    /// <summary>
+    /// Assigns conductors to a reservation. If no conductors are specified,
+    /// the client is automatically assigned as the principal conductor.
+    /// </summary>
+    private async Task AssignConductoresAsync(CrearReservaRequest request, int idReserva, ClienteModel cliente)
+    {
+        var conductoresToAssign = request.Conductores;
+
+        // If no conductors specified, find or create the client's own conductor record
+        if (conductoresToAssign.Count == 0)
+        {
+            var clientConductores = await _conductorDataService.GetByClienteIdAsync(cliente.IdCliente);
+            var existing = clientConductores.FirstOrDefault();
+
+            int conductorId;
+            if (existing != null)
+            {
+                conductorId = existing.IdConductor;
+            }
+            else
+            {
+                // Auto-create conductor from client data
+                var age = (short)(DateTime.Today.Year - cliente.FechaNacimiento.Year);
+                var newConductor = await _conductorDataService.CreateAsync(new ConductorModel
+                {
+                    IdCliente = cliente.IdCliente,
+                    TipoIdentificacion = cliente.TipoIdentificacion,
+                    NumeroIdentificacion = cliente.NumeroIdentificacion,
+                    Nombre1 = cliente.Nombre1,
+                    Nombre2 = cliente.Nombre2,
+                    Apellido1 = cliente.Apellido1,
+                    Apellido2 = cliente.Apellido2,
+                    NumeroLicencia = "PENDIENTE",
+                    FechaVencimientoLicencia = DateOnly.FromDateTime(DateTime.Today.AddYears(2)),
+                    EdadConductor = age,
+                    Telefono = cliente.Telefono,
+                    Correo = cliente.Correo
+                });
+                conductorId = newConductor.IdConductor;
+            }
+
+            conductoresToAssign = new List<ReservaConductorItemRequest>
+            {
+                new() { IdConductor = conductorId, EsPrincipal = true }
+            };
+        }
+
+        // Validate that exactly one principal conductor exists
+        var principals = conductoresToAssign.Count(c => c.EsPrincipal);
+        if (principals == 0 && conductoresToAssign.Count > 0)
+        {
+            conductoresToAssign[0].EsPrincipal = true;
+        }
+
+        foreach (var item in conductoresToAssign)
+        {
+            var conductor = await _conductorDataService.GetByIdAsync(item.IdConductor)
+                ?? throw new NotFoundException($"Conductor con ID {item.IdConductor} no encontrado");
+
+            await _reservaDataService.AddConductorAsync(idReserva, item.IdConductor, item.EsPrincipal,
+                conductor.EsConductorJoven == true ? 15.00m : 0m);
+        }
+    }
 }

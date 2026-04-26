@@ -131,6 +131,22 @@ public class ReservaDataService : IReservaDataService
         }
     }
 
+    public async Task AddConductorAsync(int idReserva, int idConductor, bool esPrincipal, decimal cargoConductorJoven)
+    {
+        var entity = new ReservaConductorEntity
+        {
+            ReservaConductorGuid = Guid.NewGuid(),
+            IdReserva = idReserva,
+            IdConductor = idConductor,
+            TipoConductor = esPrincipal ? "PRINCIPAL" : "ADICIONAL",
+            EsPrincipal = esPrincipal,
+            CargoConductorJoven = cargoConductorJoven,
+            EstadoReservaConductor = "ACT",
+            OrigenRegistro = "API"
+        };
+        await _context.ReservaConductores.AddAsync(entity);
+    }
+
     private static ReservaModel MapToModel(ReservaEntity r) => new()
     {
         IdReserva = r.IdReserva,

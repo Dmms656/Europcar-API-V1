@@ -38,6 +38,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICatalogoDataService, CatalogoDataService>();
         services.AddScoped<IExtraDataService, ExtraDataService>();
         services.AddScoped<IBookingDataService, BookingDataService>();
+        services.AddScoped<IConductorDataService, ConductorDataService>();
 
         // Business
         services.AddScoped<IAuthService, AuthService>();
@@ -154,6 +155,7 @@ public static class ServiceCollectionExtensions
                 // Cuando el frontend esté listo, agrega su URL aquí en lugar de usar AllowAnyOrigin()
                 builder.WithOrigins(
                         "http://localhost:5173",
+                        "https://europcar-frontend.onrender.com",
                         "https://tu-frontend.vercel.app"
                        )
                        .AllowAnyMethod()

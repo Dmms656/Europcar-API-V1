@@ -14,6 +14,12 @@ public class CrearReservaRequest
     /// Lista opcional de extras a contratar con la reserva.
     /// </summary>
     public List<ReservaExtraItemRequest> Extras { get; set; } = new();
+
+    /// <summary>
+    /// Lista de conductores asociados a la reserva. 
+    /// Si no se envía, se asigna automáticamente el cliente como conductor principal.
+    /// </summary>
+    public List<ReservaConductorItemRequest> Conductores { get; set; } = new();
 }
 
 /// <summary>
@@ -23,4 +29,13 @@ public class ReservaExtraItemRequest
 {
     public int IdExtra { get; set; }
     public int Cantidad { get; set; } = 1;
+}
+
+/// <summary>
+/// Item de conductor a asociar a una reserva.
+/// </summary>
+public class ReservaConductorItemRequest
+{
+    public int IdConductor { get; set; }
+    public bool EsPrincipal { get; set; } = false;
 }

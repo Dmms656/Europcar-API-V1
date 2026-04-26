@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const STEPS = ['Fechas', 'Extras', 'Resumen', 'Pago'];
+const STEPS = ['Fechas', 'Conductores', 'Extras', 'Resumen', 'Pago'];
 const IVA_RATE = 0.15;
 const isValidImageUrl = (url) => url && (url.startsWith('http://') || url.startsWith('https://'));
 
@@ -38,7 +38,10 @@ export default function ReservarPage() {
     idLocalizacionRecogida: '',
     idLocalizacionDevolucion: '',
     extrasSeleccionados: [],
+    conductores: [], // [{id, nombre, licencia, esPrincipal, esNuevo?, ...}]
   });
+  const [showAddConductor, setShowAddConductor] = useState(false);
+  const [newConductor, setNewConductor] = useState({ nombre: '', apellido: '', licencia: '', edad: '', telefono: '' });
 
   // Payment form
   const [pago, setPago] = useState({
@@ -86,6 +89,22 @@ export default function ReservarPage() {
       if (extRes.status === 'fulfilled') {
         const ed = extRes.value.data?.data;
         setExtras(ed?.extras || (Array.isArray(ed) ? ed : []));
+      }
+
+      // Auto-assign client as principal conductor
+      if (user) {
+        setForm(prev => ({
+          ...prev,
+          conductores: [{
+            id: null,
+            nombre: user.nombreCompleto || user.username || '',
+            licencia: '',
+            edad: '',
+            telefono: '',
+            esPrincipal: true,
+            esCliente: true,
+          }]
+        }));
       }
     } catch (e) {
       console.error(e);
@@ -151,9 +170,10 @@ export default function ReservarPage() {
     switch (step) {
       case 0: return form.fechaRecogida && form.fechaDevolucion &&
         form.idLocalizacionRecogida && form.idLocalizacionDevolucion && dias > 0;
-      case 1: return true;
+      case 1: return form.conductores.length > 0;
       case 2: return true;
-      case 3: return pago.nombreTitular && pago.numeroTarjeta.length >= 16 &&
+      case 3: return true;
+      case 4: return pago.nombreTitular && pago.numeroTarjeta.length >= 16 &&
         pago.mesExpiracion && pago.anioExpiracion && pago.cvv.length >= 3;
       default: return false;
     }
@@ -169,7 +189,11 @@ export default function ReservarPage() {
       if (!form.idLocalizacionRecogida) errs.idLocalizacionRecogida = 'Selecciona sucursal de recogida';
       if (!form.idLocalizacionDevolucion) errs.idLocalizacionDevolucion = 'Selecciona sucursal de devolución';
     }
-    if (step === 3) {
+    if (step === 1) {
+      if (form.conductores.length === 0) errs.conductores = 'Debe haber al menos un conductor';
+      if (!form.conductores.some(c => c.esPrincipal)) errs.conductores = 'Debe haber un conductor principal';
+    }
+    if (step === 4) {
       if (!pago.nombreTitular.trim()) errs.nombreTitular = 'Nombre del titular requerido';
       if (!pago.numeroTarjeta || pago.numeroTarjeta.replace(/\s/g, '').length < 16) errs.numeroTarjeta = 'Número de tarjeta inválido (16 dígitos)';
       if (!pago.mesExpiracion) errs.mesExpiracion = 'Mes requerido';
@@ -439,8 +463,123 @@ export default function ReservarPage() {
               </div>
             )}
 
-            {/* Step 1: Extras */}
+            {/* Step 1: Conductores */}
             {step === 1 && (
+              <div className="reservar-step-content">
+                <h2><Users size={24} /> Conductores</h2>
+                <p className="reservar-step-desc">El cliente se asigna automáticamente como conductor principal. Puedes cambiarlo o agregar conductores adicionales.</p>
+
+                {stepErrors.conductores && <div className="form-error" style={{ marginBottom: '1rem' }}><AlertCircle size={13} /> {stepErrors.conductores}</div>}
+
+                <div className="extras-grid">
+                  {form.conductores.map((c, idx) => (
+                    <div key={idx} className={`extra-card ${c.esPrincipal ? 'extra-card--selected' : ''}`}>
+                      <div className="extra-card__header">
+                        <div className="extra-card__name">
+                          {c.esPrincipal ? <ShieldCheck size={16} /> : <Users size={16} />}
+                          <span>{c.nombre || 'Conductor'}</span>
+                        </div>
+                        <span className="extra-card__price">{c.esPrincipal ? 'Principal' : 'Adicional'}</span>
+                      </div>
+                      <div className="extra-card__meta" style={{ fontSize: '0.85rem', opacity: 0.8 }}>
+                        {c.licencia && <p>Licencia: {c.licencia}</p>}
+                        {c.telefono && <p>Tel: {c.telefono}</p>}
+                        {c.esCliente && <p style={{ color: 'var(--accent)', fontWeight: 600 }}>👤 Titular de la cuenta</p>}
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                        {!c.esPrincipal && (
+                          <button className="btn btn--ghost btn--sm"
+                            onClick={() => {
+                              setForm(prev => ({
+                                ...prev,
+                                conductores: prev.conductores.map((cc, i) => ({ ...cc, esPrincipal: i === idx }))
+                              }));
+                            }}>Hacer Principal</button>
+                        )}
+                        {!c.esCliente && (
+                          <button className="btn btn--ghost btn--sm" style={{ color: '#e74c3c' }}
+                            onClick={() => setForm(prev => ({
+                              ...prev,
+                              conductores: prev.conductores.filter((_, i) => i !== idx)
+                            }))}><X size={14} /> Quitar</button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {!showAddConductor ? (
+                  <button className="btn btn--outline" style={{ marginTop: '1rem' }}
+                    onClick={() => setShowAddConductor(true)}>
+                    <Plus size={16} /> Agregar Conductor Adicional
+                  </button>
+                ) : (
+                  <div className="pago-card" style={{ marginTop: '1rem', padding: '1.5rem' }}>
+                    <h4 style={{ marginBottom: '1rem' }}>Nuevo Conductor</h4>
+                    <div className="pago-form__row" style={{ gap: '1rem', flexWrap: 'wrap' }}>
+                      <div className="form-group" style={{ flex: 1, minWidth: '200px' }}>
+                        <label className="form-label">Nombre *</label>
+                        <input className="form-input" placeholder="Nombre completo"
+                          value={newConductor.nombre}
+                          onChange={(e) => setNewConductor({ ...newConductor, nombre: e.target.value })} />
+                      </div>
+                      <div className="form-group" style={{ flex: 1, minWidth: '200px' }}>
+                        <label className="form-label">Apellido *</label>
+                        <input className="form-input" placeholder="Apellido"
+                          value={newConductor.apellido}
+                          onChange={(e) => setNewConductor({ ...newConductor, apellido: e.target.value })} />
+                      </div>
+                    </div>
+                    <div className="pago-form__row" style={{ gap: '1rem', flexWrap: 'wrap' }}>
+                      <div className="form-group" style={{ flex: 1, minWidth: '150px' }}>
+                        <label className="form-label">No. Licencia</label>
+                        <input className="form-input" placeholder="Licencia de conducir"
+                          value={newConductor.licencia}
+                          onChange={(e) => setNewConductor({ ...newConductor, licencia: e.target.value })} />
+                      </div>
+                      <div className="form-group" style={{ flex: 1, minWidth: '100px' }}>
+                        <label className="form-label">Edad</label>
+                        <input className="form-input" type="number" placeholder="25"
+                          value={newConductor.edad}
+                          onChange={(e) => setNewConductor({ ...newConductor, edad: e.target.value })} />
+                      </div>
+                      <div className="form-group" style={{ flex: 1, minWidth: '150px' }}>
+                        <label className="form-label">Teléfono</label>
+                        <input className="form-input" placeholder="+593..."
+                          value={newConductor.telefono}
+                          onChange={(e) => setNewConductor({ ...newConductor, telefono: e.target.value })} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                      <button className="btn btn--primary btn--sm"
+                        disabled={!newConductor.nombre.trim() || !newConductor.apellido.trim()}
+                        onClick={() => {
+                          setForm(prev => ({
+                            ...prev,
+                            conductores: [...prev.conductores, {
+                              id: null,
+                              nombre: `${newConductor.nombre} ${newConductor.apellido}`,
+                              licencia: newConductor.licencia,
+                              edad: newConductor.edad,
+                              telefono: newConductor.telefono,
+                              esPrincipal: false,
+                              esCliente: false,
+                            }]
+                          }));
+                          setNewConductor({ nombre: '', apellido: '', licencia: '', edad: '', telefono: '' });
+                          setShowAddConductor(false);
+                          toast.success('Conductor adicional agregado');
+                        }}><Check size={16} /> Agregar</button>
+                      <button className="btn btn--ghost btn--sm"
+                        onClick={() => setShowAddConductor(false)}><X size={16} /> Cancelar</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step 2: Extras */}
+            {step === 2 && (
               <div className="reservar-step-content">
                 <h2><Package size={24} /> Extras y Accesorios</h2>
                 <p className="reservar-step-desc">Personaliza tu experiencia con extras opcionales</p>
@@ -485,8 +624,8 @@ export default function ReservarPage() {
               </div>
             )}
 
-            {/* Step 2: Summary */}
-            {step === 2 && (
+            {/* Step 3: Summary */}
+            {step === 3 && (
               <div className="reservar-step-content">
                 <h2><ShieldCheck size={24} /> Resumen de Reserva</h2>
                 <div className="resumen-grid">
@@ -522,8 +661,8 @@ export default function ReservarPage() {
               </div>
             )}
 
-            {/* Step 3: Payment */}
-            {step === 3 && (
+            {/* Step 4: Payment */}
+            {step === 4 && (
               <div className="reservar-step-content">
                 <h2><CreditCard size={24} /> Pasarela de Pago</h2>
                 <div className="pago-card">
@@ -615,7 +754,7 @@ export default function ReservarPage() {
                 </button>
               )}
               <div className="reservar-nav__spacer" />
-              {step < 3 ? (
+              {step < 4 ? (
                 <button className="btn btn--primary" onClick={handleNext}>
                   Siguiente <ArrowRight size={16} />
                 </button>
