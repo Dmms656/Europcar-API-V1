@@ -267,21 +267,28 @@ export default function ReservarPage() {
       // ── STEP 2: Register Payment ──
       let pagoData = null;
       try {
+        const lastFour = (pago.numeroTarjeta || '0000').slice(-4);
         const pagoPayload = {
           idReserva: idReserva,
           idCliente: user.idCliente,
           tipoPago: 'COBRO',
           metodoPago: 'TARJETA',
           monto: totalFinal,
-          referenciaExterna: `SIM-${pago.numeroTarjeta.slice(-4)}-${Date.now().toString(36).toUpperCase()}`,
-          observaciones: `Pago web - Tarjeta terminada en ${pago.numeroTarjeta.slice(-4)} - Titular: ${pago.nombreTitular}`,
+          referenciaExterna: `SIM-${lastFour}-${Date.now().toString(36).toUpperCase()}`,
+          observaciones: `Pago web - Tarjeta terminada en ${lastFour} - Titular: ${pago.nombreTitular || 'N/A'}`,
         };
+        console.log('Enviando pago:', pagoPayload);
         const pagoRes = await pagosApi.create(pagoPayload);
         pagoData = pagoRes.data?.data;
         toast.success('Pago registrado correctamente');
       } catch (pagoErr) {
-        console.warn('Error registrando pago (reserva ya creada):', pagoErr);
-        // Payment failed but reservation was created — don't block confirmation
+        const errDetail = pagoErr.response?.data?.message 
+          || pagoErr.response?.data?.title 
+          || pagoErr.response?.data?.errors 
+          || pagoErr.message;
+        console.error('Error registrando pago:', pagoErr.response?.status, pagoErr.response?.data);
+        toast.error(`Error en pago: ${typeof errDetail === 'string' ? errDetail : JSON.stringify(errDetail)}`);
+        // Payment failed but reservation was created — continue to show confirmation
       }
 
       // ── STEP 3: Show Confirmation ──

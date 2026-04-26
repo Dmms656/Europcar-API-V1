@@ -39,6 +39,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IExtraDataService, ExtraDataService>();
         services.AddScoped<IBookingDataService, BookingDataService>();
         services.AddScoped<IConductorDataService, ConductorDataService>();
+        services.AddScoped<IFacturaDataService, FacturaDataService>();
 
         // Business
         services.AddScoped<IAuthService, AuthService>();
