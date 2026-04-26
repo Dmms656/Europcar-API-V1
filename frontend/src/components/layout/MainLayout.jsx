@@ -2,7 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
   LayoutDashboard, Users, Car, CalendarCheck, FileText,
-  CreditCard, Wrench, LogOut, Menu, X, ChevronRight
+  CreditCard, Wrench, LogOut, Menu, X, ChevronRight, Shield
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -14,6 +14,7 @@ const navigation = [
   { name: 'Contratos', path: '/contratos', icon: FileText, roles: ['ADMIN', 'AGENTE_POS'] },
   { name: 'Pagos', path: '/pagos', icon: CreditCard, roles: ['ADMIN', 'AGENTE_POS'] },
   { name: 'Mantenimientos', path: '/mantenimientos', icon: Wrench, roles: ['ADMIN', 'AGENTE_POS'] },
+  { name: 'Usuarios', path: '/usuarios', icon: Shield, roles: ['ADMIN'] },
 ];
 
 export default function MainLayout() {

@@ -147,7 +147,10 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="login-card__footer">
+        <div className="login-card__footer register-footer">
+          {tab === 'cliente' && (
+            <p>¿No tienes cuenta? <Link to="/registro" className="register-link">Regístrate aquí</Link></p>
+          )}
           <Link to="/" className="login-card__back">← Volver al inicio</Link>
         </div>
       </div>

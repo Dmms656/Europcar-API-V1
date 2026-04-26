@@ -721,8 +721,10 @@ input, select, textarea { font-family: inherit; }
 .hero-search {
   display: flex; gap: var(--spacing-sm); background: var(--color-surface);
   border: 1px solid var(--color-border-light); border-radius: var(--radius-lg);
-  padding: var(--spacing-sm); flex-wrap: wrap;
+  padding: var(--spacing-sm); flex-wrap: wrap; align-items: center;
 }
+.hero-search__field--datetime { flex: 1.5; min-width: 220px; }
+.hero-search__field--datetime .datetime-picker__preview { display: none; }
 .hero-search__field { flex: 1; min-width: 160px; position: relative; display: flex; align-items: center; }
 .hero-search__icon { position: absolute; left: 12px; color: var(--color-text-muted); pointer-events: none; }
 .hero-search__select, .hero-search__input {
@@ -784,9 +786,9 @@ input, select, textarea { font-family: inherit; }
 .step-card p { font-size: 0.8125rem; color: var(--color-text-muted); }
 
 /* Categories */
-.category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--spacing-md); }
-.category-card { text-align: center; padding: var(--spacing-lg); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); color: var(--color-primary-light); transition: all var(--transition-fast); }
-.category-card:hover { border-color: var(--color-primary); }
+.category-grid { display: flex; flex-wrap: wrap; gap: var(--spacing-md); justify-content: center; }
+.category-card { text-align: center; padding: var(--spacing-lg) var(--spacing-xl); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); color: var(--color-primary-light); transition: all var(--transition-fast); min-width: 180px; max-width: 240px; }
+.category-card:hover { border-color: var(--color-primary); transform: translateY(-2px); }
 .category-card h3 { font-size: 0.9375rem; margin-top: var(--spacing-sm); color: var(--color-text); }
 .category-card p { font-size: 0.75rem; color: var(--color-text-muted); margin-top: var(--spacing-xs); }
 

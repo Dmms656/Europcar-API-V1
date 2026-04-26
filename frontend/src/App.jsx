@@ -9,6 +9,7 @@ import { ProtectedRoute } from './routes/ProtectedRoute';
 import HomePage from './pages/home/HomePage';
 import BuscarPage from './pages/home/BuscarPage';
 import LoginPage from './pages/auth/LoginPage';
+import RegisterPage from './pages/auth/RegisterPage';
 import CatalogoPage from './pages/catalogo/CatalogoPage';
 import ReservarPage from './pages/reservar/ReservarPage';
 
@@ -20,6 +21,7 @@ import ReservasPage from './pages/reservas/ReservasPage';
 import ContratosPage from './pages/contratos/ContratosPage';
 import PagosPage from './pages/pagos/PagosPage';
 import MantenimientosPage from './pages/mantenimientos/MantenimientosPage';
+import UsuariosPage from './pages/usuarios/UsuariosPage';
 
 // Client portal pages
 import MiCuentaPage from './pages/cliente/MiCuentaPage';
@@ -49,6 +51,7 @@ export default function App() {
           <Route path="/buscar" element={<BuscarPage />} />
           <Route path="/catalogo" element={<CatalogoPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/registro" element={<RegisterPage />} />
 
           {/* Reservation flow (requires any auth) */}
           <Route path="/reservar/:id" element={
@@ -72,6 +75,7 @@ export default function App() {
             <Route path="/contratos" element={<ContratosPage />} />
             <Route path="/pagos" element={<PagosPage />} />
             <Route path="/mantenimientos" element={<MantenimientosPage />} />
+            <Route path="/usuarios" element={<UsuariosPage />} />
           </Route>
 
           {/* Client portal routes */}
