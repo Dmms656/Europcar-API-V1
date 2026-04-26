@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { vehiculosApi } from '../../api/vehiculosApi';
 import { bookingApi } from '../../api/bookingApi';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
@@ -11,6 +12,7 @@ import { toast } from 'sonner';
 
 const STEPS = ['Fechas', 'Extras', 'Resumen', 'Pago'];
 const IVA_RATE = 0.15;
+const isValidImageUrl = (url) => url && (url.startsWith('http://') || url.startsWith('https://'));
 
 export default function ReservarPage() {
   const { id } = useParams();
@@ -54,23 +56,27 @@ export default function ReservarPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [vehRes, locRes, extRes] = await Promise.all([
-        bookingApi.getVehiculoDetalle(id),
+      // Load vehicle from the working /disponibles endpoint
+      const [vehRes, locRes, extRes] = await Promise.allSettled([
+        vehiculosApi.getDisponibles(),
         bookingApi.getLocalizaciones({}),
         bookingApi.getExtras(),
       ]);
-      const v = vehRes.data?.data;
-      setVehiculo(v);
-      setLocalizaciones(locRes.data?.data?.localizaciones || []);
-      setExtras(extRes.data?.data?.extras || []);
 
-      if (v?.idLocalizacion) {
-        setForm(prev => ({
-          ...prev,
-          idLocalizacionRecogida: String(v.idLocalizacion),
-          idLocalizacionDevolucion: String(v.idLocalizacion),
-        }));
+      if (vehRes.status === 'fulfilled') {
+        const allVehiculos = vehRes.value.data?.data || [];
+        const found = allVehiculos.find(v => String(v.idVehiculo) === String(id));
+        setVehiculo(found || null);
+        if (found?.idLocalizacion) {
+          setForm(prev => ({
+            ...prev,
+            idLocalizacionRecogida: String(found.idLocalizacion),
+            idLocalizacionDevolucion: String(found.idLocalizacion),
+          }));
+        }
       }
+      if (locRes.status === 'fulfilled') setLocalizaciones(locRes.value.data?.data?.localizaciones || []);
+      if (extRes.status === 'fulfilled') setExtras(extRes.value.data?.data?.extras || []);
     } catch (e) {
       console.error(e);
       toast.error('Error al cargar el vehículo');
@@ -259,11 +265,14 @@ export default function ReservarPage() {
           <div className="reservar-sidebar">
             <div className="reservar-vehicle-card">
               <div className="reservar-vehicle-card__img">
-                {vehiculo?.imagenUrl || vehiculo?.imagenReferencialUrl ? (
-                  <img src={vehiculo.imagenUrl || vehiculo.imagenReferencialUrl}
+                {isValidImageUrl(vehiculo?.imagenUrl) ? (
+                  <img src={vehiculo.imagenUrl}
                     alt={`${vehiculo.marca} ${vehiculo.modelo}`} />
                 ) : (
-                  <div className="reservar-vehicle-card__placeholder"><Car size={48} /></div>
+                  <div className="reservar-vehicle-card__placeholder">
+                    <Car size={48} />
+                    <span>{vehiculo?.marca} {vehiculo?.modelo}</span>
+                  </div>
                 )}
               </div>
               <h3>{vehiculo?.marca} {vehiculo?.modelo || vehiculo?.modeloVehiculo}</h3>

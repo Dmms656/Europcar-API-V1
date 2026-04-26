@@ -1,10 +1,22 @@
 import { create } from 'zustand';
 
+const deriveUserType = () => {
+  const stored = localStorage.getItem('userType');
+  if (stored) return stored;
+  // Fallback: derive from roles for old sessions
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    if (user?.roles?.some(r => ['ADMIN', 'AGENTE_POS'].includes(r))) return 'admin';
+    if (user) return 'cliente';
+  } catch { /* ignore */ }
+  return null;
+};
+
 export const useAuthStore = create((set, get) => ({
   token: localStorage.getItem('token') || null,
   user: JSON.parse(localStorage.getItem('user') || 'null'),
   isAuthenticated: !!localStorage.getItem('token'),
-  userType: localStorage.getItem('userType') || null, // 'admin' | 'cliente'
+  userType: deriveUserType(), // 'admin' | 'cliente'
 
   login: (loginResponse, type = 'admin') => {
     const userData = {
