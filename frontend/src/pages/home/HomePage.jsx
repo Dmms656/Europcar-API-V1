@@ -1,25 +1,29 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { bookingApi } from '../../api/bookingApi';
-import { Car, MapPin, Calendar, Search, Shield, Clock, Star, ChevronRight, LogIn, Fuel, Users, Settings2 } from 'lucide-react';
+import { useAuthStore } from '../../store/useAuthStore';
+import {
+  Car, MapPin, Calendar, Search, Shield, Clock, Star,
+  ChevronRight, LogIn, Fuel, Users, Settings2, ShoppingBag, User
+} from 'lucide-react';
+
+const isValidImageUrl = (url) => url && (url.startsWith('http://') || url.startsWith('https://'));
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const { isAuthenticated, userType } = useAuthStore();
   const [localizaciones, setLocalizaciones] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [vehiculosDestacados, setVehiculosDestacados] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Search form state
   const [searchForm, setSearchForm] = useState({
     idLocalizacion: '',
     fechaRecogida: '',
     fechaDevolucion: '',
   });
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     try {
@@ -44,7 +48,7 @@ export default function HomePage() {
     if (searchForm.idLocalizacion) params.set('localizacion', searchForm.idLocalizacion);
     if (searchForm.fechaRecogida) params.set('fechaRecogida', searchForm.fechaRecogida);
     if (searchForm.fechaDevolucion) params.set('fechaDevolucion', searchForm.fechaDevolucion);
-    navigate(`/buscar?${params.toString()}`);
+    navigate(`/catalogo?${params.toString()}`);
   };
 
   return (
@@ -57,12 +61,22 @@ export default function HomePage() {
             <span>Europcar</span>
           </div>
           <div className="home-nav__links">
+            <Link to="/catalogo" className="home-nav__link">
+              <ShoppingBag size={16} /> Catálogo
+            </Link>
             <a href="#vehiculos" className="home-nav__link">Vehículos</a>
             <a href="#como-funciona" className="home-nav__link">Cómo funciona</a>
-            <Link to="/login" className="home-nav__btn">
-              <LogIn size={16} />
-              Acceso Admin
-            </Link>
+            {isAuthenticated ? (
+              <Link to={userType === 'admin' ? '/dashboard' : '/mi-cuenta'} className="home-nav__btn">
+                <User size={16} />
+                {userType === 'admin' ? 'Panel Admin' : 'Mi Cuenta'}
+              </Link>
+            ) : (
+              <Link to="/login" className="home-nav__btn">
+                <LogIn size={16} />
+                Iniciar Sesión
+              </Link>
+            )}
           </div>
         </div>
       </nav>
@@ -100,29 +114,29 @@ export default function HomePage() {
             </div>
             <div className="hero-search__field">
               <Calendar size={18} className="hero-search__icon" />
-              <input
-                type="datetime-local"
-                className="hero-search__input"
-                placeholder="Fecha recogida"
-                value={searchForm.fechaRecogida}
-                onChange={(e) => setSearchForm({ ...searchForm, fechaRecogida: e.target.value })}
-              />
+              <input type="datetime-local" className="hero-search__input" value={searchForm.fechaRecogida}
+                onChange={(e) => setSearchForm({ ...searchForm, fechaRecogida: e.target.value })} />
             </div>
             <div className="hero-search__field">
               <Calendar size={18} className="hero-search__icon" />
-              <input
-                type="datetime-local"
-                className="hero-search__input"
-                placeholder="Fecha devolución"
-                value={searchForm.fechaDevolucion}
-                onChange={(e) => setSearchForm({ ...searchForm, fechaDevolucion: e.target.value })}
-              />
+              <input type="datetime-local" className="hero-search__input" value={searchForm.fechaDevolucion}
+                onChange={(e) => setSearchForm({ ...searchForm, fechaDevolucion: e.target.value })} />
             </div>
             <button type="submit" className="hero-search__btn">
               <Search size={18} />
               Buscar
             </button>
           </form>
+
+          {/* CTA Buttons */}
+          <div className="hero__ctas">
+            <Link to="/catalogo" className="btn btn--primary btn--lg hero__cta">
+              <ShoppingBag size={20} /> Ver Catálogo Completo
+            </Link>
+            <Link to="/login" className="btn btn--outline btn--lg hero__cta">
+              <LogIn size={20} /> Acceder a tu Cuenta
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -152,8 +166,8 @@ export default function HomePage() {
       <section className="home-section" id="vehiculos">
         <div className="home-section__inner">
           <div className="home-section__header">
-            <h2>Vehículos Disponibles</h2>
-            <p>Explora nuestra flota y encuentra el vehículo perfecto para tu viaje</p>
+            <h2>Vehículos Destacados</h2>
+            <p>Explora nuestra flota y encuentra el vehículo perfecto</p>
           </div>
 
           {loading ? (
@@ -166,44 +180,51 @@ export default function HomePage() {
               </p>
             </div>
           ) : (
-            <div className="vehicle-grid">
-              {vehiculosDestacados.map((v) => (
-                <div key={v.idVehiculo || v.vehiculoGuid} className="vehicle-card">
-                  <div className="vehicle-card__img">
-                    {v.imagenUrl || v.imagenReferencialUrl ? (
-                      <img src={v.imagenUrl || v.imagenReferencialUrl} alt={v.modelo} />
-                    ) : (
-                      <div className="vehicle-card__img-placeholder">
-                        <Car size={48} />
-                      </div>
-                    )}
-                    <span className="vehicle-card__badge">{v.categoria || v.categoriaVehiculo}</span>
-                  </div>
-                  <div className="vehicle-card__body">
-                    <h3 className="vehicle-card__title">
-                      {v.marca || v.marcaVehiculo} {v.modelo || v.modeloVehiculo}
-                    </h3>
-                    <p className="vehicle-card__year">{v.anioFabricacion}</p>
-                    <div className="vehicle-card__specs">
-                      <span><Users size={14} /> {v.capacidadPasajeros} pax</span>
-                      <span><Fuel size={14} /> {v.tipoCombustible}</span>
-                      <span><Settings2 size={14} /> {v.tipoTransmision}</span>
+            <>
+              <div className="vehicle-grid">
+                {vehiculosDestacados.map((v) => (
+                  <div key={v.idVehiculo || v.vehiculoGuid} className="vehicle-card"
+                    onClick={() => navigate(`/reservar/${v.idVehiculo}`)}
+                    style={{ cursor: 'pointer' }}>
+                    <div className="vehicle-card__img">
+                      {isValidImageUrl(v.imagenUrl) ? (
+                        <img src={v.imagenUrl} alt={`${v.marca} ${v.modelo}`} />
+                      ) : (
+                        <div className="vehicle-card__img-placeholder">
+                          <Car size={48} />
+                          <span className="vehicle-card__img-label">{v.marca} {v.modelo}</span>
+                        </div>
+                      )}
+                      <span className="vehicle-card__badge">{v.categoria || v.categoriaVehiculo}</span>
                     </div>
-                    <div className="vehicle-card__footer">
-                      <div className="vehicle-card__price">
-                        <span className="vehicle-card__price-amount">
-                          ${Number(v.precioBaseDia || v.precioDia || 0).toFixed(2)}
+                    <div className="vehicle-card__body">
+                      <h3 className="vehicle-card__title">{v.marca} {v.modelo || v.modeloVehiculo}</h3>
+                      <p className="vehicle-card__year">{v.anioFabricacion} · {v.color}</p>
+                      <div className="vehicle-card__specs">
+                        <span><Users size={14} /> {v.capacidadPasajeros} pax</span>
+                        <span><Fuel size={14} /> {v.tipoCombustible}</span>
+                        <span><Settings2 size={14} /> {v.tipoTransmision}</span>
+                        <span><MapPin size={14} /> {v.localizacion}</span>
+                      </div>
+                      <div className="vehicle-card__footer">
+                        <div className="vehicle-card__price">
+                          <span className="vehicle-card__price-amount">${Number(v.precioBaseDia || 0).toFixed(2)}</span>
+                          <span className="vehicle-card__price-unit">/día</span>
+                        </div>
+                        <span className="btn btn--primary btn--sm">
+                          Reservar <ChevronRight size={14} />
                         </span>
-                        <span className="vehicle-card__price-unit">/día</span>
                       </div>
-                      <button className="btn btn--primary btn--sm" onClick={() => navigate(`/buscar`)}>
-                        Reservar
-                      </button>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              <div className="home-section__cta">
+                <Link to="/catalogo" className="btn btn--outline btn--lg">
+                  Ver todo el catálogo <ChevronRight size={18} />
+                </Link>
+              </div>
+            </>
           )}
         </div>
       </section>
@@ -220,13 +241,13 @@ export default function HomePage() {
               <div className="step-card__number">1</div>
               <div className="step-card__icon"><Search size={28} /></div>
               <h3>Busca</h3>
-              <p>Selecciona tu sucursal, fechas y tipo de vehículo</p>
+              <p>Explora el <Link to="/catalogo">catálogo</Link> y filtra por marca, categoría o precio</p>
             </div>
             <div className="step-card">
               <div className="step-card__number">2</div>
               <div className="step-card__icon"><Car size={28} /></div>
-              <h3>Elige</h3>
-              <p>Compara opciones y selecciona el vehículo ideal</p>
+              <h3>Reserva</h3>
+              <p>Selecciona fechas, agrega extras y realiza tu pago en línea</p>
             </div>
             <div className="step-card">
               <div className="step-card__number">3</div>
@@ -248,11 +269,12 @@ export default function HomePage() {
             </div>
             <div className="category-grid">
               {categorias.map((cat) => (
-                <div key={cat.idCategoria || cat.id} className="category-card">
+                <Link to={`/catalogo?categoria=${cat.nombreCategoria || cat.nombre}`}
+                  key={cat.idCategoria || cat.id} className="category-card">
                   <Car size={32} />
                   <h3>{cat.nombreCategoria || cat.nombre}</h3>
                   {cat.descripcion && <p>{cat.descripcion}</p>}
-                </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -270,7 +292,8 @@ export default function HomePage() {
             Sistema de gestión de renta de vehículos © {new Date().getFullYear()}
           </p>
           <div className="home-footer__links">
-            <Link to="/login">Acceso Administrativo</Link>
+            <Link to="/catalogo">Catálogo</Link>
+            <Link to="/login">Iniciar Sesión</Link>
           </div>
         </div>
       </footer>

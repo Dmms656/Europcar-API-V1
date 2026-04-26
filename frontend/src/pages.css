@@ -221,4 +221,36 @@
   .cuenta-grid { grid-template-columns: 1fr; }
   .reservar-steps { gap: 0.5rem; font-size: 0.8rem; }
   .reservar-step__label { display: none; }
+  .hero__ctas { flex-direction: column; }
 }
+
+/* Image placeholder label */
+.vehicle-card__img-placeholder, .catalog-card__image-placeholder {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 100%; color: var(--color-text-muted); gap: 8px;
+  background: linear-gradient(135deg, var(--color-bg-secondary), var(--color-surface));
+}
+.vehicle-card__img-placeholder span, .catalog-card__image-placeholder span {
+  font-size: 0.85rem; font-weight: 600; color: var(--color-text-secondary);
+}
+.vehicle-card__img-label { font-size: 0.8rem; color: var(--color-text-secondary); }
+
+/* Hero CTA buttons */
+.hero__ctas { display: flex; gap: 1rem; justify-content: center; margin-top: 2rem; }
+.hero__cta { display: inline-flex; align-items: center; gap: 8px; }
+
+/* Section CTA */
+.home-section__cta { text-align: center; margin-top: 2rem; }
+
+/* Nav link with icon */
+.home-nav__link { display: inline-flex; align-items: center; gap: 6px; }
+.home-nav__btn { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Footer links */
+.home-footer__links { display: flex; gap: 1.5rem; }
+.home-footer__links a { color: var(--color-text-secondary); text-decoration: none; font-size: 0.85rem; }
+.home-footer__links a:hover { color: var(--color-primary-light); }
+
+/* Category card as link */
+a.category-card { text-decoration: none; color: inherit; }
+a.category-card:hover { border-color: var(--color-primary); transform: translateY(-2px); }

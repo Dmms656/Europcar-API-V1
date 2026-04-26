@@ -1,11 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { vehiculosApi } from '../../api/vehiculosApi';
 import { bookingApi } from '../../api/bookingApi';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
   Car, Search, Users, Fuel, Settings2, MapPin,
-  SlidersHorizontal, X, Star, ShieldCheck, Zap, ArrowRight
+  SlidersHorizontal, X, Star, ShieldCheck, Zap, ArrowRight, LogIn, Home
 } from 'lucide-react';
+
+const isValidImageUrl = (url) => url && (url.startsWith('http://') || url.startsWith('https://'));
 
 export default function CatalogoPage() {
   const [vehiculos, setVehiculos] = useState([]);
@@ -30,12 +33,16 @@ export default function CatalogoPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [vehRes, catRes] = await Promise.all([
-        bookingApi.buscarVehiculos({ page: 1, limit: 50 }),
+      const [vehRes, catRes] = await Promise.allSettled([
+        vehiculosApi.getDisponibles(),
         bookingApi.getCategorias(),
       ]);
-      setVehiculos(vehRes.data?.data?.vehiculos || []);
-      setCategorias(catRes.data?.data?.categorias || []);
+      if (vehRes.status === 'fulfilled') {
+        setVehiculos(vehRes.value.data?.data || []);
+      }
+      if (catRes.status === 'fulfilled') {
+        setCategorias(catRes.value.data?.data?.categorias || []);
+      }
     } catch (e) {
       console.error('Error loading catalog:', e);
     } finally {
@@ -93,13 +100,14 @@ export default function CatalogoPage() {
             <span>Europcar</span>
           </Link>
           <div className="home-nav__links">
+            <Link to="/" className="home-nav__link"><Home size={16} /> Inicio</Link>
             <Link to="/catalogo" className="home-nav__link home-nav__link--active">Catálogo</Link>
             {isAuthenticated ? (
               <Link to={userType === 'admin' ? '/dashboard' : '/mi-cuenta'} className="home-nav__btn">
                 {userType === 'admin' ? 'Panel Admin' : 'Mi Cuenta'}
               </Link>
             ) : (
-              <Link to="/login" className="home-nav__btn">Iniciar Sesión</Link>
+              <Link to="/login" className="home-nav__btn"><LogIn size={16} /> Iniciar Sesión</Link>
             )}
           </div>
         </div>
@@ -213,11 +221,12 @@ export default function CatalogoPage() {
             {filteredVehiculos.map((v) => (
               <div key={v.idVehiculo || v.vehiculoGuid} className="catalog-card">
                 <div className="catalog-card__image">
-                  {v.imagenUrl || v.imagenReferencialUrl ? (
-                    <img src={v.imagenUrl || v.imagenReferencialUrl} alt={`${v.marca} ${v.modelo || v.modeloVehiculo}`} />
+                  {isValidImageUrl(v.imagenUrl) ? (
+                    <img src={v.imagenUrl} alt={`${v.marca} ${v.modelo || v.modeloVehiculo}`} />
                   ) : (
                     <div className="catalog-card__image-placeholder">
                       <Car size={56} />
+                      <span>{v.marca} {v.modelo || v.modeloVehiculo}</span>
                     </div>
                   )}
                   <div className="catalog-card__badges">
