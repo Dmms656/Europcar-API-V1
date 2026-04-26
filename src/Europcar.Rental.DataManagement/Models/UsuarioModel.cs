@@ -12,5 +12,6 @@ public class UsuarioModel
     public bool Activo { get; set; }
     public short IntentosFallidos { get; set; }
     public DateTimeOffset? BloqueadoHastaUtc { get; set; }
+    public int? IdCliente { get; set; }
     public List<string> Roles { get; set; } = new();
 }

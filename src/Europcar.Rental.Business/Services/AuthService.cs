@@ -16,15 +16,18 @@ namespace Europcar.Rental.Business.Services;
 public class AuthService : IAuthService
 {
     private readonly IUsuarioDataService _usuarioDataService;
+    private readonly IClienteDataService _clienteDataService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IConfiguration _configuration;
 
     public AuthService(
         IUsuarioDataService usuarioDataService,
+        IClienteDataService clienteDataService,
         IUnitOfWork unitOfWork,
         IConfiguration configuration)
     {
         _usuarioDataService = usuarioDataService;
+        _clienteDataService = clienteDataService;
         _unitOfWork = unitOfWork;
         _configuration = configuration;
     }
@@ -48,13 +51,24 @@ public class AuthService : IAuthService
 
         var token = GenerateJwtToken(user.IdUsuario, user.Username, user.Correo, user.Roles);
 
+        // Lookup client name if user is linked to a client
+        string? nombreCompleto = null;
+        if (user.IdCliente.HasValue)
+        {
+            var cliente = await _clienteDataService.GetByIdAsync(user.IdCliente.Value);
+            if (cliente != null)
+                nombreCompleto = $"{cliente.Nombre1} {cliente.Apellido1}".Trim();
+        }
+
         return new LoginResponse
         {
             Token = token.Token,
             Username = user.Username,
             Correo = user.Correo,
             Roles = user.Roles,
-            Expiration = token.Expiration
+            Expiration = token.Expiration,
+            IdCliente = user.IdCliente,
+            NombreCompleto = nombreCompleto
         };
     }
 

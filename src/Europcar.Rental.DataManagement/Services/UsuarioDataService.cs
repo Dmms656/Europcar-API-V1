@@ -32,6 +32,7 @@ public class UsuarioDataService : IUsuarioDataService
             Activo = u.Activo,
             IntentosFallidos = u.IntentosFallidos,
             BloqueadoHastaUtc = u.BloqueadoHastaUtc,
+            IdCliente = u.IdCliente,
             Roles = u.UsuariosRoles
                 .Where(ur => ur.Activo && ur.EstadoUsuarioRol == "ACT")
                 .Select(ur => ur.Rol.NombreRol)

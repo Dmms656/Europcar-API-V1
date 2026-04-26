@@ -7,4 +7,6 @@ public class LoginResponse
     public string Correo { get; set; } = string.Empty;
     public List<string> Roles { get; set; } = new();
     public DateTime Expiration { get; set; }
+    public int? IdCliente { get; set; }
+    public string? NombreCompleto { get; set; }
 }
