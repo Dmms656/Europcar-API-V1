@@ -1,10 +1,7 @@
-import { useState } from 'react';
-import { FileText, Clock, Car, DollarSign, Eye, X, Hash, MapPin, User, Calendar } from 'lucide-react';
-
-const contratosMock = [
-  { id: 1, numero: 'CTR-2026-001', vehiculo: 'Toyota Yaris', placa: 'ABC-5678', categoria: 'Sedán', conductor: 'Juan Pérez', fechaSalida: '2026-04-10T09:00', fechaDevolucion: '2026-04-12T09:00', sucursal: 'Quito Centro', estado: 'CERRADO', total: 115.20, deposito: 200.00, kmSalida: 45230, kmEntrega: 45580 },
-  { id: 2, numero: 'CTR-2026-002', vehiculo: 'Suzuki Grand Vitara', placa: 'PBX-1234', categoria: 'SUV', conductor: 'Juan Pérez', fechaSalida: '2026-05-01T10:00', fechaDevolucion: '2026-05-05T10:00', sucursal: 'Aeropuerto Quito', estado: 'ABIERTO', total: 425.50, deposito: 500.00, kmSalida: 12000, kmEntrega: null },
-];
+import { useState, useEffect } from 'react';
+import { FileText, Clock, Car, DollarSign, Eye, X, Hash, MapPin, User, Calendar, Loader2, Inbox } from 'lucide-react';
+import { contratosApi } from '../../api/contratosApi';
+import { useAuthStore } from '../../store/useAuthStore';
 
 const estadoColors = {
   ABIERTO: 'var(--color-info)',
@@ -13,7 +10,40 @@ const estadoColors = {
 };
 
 export default function MisContratosPage() {
+  const { user } = useAuthStore();
+  const [contratos, setContratos] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
+
+  useEffect(() => {
+    loadContratos();
+  }, []);
+
+  const loadContratos = async () => {
+    setLoading(true);
+    try {
+      const res = await contratosApi.getAll();
+      const data = res.data?.data;
+      const all = Array.isArray(data) ? data : [];
+      // Filter by client if idCliente is available
+      const idCliente = user?.idCliente;
+      const filtered = idCliente ? all.filter(c => c.idCliente === idCliente) : all;
+      setContratos(filtered);
+    } catch (err) {
+      console.warn('Error cargando contratos:', err);
+      setContratos([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="mis-contratos-page" style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
+        <Loader2 size={32} className="spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="mis-contratos-page">
@@ -22,33 +52,40 @@ export default function MisContratosPage() {
         <p className="page-subtitle">Contratos de arrendamiento activos y cerrados</p>
       </div>
 
-      <div className="contratos-list">
-        {contratosMock.map((c) => (
-          <div key={c.id} className="contrato-item">
-            <div className="contrato-item__icon">
-              <FileText size={24} />
+      {contratos.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '3rem 1rem', opacity: 0.6 }}>
+          <Inbox size={48} />
+          <p style={{ marginTop: '1rem', fontSize: '1.1rem' }}>No tienes contratos registrados aún.</p>
+        </div>
+      ) : (
+        <div className="contratos-list">
+          {contratos.map((c) => (
+            <div key={c.idContrato || c.id} className="contrato-item">
+              <div className="contrato-item__icon">
+                <FileText size={24} />
+              </div>
+              <div className="contrato-item__info">
+                <div className="contrato-item__header">
+                  <h3>{c.codigoContrato || c.numero || `CTR-${c.idContrato}`}</h3>
+                  <span className="contrato-item__badge" style={{ background: estadoColors[c.estadoContrato || c.estado] || 'var(--color-border)' }}>
+                    {c.estadoContrato || c.estado}
+                  </span>
+                </div>
+                <div className="contrato-item__meta">
+                  <span><Car size={14} /> {c.placaVehiculo || c.vehiculo || '—'}</span>
+                  <span><Clock size={14} /> {new Date(c.fechaHoraSalida || c.fechaSalida).toLocaleDateString('es-EC')} — {new Date(c.fechaHoraDevolucion || c.fechaDevolucion).toLocaleDateString('es-EC')}</span>
+                </div>
+                <div className="contrato-item__footer">
+                  <span className="contrato-item__total"><DollarSign size={14} /> ${(c.totalContrato || c.total || 0).toFixed(2)}</span>
+                </div>
+              </div>
+              <button className="btn btn--ghost btn--sm" onClick={() => setSelected(c)}>
+                <Eye size={16} /> Ver
+              </button>
             </div>
-            <div className="contrato-item__info">
-              <div className="contrato-item__header">
-                <h3>{c.numero}</h3>
-                <span className="contrato-item__badge" style={{ background: estadoColors[c.estado] }}>
-                  {c.estado}
-                </span>
-              </div>
-              <div className="contrato-item__meta">
-                <span><Car size={14} /> {c.vehiculo}</span>
-                <span><Clock size={14} /> {new Date(c.fechaSalida).toLocaleDateString('es-EC')} — {new Date(c.fechaDevolucion).toLocaleDateString('es-EC')}</span>
-              </div>
-              <div className="contrato-item__footer">
-                <span className="contrato-item__total"><DollarSign size={14} /> ${c.total.toFixed(2)}</span>
-              </div>
-            </div>
-            <button className="btn btn--ghost btn--sm" onClick={() => setSelected(c)}>
-              <Eye size={16} /> Ver
-            </button>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Detail Modal */}
       {selected && (
@@ -60,40 +97,28 @@ export default function MisContratosPage() {
             </div>
             <div className="modal__body">
               <div className="detail-badge-row">
-                <span className="reserva-item__badge" style={{ background: estadoColors[selected.estado] }}>
-                  {selected.estado}
+                <span className="reserva-item__badge" style={{ background: estadoColors[selected.estadoContrato || selected.estado] }}>
+                  {selected.estadoContrato || selected.estado}
                 </span>
-                <span className="detail-code"><Hash size={14} /> {selected.numero}</span>
+                <span className="detail-code"><Hash size={14} /> {selected.codigoContrato || selected.numero || `CTR-${selected.idContrato}`}</span>
               </div>
 
               <div className="detail-grid">
                 <div className="detail-item">
                   <span className="detail-label"><Car size={14} /> Vehículo</span>
-                  <span className="detail-value">{selected.vehiculo}</span>
+                  <span className="detail-value">{selected.placaVehiculo || selected.vehiculo || '—'}</span>
                 </div>
                 <div className="detail-item">
-                  <span className="detail-label">Placa</span>
-                  <span className="detail-value">{selected.placa}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Categoría</span>
-                  <span className="detail-value">{selected.categoria}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label"><User size={14} /> Conductor</span>
-                  <span className="detail-value">{selected.conductor}</span>
+                  <span className="detail-label"><User size={14} /> Cliente</span>
+                  <span className="detail-value">{selected.nombreCliente || user?.nombreCompleto || '—'}</span>
                 </div>
                 <div className="detail-item">
                   <span className="detail-label"><Calendar size={14} /> Fecha Salida</span>
-                  <span className="detail-value">{new Date(selected.fechaSalida).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                  <span className="detail-value">{new Date(selected.fechaHoraSalida || selected.fechaSalida).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })}</span>
                 </div>
                 <div className="detail-item">
                   <span className="detail-label"><Calendar size={14} /> Fecha Devolución</span>
-                  <span className="detail-value">{new Date(selected.fechaDevolucion).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })}</span>
-                </div>
-                <div className="detail-item detail-item--full">
-                  <span className="detail-label"><MapPin size={14} /> Sucursal</span>
-                  <span className="detail-value">{selected.sucursal}</span>
+                  <span className="detail-value">{new Date(selected.fechaHoraDevolucion || selected.fechaDevolucion).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })}</span>
                 </div>
                 <div className="detail-item">
                   <span className="detail-label">KM Salida</span>
@@ -105,13 +130,13 @@ export default function MisContratosPage() {
                 </div>
                 <div className="detail-item">
                   <span className="detail-label">Depósito</span>
-                  <span className="detail-value">${selected.deposito?.toFixed(2)}</span>
+                  <span className="detail-value">${(selected.depositoGarantia || selected.deposito || 0).toFixed(2)}</span>
                 </div>
               </div>
 
               <div className="detail-total">
                 <span>Total del Contrato</span>
-                <span className="detail-total__amount"><DollarSign size={16} />{selected.total.toFixed(2)}</span>
+                <span className="detail-total__amount"><DollarSign size={16} />{(selected.totalContrato || selected.total || 0).toFixed(2)}</span>
               </div>
             </div>
           </div>

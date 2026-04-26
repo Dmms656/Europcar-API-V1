@@ -1,11 +1,8 @@
-import { useState } from 'react';
-import { CalendarCheck, Clock, MapPin, Car, Eye, X, DollarSign, Hash, User, FileText } from 'lucide-react';
-
-const reservasMock = [
-  { id: 1, codigo: 'RES-A1B2C3', vehiculo: 'Suzuki Grand Vitara', categoria: 'SUV', placa: 'PBX-1234', fechaRecogida: '2026-05-01T10:00', fechaDevolucion: '2026-05-05T10:00', sucursal: 'Aeropuerto Quito', estado: 'CONFIRMADA', total: 425.50, extras: ['GPS', 'Silla para bebé'], conductor: 'Juan Pérez' },
-  { id: 2, codigo: 'RES-D4E5F6', vehiculo: 'Toyota Yaris', categoria: 'Sedán', placa: 'ABC-5678', fechaRecogida: '2026-04-10T09:00', fechaDevolucion: '2026-04-12T09:00', sucursal: 'Quito Centro', estado: 'FINALIZADA', total: 115.20, extras: [], conductor: 'Juan Pérez' },
-  { id: 3, codigo: 'RES-G7H8I9', vehiculo: 'Chevrolet Onix', categoria: 'Compacto', placa: 'XYZ-9012', fechaRecogida: '2026-03-15T14:00', fechaDevolucion: '2026-03-18T14:00', sucursal: 'Aeropuerto Guayaquil', estado: 'CANCELADA', total: 162.00, extras: ['Seguro Premium'], conductor: 'Juan Pérez' },
-];
+import { useState, useEffect } from 'react';
+import { CalendarCheck, Clock, MapPin, Car, Eye, X, DollarSign, Hash, User, FileText, Loader2, Inbox } from 'lucide-react';
+import { reservasApi } from '../../api/reservasApi';
+import { useAuthStore } from '../../store/useAuthStore';
+import { toast } from 'sonner';
 
 const estadoColors = {
   PENDIENTE: 'var(--color-warning)',
@@ -16,7 +13,38 @@ const estadoColors = {
 };
 
 export default function MisReservasPage() {
+  const { user } = useAuthStore();
+  const [reservas, setReservas] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
+
+  useEffect(() => {
+    loadReservas();
+  }, []);
+
+  const loadReservas = async () => {
+    setLoading(true);
+    try {
+      const idCliente = user?.idCliente;
+      if (!idCliente) { setLoading(false); return; }
+      const res = await reservasApi.getByCliente(idCliente);
+      const data = res.data?.data;
+      setReservas(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.warn('Error cargando reservas:', err);
+      setReservas([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="mis-reservas-page" style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
+        <Loader2 size={32} className="spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="mis-reservas-page">
@@ -25,34 +53,40 @@ export default function MisReservasPage() {
         <p className="page-subtitle">Historial de todas tus reservas</p>
       </div>
 
-      <div className="reservas-list">
-        {reservasMock.map((r) => (
-          <div key={r.id} className="reserva-item">
-            <div className="reserva-item__icon">
-              <Car size={24} />
+      {reservas.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '3rem 1rem', opacity: 0.6 }}>
+          <Inbox size={48} />
+          <p style={{ marginTop: '1rem', fontSize: '1.1rem' }}>No tienes reservas registradas aún.</p>
+        </div>
+      ) : (
+        <div className="reservas-list">
+          {reservas.map((r) => (
+            <div key={r.idReserva || r.id} className="reserva-item">
+              <div className="reserva-item__icon">
+                <Car size={24} />
+              </div>
+              <div className="reserva-item__info">
+                <div className="reserva-item__header">
+                  <h3>{r.placaVehiculo || r.vehiculo || 'Vehículo'}</h3>
+                  <span className="reserva-item__badge" style={{ background: estadoColors[r.estadoReserva || r.estado] || 'var(--color-border)' }}>
+                    {r.estadoReserva || r.estado}
+                  </span>
+                </div>
+                <div className="reserva-item__meta">
+                  <span><Clock size={14} /> {new Date(r.fechaHoraRecogida || r.fechaRecogida).toLocaleDateString('es-EC')} — {new Date(r.fechaHoraDevolucion || r.fechaDevolucion).toLocaleDateString('es-EC')}</span>
+                </div>
+                <div className="reserva-item__footer">
+                  <span className="reserva-item__code">{r.codigoReserva || r.codigo}</span>
+                  <span className="reserva-item__total">${(r.total || 0).toFixed(2)}</span>
+                </div>
+              </div>
+              <button className="btn btn--ghost btn--sm" onClick={() => setSelected(r)}>
+                <Eye size={16} /> Ver
+              </button>
             </div>
-            <div className="reserva-item__info">
-              <div className="reserva-item__header">
-                <h3>{r.vehiculo}</h3>
-                <span className="reserva-item__badge" style={{ background: estadoColors[r.estado] || 'var(--color-border)' }}>
-                  {r.estado}
-                </span>
-              </div>
-              <div className="reserva-item__meta">
-                <span><Clock size={14} /> {new Date(r.fechaRecogida).toLocaleDateString('es-EC')} — {new Date(r.fechaDevolucion).toLocaleDateString('es-EC')}</span>
-                <span><MapPin size={14} /> {r.sucursal}</span>
-              </div>
-              <div className="reserva-item__footer">
-                <span className="reserva-item__code">{r.codigo}</span>
-                <span className="reserva-item__total">${r.total.toFixed(2)}</span>
-              </div>
-            </div>
-            <button className="btn btn--ghost btn--sm" onClick={() => setSelected(r)}>
-              <Eye size={16} /> Ver
-            </button>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Detail Modal */}
       {selected && (
@@ -64,54 +98,62 @@ export default function MisReservasPage() {
             </div>
             <div className="modal__body">
               <div className="detail-badge-row">
-                <span className="reserva-item__badge" style={{ background: estadoColors[selected.estado] }}>
-                  {selected.estado}
+                <span className="reserva-item__badge" style={{ background: estadoColors[selected.estadoReserva || selected.estado] }}>
+                  {selected.estadoReserva || selected.estado}
                 </span>
-                <span className="detail-code"><Hash size={14} /> {selected.codigo}</span>
+                <span className="detail-code"><Hash size={14} /> {selected.codigoReserva || selected.codigo}</span>
               </div>
 
               <div className="detail-grid">
                 <div className="detail-item">
                   <span className="detail-label"><Car size={14} /> Vehículo</span>
-                  <span className="detail-value">{selected.vehiculo}</span>
+                  <span className="detail-value">{selected.placaVehiculo || selected.vehiculo || '—'}</span>
                 </div>
                 <div className="detail-item">
-                  <span className="detail-label">Categoría</span>
-                  <span className="detail-value">{selected.categoria}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Placa</span>
-                  <span className="detail-value">{selected.placa}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label"><User size={14} /> Conductor</span>
-                  <span className="detail-value">{selected.conductor}</span>
+                  <span className="detail-label"><User size={14} /> Cliente</span>
+                  <span className="detail-value">{selected.nombreCliente || user?.nombreCompleto || '—'}</span>
                 </div>
                 <div className="detail-item">
                   <span className="detail-label"><Clock size={14} /> Recogida</span>
-                  <span className="detail-value">{new Date(selected.fechaRecogida).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                  <span className="detail-value">{new Date(selected.fechaHoraRecogida || selected.fechaRecogida).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })}</span>
                 </div>
                 <div className="detail-item">
                   <span className="detail-label"><Clock size={14} /> Devolución</span>
-                  <span className="detail-value">{new Date(selected.fechaDevolucion).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                  <span className="detail-value">{new Date(selected.fechaHoraDevolucion || selected.fechaDevolucion).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })}</span>
                 </div>
-                <div className="detail-item detail-item--full">
-                  <span className="detail-label"><MapPin size={14} /> Sucursal</span>
-                  <span className="detail-value">{selected.sucursal}</span>
+                <div className="detail-item">
+                  <span className="detail-label">Subtotal</span>
+                  <span className="detail-value">${(selected.subtotal || 0).toFixed(2)}</span>
                 </div>
-                {selected.extras.length > 0 && (
+                <div className="detail-item">
+                  <span className="detail-label">Impuestos</span>
+                  <span className="detail-value">${(selected.valorImpuestos || 0).toFixed(2)}</span>
+                </div>
+                {(selected.cargoOneWay || 0) > 0 && (
+                  <div className="detail-item">
+                    <span className="detail-label">Cargo One-Way</span>
+                    <span className="detail-value">${selected.cargoOneWay.toFixed(2)}</span>
+                  </div>
+                )}
+                {selected.extras && selected.extras.length > 0 && (
                   <div className="detail-item detail-item--full">
                     <span className="detail-label">Extras</span>
                     <div className="detail-extras">
-                      {selected.extras.map((e, i) => <span key={i} className="detail-extra-tag">{e}</span>)}
+                      {selected.extras.map((e, i) => <span key={i} className="detail-extra-tag">{e.nombreExtra || e} x{e.cantidad || 1}</span>)}
                     </div>
+                  </div>
+                )}
+                {selected.codigoConfirmacion && (
+                  <div className="detail-item detail-item--full">
+                    <span className="detail-label"><FileText size={14} /> Código Confirmación</span>
+                    <span className="detail-value">{selected.codigoConfirmacion}</span>
                   </div>
                 )}
               </div>
 
               <div className="detail-total">
                 <span>Total</span>
-                <span className="detail-total__amount"><DollarSign size={16} />{selected.total.toFixed(2)}</span>
+                <span className="detail-total__amount"><DollarSign size={16} />{(selected.total || 0).toFixed(2)}</span>
               </div>
             </div>
           </div>
