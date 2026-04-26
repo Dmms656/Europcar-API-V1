@@ -68,6 +68,10 @@ export default function RegisterPage() {
         payload.telefono = form.telefono;
         payload.direccion = form.direccion;
       }
+      if (mode === 'existente') {
+        // Send the cedula/ID so the backend can look up the existing client
+        payload.cedula = form.idClienteExistente;
+      }
       await authApi.register(payload);
       setStep(2);
       toast.success('¡Cuenta creada exitosamente!');

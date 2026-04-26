@@ -81,8 +81,28 @@ public class AuthService : IAuthService
         // Hash password
         var (hash, salt) = CreatePasswordHash(request.Password);
 
-        // If no existing client linked, create one from registration data
         int? idCliente = request.IdCliente;
+
+        // Mode 1: Link to existing client by cedula/ID
+        if (!idCliente.HasValue && !string.IsNullOrEmpty(request.Cedula) && string.IsNullOrEmpty(request.Nombre))
+        {
+            // Try to find existing client by identification number
+            var existingCliente = await _clienteDataService.GetByIdentificacionAsync(request.Cedula);
+            if (existingCliente == null)
+            {
+                // Try parsing as numeric ID
+                if (int.TryParse(request.Cedula, out var parsedId))
+                {
+                    existingCliente = await _clienteDataService.GetByIdAsync(parsedId);
+                }
+            }
+            if (existingCliente == null)
+                throw new BusinessException($"No se encontró un cliente con la identificación '{request.Cedula}'. Verifica el dato o regístrate como nuevo cliente.");
+
+            idCliente = existingCliente.IdCliente;
+        }
+
+        // Mode 2: Create new client from registration data
         if (!idCliente.HasValue && !string.IsNullOrEmpty(request.Nombre))
         {
             var codigoCliente = $"CLT-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
