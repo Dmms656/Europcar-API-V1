@@ -85,8 +85,10 @@ public class AuthService : IAuthService
         int? idCliente = request.IdCliente;
         if (!idCliente.HasValue && !string.IsNullOrEmpty(request.Nombre))
         {
+            var codigoCliente = $"CLT-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
             var newCliente = await _clienteDataService.CreateAsync(new DataManagement.Models.ClienteModel
             {
+                CodigoCliente = codigoCliente,
                 TipoIdentificacion = "CED",
                 NumeroIdentificacion = request.Cedula ?? "",
                 Nombre1 = request.Nombre ?? "",
@@ -94,7 +96,7 @@ public class AuthService : IAuthService
                 Telefono = request.Telefono ?? "",
                 Correo = request.Correo,
                 DireccionPrincipal = request.Direccion,
-                FechaNacimiento = DateOnly.FromDateTime(DateTime.Today.AddYears(-25)) // Default
+                FechaNacimiento = DateOnly.FromDateTime(DateTime.Today.AddYears(-25))
             });
             idCliente = newCliente.IdCliente;
         }

@@ -55,7 +55,7 @@ public class ClienteDataService : IClienteDataService
         };
 
         await _context.Clientes.AddAsync(entity);
-        // SaveChanges is called by UnitOfWork
+        await _context.SaveChangesAsync();
         
         model.IdCliente = entity.IdCliente;
         model.ClienteGuid = entity.ClienteGuid;
