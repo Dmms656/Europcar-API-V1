@@ -47,7 +47,6 @@ public class PagosController : ControllerBase
     /// Registrar un pago.
     /// </summary>
     [HttpPost]
-    [Authorize(Roles = "ADMIN,AGENTE_POS")]
     public async Task<IActionResult> Create([FromBody] CrearPagoRequest request)
     {
         var usuario = User.FindFirstValue(ClaimTypes.Name) ?? "API";

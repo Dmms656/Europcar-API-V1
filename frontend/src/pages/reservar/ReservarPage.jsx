@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { vehiculosApi } from '../../api/vehiculosApi';
 import { reservasApi } from '../../api/reservasApi';
+import { pagosApi } from '../../api/pagosApi';
 import DateTimePicker from '../../components/ui/DateTimePicker';
 import { bookingApi } from '../../api/bookingApi';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -220,8 +221,8 @@ export default function ReservarPage() {
   const handlePagar = async () => {
     setProcessing(true);
     try {
-      // Build the request matching CrearReservaRequest DTO
-      const payload = {
+      // ── STEP 1: Create Reservation ──
+      const reservaPayload = {
         idCliente: user?.idCliente || 0,
         idVehiculo: Number(id),
         idLocalizacionRecogida: Number(form.idLocalizacionRecogida),
@@ -233,36 +234,70 @@ export default function ReservarPage() {
           idExtra: ex.id,
           cantidad: ex.cantidad,
         })),
+        conductores: form.conductores
+          .filter(c => c.id)
+          .map(c => ({ idConductor: c.id, esPrincipal: c.esPrincipal })),
       };
 
-      let codigoReserva, codigoConfirmacion;
+      let reservaData = null;
+      let codigoReserva, codigoConfirmacion, idReserva;
 
       try {
-        const res = await reservasApi.create(payload);
-        const data = res.data?.data;
-        codigoReserva = data?.codigoReserva || `RES-${Date.now().toString(36).toUpperCase()}`;
-        codigoConfirmacion = data?.codigoConfirmacion || codigoReserva;
+        const res = await reservasApi.create(reservaPayload);
+        reservaData = res.data?.data;
+        codigoReserva = reservaData?.codigoReserva;
+        codigoConfirmacion = reservaData?.codigoConfirmacion;
+        idReserva = reservaData?.idReserva;
+        toast.success('Reserva creada correctamente');
       } catch (apiErr) {
-        console.warn('API reserva error, usando simulación:', apiErr);
-        // Fallback: simulate if API is not ready
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        codigoReserva = `RES-${Date.now().toString(36).toUpperCase()}`;
-        codigoConfirmacion = `CONF-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        console.warn('Error creando reserva:', apiErr);
+        const errMsg = apiErr.response?.data?.message || apiErr.response?.data?.title || 'Error al crear la reserva';
+        toast.error(errMsg);
+        setProcessing(false);
+        return;
       }
 
+      // ── STEP 2: Register Payment ──
+      let pagoData = null;
+      try {
+        const pagoPayload = {
+          idReserva: idReserva,
+          idCliente: user?.idCliente || 0,
+          tipoPago: 'COBRO',
+          metodoPago: 'TARJETA',
+          monto: totalFinal,
+          referenciaExterna: `SIM-${pago.numeroTarjeta.slice(-4)}-${Date.now().toString(36).toUpperCase()}`,
+          observaciones: `Pago web - Tarjeta terminada en ${pago.numeroTarjeta.slice(-4)} - Titular: ${pago.nombreTitular}`,
+        };
+        const pagoRes = await pagosApi.create(pagoPayload);
+        pagoData = pagoRes.data?.data;
+        toast.success('Pago registrado correctamente');
+      } catch (pagoErr) {
+        console.warn('Error registrando pago (reserva ya creada):', pagoErr);
+        // Payment failed but reservation was created — don't block confirmation
+      }
+
+      // ── STEP 3: Show Confirmation ──
       setReservaConfirmada({
-        codigoReserva,
-        codigoConfirmacion,
+        codigoReserva: codigoReserva || `RES-${Date.now().toString(36).toUpperCase()}`,
+        codigoConfirmacion: codigoConfirmacion || codigoReserva,
+        idReserva,
         vehiculo: `${vehiculo?.marca} ${vehiculo?.modelo || vehiculo?.modeloVehiculo}`,
         fechaRecogida: form.fechaRecogida,
         fechaDevolucion: form.fechaDevolucion,
         total: totalFinal,
         estado: 'CONFIRMADA',
+        pago: pagoData ? {
+          idPago: pagoData.idPago,
+          referencia: pagoData.referenciaExterna,
+          estado: pagoData.estadoPago || 'COMPLETADO',
+        } : null,
       });
 
       toast.success('¡Reserva confirmada exitosamente!');
     } catch (e) {
-      toast.error('Error al procesar el pago');
+      console.error('Error en flujo de reserva:', e);
+      toast.error('Error al procesar la reserva');
     } finally {
       setProcessing(false);
     }
@@ -311,10 +346,23 @@ export default function ReservarPage() {
                 <span className="confirmacion-label">Devolución</span>
                 <span className="confirmacion-value">{new Date(reservaConfirmada.fechaDevolucion).toLocaleString('es-EC')}</span>
               </div>
+              {reservaConfirmada.pago && (
+                <div className="confirmacion-detail">
+                  <span className="confirmacion-label">Ref. de Pago</span>
+                  <span className="confirmacion-value" style={{ fontSize: '0.85rem' }}>{reservaConfirmada.pago.referencia}</span>
+                </div>
+              )}
               <div className="confirmacion-detail confirmacion-detail--total">
                 <span className="confirmacion-label">Total Pagado</span>
                 <span className="confirmacion-value">${reservaConfirmada.total.toFixed(2)}</span>
               </div>
+              {reservaConfirmada.pago && (
+                <div className="confirmacion-detail" style={{ justifyContent: 'center' }}>
+                  <span style={{ color: 'var(--color-success)', fontWeight: 600, fontSize: '0.9rem' }}>
+                    ✅ Pago {reservaConfirmada.pago.estado} — ID #{reservaConfirmada.pago.idPago}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="confirmacion-actions">
