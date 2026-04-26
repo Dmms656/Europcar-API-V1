@@ -152,7 +152,10 @@ public static class ServiceCollectionExtensions
             {
                 // Por motivos de seguridad, solo Swagger (mismo dominio) puede acceder.
                 // Cuando el frontend esté listo, agrega su URL aquí en lugar de usar AllowAnyOrigin()
-                builder.WithOrigins("https://tu-futuro-frontend.com") 
+                builder.WithOrigins(
+                        "http://localhost:5173",
+                        "https://tu-frontend.vercel.app"
+                       )
                        .AllowAnyMethod()
                        .AllowAnyHeader();
             });
