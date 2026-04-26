@@ -1,0 +1,150 @@
+import { useState, useEffect } from 'react';
+import { contratosApi } from '../../api/contratosApi';
+import { toast } from 'sonner';
+import { Search, Loader2, FileText, ArrowRightCircle, ArrowLeftCircle, X, Plus } from 'lucide-react';
+
+export default function ContratosPage() {
+  const [contratos, setContratos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [showCheckin, setShowCheckin] = useState(false);
+  const [showCrear, setShowCrear] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [crearForm, setCrearForm] = useState({ idReserva: '' });
+  const [checkoutForm, setCheckoutForm] = useState({ idContrato: '', kilometrajeSalida: '', nivelCombustibleSalida: '', observacionesSalida: '' });
+  const [checkinForm, setCheckinForm] = useState({ idContrato: '', kilometrajeEntrada: '', nivelCombustibleEntrada: '', observacionesEntrada: '', cargosAdicionales: 0 });
+
+  useEffect(() => { loadContratos(); }, []);
+
+  const loadContratos = async () => {
+    setLoading(true);
+    try { const res = await contratosApi.getAll(); setContratos(res.data?.data || []); }
+    catch (e) { toast.error('Error al cargar contratos'); }
+    finally { setLoading(false); }
+  };
+
+  const crearContrato = async (e) => {
+    e.preventDefault(); setSaving(true);
+    try {
+      await contratosApi.create({ idReserva: Number(crearForm.idReserva) });
+      toast.success('Contrato creado'); setShowCrear(false); loadContratos();
+    } catch (e) { toast.error(e.response?.data?.message || 'Error'); }
+    finally { setSaving(false); }
+  };
+
+  const doCheckout = async (e) => {
+    e.preventDefault(); setSaving(true);
+    try {
+      await contratosApi.checkout({ ...checkoutForm, idContrato: Number(checkoutForm.idContrato), kilometrajeSalida: Number(checkoutForm.kilometrajeSalida) });
+      toast.success('Check-out registrado'); setShowCheckout(false); loadContratos();
+    } catch (e) { toast.error(e.response?.data?.message || 'Error'); }
+    finally { setSaving(false); }
+  };
+
+  const doCheckin = async (e) => {
+    e.preventDefault(); setSaving(true);
+    try {
+      await contratosApi.checkin({ ...checkinForm, idContrato: Number(checkinForm.idContrato), kilometrajeEntrada: Number(checkinForm.kilometrajeEntrada), cargosAdicionales: Number(checkinForm.cargosAdicionales) });
+      toast.success('Check-in registrado'); setShowCheckin(false); loadContratos();
+    } catch (e) { toast.error(e.response?.data?.message || 'Error'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="module-page">
+      <div className="module-page__header">
+        <div><h1><FileText size={24} /> Contratos</h1><p>{contratos.length} contratos</p></div>
+        <div className="module-page__actions">
+          <button className="btn btn--primary" onClick={() => setShowCrear(true)}><Plus size={16} /> Crear Contrato</button>
+          <button className="btn btn--outline" onClick={() => setShowCheckout(true)}><ArrowRightCircle size={16} /> Check-Out</button>
+          <button className="btn btn--outline" onClick={() => setShowCheckin(true)}><ArrowLeftCircle size={16} /> Check-In</button>
+        </div>
+      </div>
+      {loading ? (
+        <div className="module-loading"><Loader2 size={24} className="spin" /> Cargando...</div>
+      ) : (
+        <div className="data-table-wrapper">
+          <table className="data-table">
+            <thead><tr><th>ID</th><th>Código Reserva</th><th>Cliente</th><th>Vehículo</th><th>Inicio</th><th>Fin</th><th>Estado</th></tr></thead>
+            <tbody>
+              {contratos.map(c => (
+                <tr key={c.idContrato}>
+                  <td>{c.idContrato}</td>
+                  <td><code>{c.codigoReserva || c.reservaCodigo || '-'}</code></td>
+                  <td>{c.nombreCliente || c.cliente || '-'}</td>
+                  <td>{c.vehiculo || c.descripcionVehiculo || '-'}</td>
+                  <td>{c.fechaInicioContrato ? new Date(c.fechaInicioContrato).toLocaleDateString() : '-'}</td>
+                  <td>{c.fechaFinContrato ? new Date(c.fechaFinContrato).toLocaleDateString() : '-'}</td>
+                  <td><span className={`status-badge status-badge--${c.estadoContrato === 'CERRADO' ? 'success' : c.estadoContrato === 'ABIERTO' ? 'warning' : 'danger'}`}>{c.estadoContrato}</span></td>
+                </tr>
+              ))}
+              {contratos.length === 0 && <tr><td colSpan={7} className="table-empty">No hay contratos</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {/* Crear Contrato Modal */}
+      {showCrear && (
+        <div className="modal-overlay" onClick={() => setShowCrear(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal__header"><h2>Crear Contrato</h2><button className="icon-btn" onClick={() => setShowCrear(false)}><X size={18} /></button></div>
+            <form onSubmit={crearContrato} className="modal__body">
+              <div className="form-group"><label className="form-label">ID de Reserva (confirmada)</label>
+                <input type="number" className="form-input" required value={crearForm.idReserva} onChange={e => setCrearForm({...crearForm, idReserva: e.target.value})} placeholder="Ej: 1" /></div>
+              <div className="modal__footer">
+                <button type="button" className="btn btn--ghost" onClick={() => setShowCrear(false)}>Cancelar</button>
+                <button type="submit" className="btn btn--primary" disabled={saving}>{saving ? 'Creando...' : 'Crear'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Checkout Modal */}
+      {showCheckout && (
+        <div className="modal-overlay" onClick={() => setShowCheckout(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal__header"><h2>Registrar Check-Out</h2><button className="icon-btn" onClick={() => setShowCheckout(false)}><X size={18} /></button></div>
+            <form onSubmit={doCheckout} className="modal__body">
+              <div className="form-group"><label className="form-label">ID Contrato</label>
+                <input type="number" className="form-input" required value={checkoutForm.idContrato} onChange={e => setCheckoutForm({...checkoutForm, idContrato: e.target.value})} /></div>
+              <div className="form-group"><label className="form-label">Kilometraje de Salida</label>
+                <input type="number" className="form-input" required value={checkoutForm.kilometrajeSalida} onChange={e => setCheckoutForm({...checkoutForm, kilometrajeSalida: e.target.value})} /></div>
+              <div className="form-group"><label className="form-label">Nivel Combustible Salida</label>
+                <input className="form-input" value={checkoutForm.nivelCombustibleSalida} onChange={e => setCheckoutForm({...checkoutForm, nivelCombustibleSalida: e.target.value})} placeholder="Ej: LLENO, 3/4, 1/2" /></div>
+              <div className="form-group"><label className="form-label">Observaciones</label>
+                <input className="form-input" value={checkoutForm.observacionesSalida} onChange={e => setCheckoutForm({...checkoutForm, observacionesSalida: e.target.value})} /></div>
+              <div className="modal__footer">
+                <button type="button" className="btn btn--ghost" onClick={() => setShowCheckout(false)}>Cancelar</button>
+                <button type="submit" className="btn btn--primary" disabled={saving}>{saving ? 'Registrando...' : 'Registrar Check-Out'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Checkin Modal */}
+      {showCheckin && (
+        <div className="modal-overlay" onClick={() => setShowCheckin(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal__header"><h2>Registrar Check-In (Devolución)</h2><button className="icon-btn" onClick={() => setShowCheckin(false)}><X size={18} /></button></div>
+            <form onSubmit={doCheckin} className="modal__body">
+              <div className="form-group"><label className="form-label">ID Contrato</label>
+                <input type="number" className="form-input" required value={checkinForm.idContrato} onChange={e => setCheckinForm({...checkinForm, idContrato: e.target.value})} /></div>
+              <div className="form-group"><label className="form-label">Kilometraje de Entrada</label>
+                <input type="number" className="form-input" required value={checkinForm.kilometrajeEntrada} onChange={e => setCheckinForm({...checkinForm, kilometrajeEntrada: e.target.value})} /></div>
+              <div className="form-group"><label className="form-label">Nivel Combustible Entrada</label>
+                <input className="form-input" value={checkinForm.nivelCombustibleEntrada} onChange={e => setCheckinForm({...checkinForm, nivelCombustibleEntrada: e.target.value})} /></div>
+              <div className="form-group"><label className="form-label">Cargos Adicionales ($)</label>
+                <input type="number" step="0.01" className="form-input" value={checkinForm.cargosAdicionales} onChange={e => setCheckinForm({...checkinForm, cargosAdicionales: e.target.value})} /></div>
+              <div className="form-group"><label className="form-label">Observaciones</label>
+                <input className="form-input" value={checkinForm.observacionesEntrada} onChange={e => setCheckinForm({...checkinForm, observacionesEntrada: e.target.value})} /></div>
+              <div className="modal__footer">
+                <button type="button" className="btn btn--ghost" onClick={() => setShowCheckin(false)}>Cancelar</button>
+                <button type="submit" className="btn btn--primary" disabled={saving}>{saving ? 'Registrando...' : 'Registrar Check-In'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

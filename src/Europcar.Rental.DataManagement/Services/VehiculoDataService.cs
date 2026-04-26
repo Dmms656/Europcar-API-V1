@@ -26,18 +26,19 @@ public class VehiculoDataService : IVehiculoDataService
         if (categoriaId.HasValue)
             query = query.Where(v => v.IdCategoria == categoriaId.Value);
 
-        return await query.Select(v => MapToModel(v)).ToListAsync();
+        return (await query.ToListAsync()).Select(v => MapToModel(v));
     }
 
     public async Task<IEnumerable<VehiculoModel>> GetAllAsync()
     {
-        return await _context.Vehiculos
+        var entities = await _context.Vehiculos
             .Include(v => v.Marca)
             .Include(v => v.Categoria)
             .Include(v => v.Localizacion)
             .Where(v => v.EstadoVehiculo == "ACT")
-            .Select(v => MapToModel(v))
             .ToListAsync();
+
+        return entities.Select(v => MapToModel(v));
     }
 
     public async Task<VehiculoModel?> GetByIdAsync(int id)
