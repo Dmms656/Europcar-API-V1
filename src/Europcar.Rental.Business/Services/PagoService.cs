@@ -2,6 +2,8 @@ using Europcar.Rental.Business.DTOs.Request.Pagos;
 using Europcar.Rental.Business.DTOs.Response.Pagos;
 using Europcar.Rental.Business.Exceptions;
 using Europcar.Rental.Business.Interfaces;
+using Europcar.Rental.DataAccess.Context;
+using Europcar.Rental.DataAccess.Entities.Rental;
 using Europcar.Rental.DataManagement.Common;
 using Europcar.Rental.DataManagement.Interfaces;
 using Europcar.Rental.DataManagement.Models;
@@ -13,15 +15,18 @@ public class PagoService : IPagoService
     private readonly IPagoDataService _pagoDataService;
     private readonly IReservaDataService _reservaDataService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly RentalDbContext _context;
 
     public PagoService(
         IPagoDataService pagoDataService,
         IReservaDataService reservaDataService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        RentalDbContext context)
     {
         _pagoDataService = pagoDataService;
         _reservaDataService = reservaDataService;
         _unitOfWork = unitOfWork;
+        _context = context;
     }
 
     public async Task<PagoResponse> GetByIdAsync(int id)
@@ -62,7 +67,54 @@ public class PagoService : IPagoService
         };
 
         var created = await _pagoDataService.CreateAsync(model, usuario);
-        await _unitOfWork.SaveChangesAsync();
+
+        // Auto-generate Factura (Invoice)
+        try
+        {
+            var ivaRate = 0.15m;
+            var subtotal = Math.Round(request.Monto / (1 + ivaRate), 2);
+            var valorIva = request.Monto - subtotal;
+
+            var factura = new FacturaEntity
+            {
+                FacturaGuid = Guid.NewGuid(),
+                NumeroFactura = $"FAC-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpper()}",
+                IdCliente = request.IdCliente,
+                IdReserva = request.IdReserva,
+                IdContrato = request.IdContrato,
+                FechaEmision = DateTimeOffset.UtcNow,
+                Subtotal = subtotal,
+                ValorIva = valorIva,
+                Total = request.Monto,
+                EstadoFactura = "EMITIDA",
+                ServicioOrigen = "RESERVA_WEB",
+                OrigenCanalFactura = "WEB",
+                ObservacionesFactura = $"Factura automática - Pago {codigo}",
+                CreadoPorUsuario = usuario,
+                FechaRegistroUtc = DateTimeOffset.UtcNow
+            };
+            await _context.Facturas.AddAsync(factura);
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            // Log but don't block payment
+            Console.WriteLine($"[WARN] Error generando factura: {ex.Message}");
+        }
+
+        // Auto-confirm reservation if it exists
+        if (request.IdReserva.HasValue)
+        {
+            try
+            {
+                await _reservaDataService.UpdateEstadoAsync(request.IdReserva.Value, "CONFIRMADA", usuario);
+                await _unitOfWork.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[WARN] Error confirmando reserva: {ex.Message}");
+            }
+        }
 
         var result = await _pagoDataService.GetByIdAsync(created.IdPago);
         return MapToResponse(result!);
@@ -85,3 +137,4 @@ public class PagoService : IPagoService
         ObservacionesPago = p.ObservacionesPago
     };
 }
+

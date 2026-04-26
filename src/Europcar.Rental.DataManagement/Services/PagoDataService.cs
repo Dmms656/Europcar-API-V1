@@ -53,6 +53,7 @@ public class PagoDataService : IPagoDataService
             FechaRegistroUtc = DateTimeOffset.UtcNow
         };
         await _context.Pagos.AddAsync(entity);
+        await _context.SaveChangesAsync();
         model.IdPago = entity.IdPago;
         model.PagoGuid = entity.PagoGuid;
         return model;
