@@ -2,12 +2,15 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import MainLayout from './components/layout/MainLayout';
+import ClienteLayout from './components/layout/ClienteLayout';
 import { ProtectedRoute } from './routes/ProtectedRoute';
 
 // Public pages
 import HomePage from './pages/home/HomePage';
 import BuscarPage from './pages/home/BuscarPage';
 import LoginPage from './pages/auth/LoginPage';
+import CatalogoPage from './pages/catalogo/CatalogoPage';
+import ReservarPage from './pages/reservar/ReservarPage';
 
 // Admin pages
 import DashboardPage from './pages/dashboard/DashboardPage';
@@ -17,6 +20,11 @@ import ReservasPage from './pages/reservas/ReservasPage';
 import ContratosPage from './pages/contratos/ContratosPage';
 import PagosPage from './pages/pagos/PagosPage';
 import MantenimientosPage from './pages/mantenimientos/MantenimientosPage';
+
+// Client portal pages
+import MiCuentaPage from './pages/cliente/MiCuentaPage';
+import MisReservasPage from './pages/cliente/MisReservasPage';
+import MisContratosPage from './pages/cliente/MisContratosPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,12 +47,20 @@ export default function App() {
           {/* Public routes */}
           <Route path="/" element={<HomePage />} />
           <Route path="/buscar" element={<BuscarPage />} />
+          <Route path="/catalogo" element={<CatalogoPage />} />
           <Route path="/login" element={<LoginPage />} />
 
-          {/* Protected admin routes */}
+          {/* Reservation flow (requires any auth) */}
+          <Route path="/reservar/:id" element={
+            <ProtectedRoute>
+              <ReservarPage />
+            </ProtectedRoute>
+          } />
+
+          {/* Admin routes */}
           <Route
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedTypes={['admin']}>
                 <MainLayout />
               </ProtectedRoute>
             }
@@ -56,6 +72,20 @@ export default function App() {
             <Route path="/contratos" element={<ContratosPage />} />
             <Route path="/pagos" element={<PagosPage />} />
             <Route path="/mantenimientos" element={<MantenimientosPage />} />
+          </Route>
+
+          {/* Client portal routes */}
+          <Route
+            element={
+              <ProtectedRoute allowedTypes={['cliente']}>
+                <ClienteLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/mi-cuenta" element={<MiCuentaPage />} />
+            <Route path="/mis-reservas" element={<MisReservasPage />} />
+            <Route path="/mis-contratos" element={<MisContratosPage />} />
+            <Route path="/historial" element={<MisReservasPage />} />
           </Route>
 
           {/* Fallback */}

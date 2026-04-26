@@ -4,23 +4,39 @@ export const useAuthStore = create((set, get) => ({
   token: localStorage.getItem('token') || null,
   user: JSON.parse(localStorage.getItem('user') || 'null'),
   isAuthenticated: !!localStorage.getItem('token'),
+  userType: localStorage.getItem('userType') || null, // 'admin' | 'cliente'
 
-  login: (loginResponse) => {
+  login: (loginResponse, type = 'admin') => {
     const userData = {
       username: loginResponse.username,
       correo: loginResponse.correo,
       roles: loginResponse.roles,
       expiration: loginResponse.expiration,
+      // Client-specific fields
+      idCliente: loginResponse.idCliente,
+      nombreCompleto: loginResponse.nombreCompleto,
     };
     localStorage.setItem('token', loginResponse.token);
     localStorage.setItem('user', JSON.stringify(userData));
-    set({ token: loginResponse.token, user: userData, isAuthenticated: true });
+    localStorage.setItem('userType', type);
+    set({ token: loginResponse.token, user: userData, isAuthenticated: true, userType: type });
   },
 
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    set({ token: null, user: null, isAuthenticated: false });
+    localStorage.removeItem('userType');
+    set({ token: null, user: null, isAuthenticated: false, userType: null });
+  },
+
+  isAdmin: () => {
+    const { userType } = get();
+    return userType === 'admin';
+  },
+
+  isCliente: () => {
+    const { userType } = get();
+    return userType === 'cliente';
   },
 
   hasRole: (role) => {
