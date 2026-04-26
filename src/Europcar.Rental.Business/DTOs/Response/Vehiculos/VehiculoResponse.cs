@@ -1,6 +1,10 @@
-namespace Europcar.Rental.DataManagement.Models;
+namespace Europcar.Rental.Business.DTOs.Response.Vehiculos;
 
-public class VehiculoModel
+/// <summary>
+/// Respuesta completa de un vehículo para operaciones CRUD de gestión interna.
+/// Incluye campos de administración como IDs de FK, estado, observaciones y RowVersion.
+/// </summary>
+public class VehiculoResponse
 {
     public int IdVehiculo { get; set; }
     public Guid VehiculoGuid { get; set; }
@@ -23,9 +27,15 @@ public class VehiculoModel
     public bool AireAcondicionado { get; set; }
     public string EstadoOperativo { get; set; } = string.Empty;
     public string? ObservacionesGenerales { get; set; }
-    public string? ImagenUrl { get; set; }
+
+    /// <summary>
+    /// URL de la imagen referencial del vehículo. 
+    /// Puede ser actualizada desde el frontend para subir una nueva imagen.
+    /// </summary>
+    public string? ImagenReferencialUrl { get; set; }
+
     public int IdLocalizacion { get; set; }
-    public string NombreLocalizacion { get; set; } = string.Empty;
-    public string EstadoVehiculo { get; set; } = "ACT";
+    public string Localizacion { get; set; } = string.Empty;
+    public string EstadoVehiculo { get; set; } = string.Empty;
     public long RowVersion { get; set; }
 }
