@@ -24,18 +24,19 @@ public class ContratoConfiguration : IEntityTypeConfiguration<ContratoEntity>
         builder.Property(e => e.PdfUrl).HasColumnName("pdf_url").HasMaxLength(300);
         builder.Property(e => e.ObservacionesContrato).HasColumnName("observaciones_contrato").HasMaxLength(300);
         builder.Property(e => e.OrigenRegistro).HasColumnName("origen_registro").HasMaxLength(20);
-        // BaseEntity fields
-        builder.Property(e => e.EsEliminado).HasColumnName("es_eliminado");
+        // BaseEntity fields that exist in the DB table
         builder.Property(e => e.FechaRegistroUtc).HasColumnName("fecha_registro_utc");
         builder.Property(e => e.CreadoPorUsuario).HasColumnName("creado_por_usuario").HasMaxLength(100);
         builder.Property(e => e.ModificadoPorUsuario).HasColumnName("modificado_por_usuario").HasMaxLength(100);
         builder.Property(e => e.FechaModificacionUtc).HasColumnName("fecha_modificacion_utc");
         builder.Property(e => e.ModificadoDesdeIp).HasColumnName("modificado_desde_ip").HasMaxLength(45);
         builder.Property(e => e.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
+        // BaseEntity fields NOT in the DB table — ignore them
+        builder.Ignore(e => e.EsEliminado);
+        // Navigation
         builder.HasOne(e => e.Reserva).WithMany().HasForeignKey(e => e.IdReserva);
         builder.HasOne(e => e.Cliente).WithMany().HasForeignKey(e => e.IdCliente);
         builder.HasOne(e => e.Vehiculo).WithMany().HasForeignKey(e => e.IdVehiculo);
-        builder.HasQueryFilter(e => !e.EsEliminado);
     }
 }
 
@@ -85,18 +86,19 @@ public class PagoConfiguration : IEntityTypeConfiguration<PagoEntity>
         builder.Property(e => e.FechaPagoUtc).HasColumnName("fecha_pago_utc");
         builder.Property(e => e.ObservacionesPago).HasColumnName("observaciones_pago").HasMaxLength(300);
         builder.Property(e => e.OrigenRegistro).HasColumnName("origen_registro").HasMaxLength(20);
-        // BaseEntity fields
-        builder.Property(e => e.EsEliminado).HasColumnName("es_eliminado");
+        // BaseEntity fields that exist in the DB table
         builder.Property(e => e.CreadoPorUsuario).HasColumnName("creado_por_usuario").HasMaxLength(100);
         builder.Property(e => e.ModificadoPorUsuario).HasColumnName("modificado_por_usuario").HasMaxLength(100);
         builder.Property(e => e.FechaModificacionUtc).HasColumnName("fecha_modificacion_utc");
-        builder.Property(e => e.ModificadoDesdeIp).HasColumnName("modificado_desde_ip").HasMaxLength(45);
         builder.Property(e => e.FechaRegistroUtc).HasColumnName("fecha_registro_utc");
         builder.Property(e => e.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
+        // BaseEntity fields NOT in the DB table — ignore them
+        builder.Ignore(e => e.EsEliminado);
+        builder.Ignore(e => e.ModificadoDesdeIp);
+        // Navigation
         builder.HasOne(e => e.Reserva).WithMany().HasForeignKey(e => e.IdReserva);
         builder.HasOne(e => e.Contrato).WithMany(c => c.Pagos).HasForeignKey(e => e.IdContrato);
         builder.HasOne(e => e.Cliente).WithMany().HasForeignKey(e => e.IdCliente);
-        builder.HasQueryFilter(e => !e.EsEliminado);
     }
 }
 
@@ -125,7 +127,7 @@ public class FacturaConfiguration : IEntityTypeConfiguration<FacturaEntity>
         builder.Property(e => e.CreadoPorUsuario).HasColumnName("creado_por_usuario").HasMaxLength(100);
         builder.Property(e => e.ModificadoPorUsuario).HasColumnName("modificado_por_usuario").HasMaxLength(100);
         builder.Property(e => e.FechaModificacionUtc).HasColumnName("fecha_modificacion_utc");
-        builder.Property(e => e.ModificadoDesdeIp).HasColumnName("modificado_desde_ip").HasMaxLength(45);
+        builder.Property(e => e.ModificadoDesdeIp).HasColumnName("modificacion_ip").HasMaxLength(45);
         builder.Property(e => e.ServicioOrigen).HasColumnName("servicio_origen").HasMaxLength(50);
         builder.Property(e => e.MotivoInhabilitacion).HasColumnName("motivo_inhabilitacion").HasMaxLength(250);
         builder.Property(e => e.RowVersion).HasColumnName("row_version").IsConcurrencyToken();
