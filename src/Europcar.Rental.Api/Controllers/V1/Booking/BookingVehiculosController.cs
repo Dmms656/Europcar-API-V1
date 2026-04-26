@@ -29,18 +29,8 @@ public class BookingVehiculosController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> BuscarVehiculos([FromQuery] BookingBuscarVehiculosRequest request)
     {
-        try
-        {
-            var result = await _bookingService.BuscarVehiculosAsync(request);
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            var detail = $"{ex.GetType().Name}: {ex.Message}";
-            if (ex.InnerException != null)
-                detail += $" | Inner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}";
-            return StatusCode(500, new { error = detail, stack = ex.StackTrace?.Substring(0, System.Math.Min(500, ex.StackTrace?.Length ?? 0)) });
-        }
+        var result = await _bookingService.BuscarVehiculosAsync(request);
+        return Ok(result);
     }
 
     /// <summary>
