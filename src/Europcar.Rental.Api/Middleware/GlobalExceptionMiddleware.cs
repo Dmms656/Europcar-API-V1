@@ -55,7 +55,9 @@ public class GlobalExceptionMiddleware
                 response.StatusCode = (int)HttpStatusCode.InternalServerError;
                 errorResponse.StatusCode = (int)HttpStatusCode.InternalServerError;
                 errorResponse.Message = "Ha ocurrido un error interno en el servidor";
-                errorResponse.Detail = exception.InnerException?.Message ?? exception.Message;
+                errorResponse.Detail = $"{exception.GetType().Name}: {exception.Message}";
+                if (exception.InnerException != null)
+                    errorResponse.Detail += $" --> {exception.InnerException.GetType().Name}: {exception.InnerException.Message}";
                 _logger.LogError(exception, "Unhandled exception: {Message}", exception.InnerException?.Message ?? exception.Message);
                 break;
         }

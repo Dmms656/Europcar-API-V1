@@ -29,7 +29,7 @@ export default function HomePage() {
         bookingApi.buscarVehiculos({ page: 1, limit: 6 }),
       ]);
       if (locRes.status === 'fulfilled') setLocalizaciones(locRes.value.data?.data?.localizaciones || []);
-      if (catRes.status === 'fulfilled') setCategorias(catRes.value.data?.data || []);
+      if (catRes.status === 'fulfilled') setCategorias(catRes.value.data?.data?.categorias || []);
       if (vehRes.status === 'fulfilled') setVehiculosDestacados(vehRes.value.data?.data?.vehiculos || []);
     } catch (e) {
       console.error('Error loading homepage data:', e);
