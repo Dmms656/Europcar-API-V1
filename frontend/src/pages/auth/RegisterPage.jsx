@@ -80,7 +80,7 @@ export default function RegisterPage() {
     }
   };
 
-  const F = ({ field, children }) => (
+  const renderField = (field, children) => (
     <div className={`form-group ${touched[field] && errors[field] ? 'form-group--error' : ''}`}>
       {children}
       {touched[field] && errors[field] && <span className="form-error"><AlertCircle size={13} /> {errors[field]}</span>}
@@ -138,28 +138,28 @@ export default function RegisterPage() {
           {mode === 'nuevo' && (
             <>
               <div className="register-row">
-                <F field="nombre">
+                {renderField('nombre', <>
                   <label className="form-label"><User size={14} /> Nombre *</label>
                   <input className="form-input" placeholder="Juan" value={form.nombre}
                     onChange={(e) => updateField('nombre', e.target.value)} onBlur={() => handleBlur('nombre')} />
-                </F>
-                <F field="apellido">
+                </>)}
+                {renderField('apellido', <>
                   <label className="form-label">Apellido *</label>
                   <input className="form-input" placeholder="Pérez" value={form.apellido}
                     onChange={(e) => updateField('apellido', e.target.value)} onBlur={() => handleBlur('apellido')} />
-                </F>
+                </>)}
               </div>
-              <F field="cedula">
+              {renderField('cedula', <>
                 <label className="form-label">Cédula / Pasaporte *</label>
                 <input className="form-input" placeholder="1712345678" value={form.cedula}
                   onChange={(e) => updateField('cedula', e.target.value)} onBlur={() => handleBlur('cedula')} />
-              </F>
+              </>)}
               <div className="register-row">
-                <F field="telefono">
+                {renderField('telefono', <>
                   <label className="form-label"><Phone size={14} /> Teléfono</label>
                   <input className="form-input" placeholder="+593 99 999 9999" value={form.telefono}
                     onChange={(e) => updateField('telefono', e.target.value)} onBlur={() => handleBlur('telefono')} />
-                </F>
+                </>)}
                 <div className="form-group">
                   <label className="form-label"><MapPin size={14} /> Dirección</label>
                   <input className="form-input" placeholder="Av. Principal 123" value={form.direccion}
@@ -171,24 +171,24 @@ export default function RegisterPage() {
           )}
 
           {mode === 'existente' && (
-            <F field="idClienteExistente">
+            renderField('idClienteExistente', <>
               <label className="form-label">Cédula o ID de Cliente *</label>
               <input className="form-input" placeholder="1712345678 o CLT-001" value={form.idClienteExistente}
                 onChange={(e) => updateField('idClienteExistente', e.target.value)} onBlur={() => handleBlur('idClienteExistente')} />
-            </F>
+            </>)
           )}
 
-          <F field="username">
+          {renderField('username', <>
             <label className="form-label"><User size={14} /> Nombre de Usuario *</label>
             <input className="form-input" placeholder="juan.perez" value={form.username}
               onChange={(e) => updateField('username', e.target.value)} onBlur={() => handleBlur('username')} />
-          </F>
-          <F field="correo">
+          </>)}
+          {renderField('correo', <>
             <label className="form-label"><Mail size={14} /> Correo Electrónico *</label>
             <input className="form-input" type="email" placeholder="juan@ejemplo.com" value={form.correo}
               onChange={(e) => updateField('correo', e.target.value)} onBlur={() => handleBlur('correo')} />
-          </F>
-          <F field="password">
+          </>)}
+          {renderField('password', <>
             <label className="form-label">Contraseña *</label>
             <div className="form-input-wrapper">
               <input type={showPassword ? 'text' : 'password'} className="form-input"
@@ -199,13 +199,13 @@ export default function RegisterPage() {
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
-          </F>
-          <F field="confirmPassword">
+          </>)}
+          {renderField('confirmPassword', <>
             <label className="form-label">Confirmar Contraseña *</label>
             <input type="password" className="form-input" placeholder="Repite tu contraseña"
               value={form.confirmPassword}
               onChange={(e) => updateField('confirmPassword', e.target.value)} onBlur={() => handleBlur('confirmPassword')} />
-          </F>
+          </>)}
 
           <button type="submit" className="btn btn--primary btn--full" disabled={loading}>
             {loading ? (
