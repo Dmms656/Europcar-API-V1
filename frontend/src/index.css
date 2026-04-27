@@ -1185,3 +1185,100 @@ input, select, textarea { font-family: inherit; }
   padding-top: 0;
 }
 
+/* =============================================
+   Dashboard
+   ============================================= */
+.dashboard {
+  padding: var(--spacing-lg);
+}
+.dashboard__welcome {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xl);
+}
+.dashboard__welcome h1 {
+  font-size: 1.5rem;
+  margin-bottom: 4px;
+}
+.dashboard__welcome p {
+  color: var(--color-text-secondary);
+}
+.dashboard__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+.dashboard-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  color: var(--color-text);
+  transition: all 0.2s;
+}
+.dashboard-card:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+.dashboard-card__icon {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.dashboard-card__content h3 {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 2px;
+}
+.dashboard-card__content p {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+.dashboard-card__value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-text);
+}
+.dashboard__info {
+  max-width: 480px;
+}
+.info-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+}
+.info-card h3 {
+  margin-bottom: var(--spacing-md);
+  font-size: 1rem;
+}
+.info-card__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.info-card__row:last-child { border-bottom: none; }
+.info-card__row span { color: var(--color-text-secondary); }
+.info-card__badges { display: flex; gap: 6px; }
+
+/* Module page actions group */
+.module-page__actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+

@@ -4,7 +4,7 @@ import { vehiculosApi } from '../../api/vehiculosApi';
 import { clientesApi } from '../../api/clientesApi';
 import { catalogosApi } from '../../api/catalogosApi';
 import { toast } from 'sonner';
-import { Plus, Search, Eye, CheckCircle, XCircle, Loader2, CalendarCheck, X } from 'lucide-react';
+import { Plus, Search, CheckCircle, XCircle, Loader2, CalendarCheck, X, RefreshCw } from 'lucide-react';
 
 export default function ReservasPage() {
   const [reservas, setReservas] = useState([]);
@@ -15,7 +15,6 @@ export default function ReservasPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [showDetail, setShowDetail] = useState(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     idCliente: '', idVehiculo: '', idLocalizacionRecogida: '', idLocalizacionDevolucion: '',
@@ -31,10 +30,28 @@ export default function ReservasPage() {
         clientesApi.getAll(), vehiculosApi.getDisponibles({}),
         catalogosApi.getLocalizaciones(), catalogosApi.getExtras(),
       ]);
-      setClientes(cRes.data?.data || []);
+      const clientesList = cRes.data?.data || [];
+      setClientes(clientesList);
       setVehiculos(vRes.data?.data || []);
       setLocalizaciones(lRes.data?.data || []);
       setExtras(eRes.data?.data || []);
+
+      // Auto-load reservas for all clients
+      const allReservas = [];
+      const seenIds = new Set();
+      for (const c of clientesList.slice(0, 20)) { // limit to avoid too many requests
+        try {
+          const res = await reservasApi.getByCliente(c.idCliente);
+          const data = res.data?.data || [];
+          data.forEach(r => {
+            if (!seenIds.has(r.idReserva)) {
+              seenIds.add(r.idReserva);
+              allReservas.push(r);
+            }
+          });
+        } catch (_) { /* skip */ }
+      }
+      setReservas(allReservas);
     } catch (e) { toast.error('Error al cargar datos'); }
     finally { setLoading(false); }
   };
@@ -54,6 +71,7 @@ export default function ReservasPage() {
   };
 
   const buscarPorCliente = async (idCliente) => {
+    if (!idCliente) { loadAll(); return; }
     setLoading(true);
     try {
       const res = await reservasApi.getByCliente(idCliente);
@@ -75,18 +93,19 @@ export default function ReservasPage() {
       const res = await reservasApi.create(payload);
       toast.success(`Reserva creada: ${res.data?.data?.codigoReserva || 'OK'}`);
       setShowModal(false);
+      loadAll();
     } catch (e) { toast.error(e.response?.data?.message || 'Error al crear reserva'); }
     finally { setSaving(false); }
   };
 
   const confirmar = async (id) => {
-    try { await reservasApi.confirmar(id); toast.success('Reserva confirmada'); }
+    try { await reservasApi.confirmar(id); toast.success('Reserva confirmada'); loadAll(); }
     catch (e) { toast.error(e.response?.data?.message || 'Error'); }
   };
 
   const cancelar = async (id) => {
     if (!confirm('¿Cancelar esta reserva?')) return;
-    try { await reservasApi.cancelar(id, 'Cancelado desde panel'); toast.success('Reserva cancelada'); }
+    try { await reservasApi.cancelar(id, 'Cancelado desde panel'); toast.success('Reserva cancelada'); loadAll(); }
     catch (e) { toast.error(e.response?.data?.message || 'Error'); }
   };
 
@@ -96,22 +115,25 @@ export default function ReservasPage() {
   return (
     <div className="module-page">
       <div className="module-page__header">
-        <div><h1><CalendarCheck size={24} /> Reservas</h1><p>Gestión de reservas</p></div>
-        <button className="btn btn--primary" onClick={() => setShowModal(true)}><Plus size={16} /> Nueva Reserva</button>
+        <div><h1><CalendarCheck size={24} /> Reservas</h1><p>{reservas.length} reservas encontradas</p></div>
+        <div className="module-page__actions">
+          <button className="btn btn--outline btn--sm" onClick={loadAll}><RefreshCw size={16} /> Recargar</button>
+          <button className="btn btn--primary" onClick={() => setShowModal(true)}><Plus size={16} /> Nueva Reserva</button>
+        </div>
       </div>
       <div className="module-page__toolbar">
         <div className="search-box"><Search size={16} />
           <input placeholder="Buscar por código de reserva..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && buscarReserva()} />
         </div>
-        <select className="form-input" style={{maxWidth:250}} onChange={(e) => e.target.value && buscarPorCliente(e.target.value)}>
-          <option value="">Filtrar por cliente...</option>
+        <select className="form-input" style={{maxWidth:250}} onChange={(e) => buscarPorCliente(e.target.value)}>
+          <option value="">Todos los clientes</option>
           {clientes.map(c => <option key={c.idCliente} value={c.idCliente}>{c.nombreCompleto}</option>)}
         </select>
       </div>
       {loading ? (
-        <div className="module-loading"><Loader2 size={24} className="spin" /> Cargando...</div>
+        <div className="module-loading"><Loader2 size={24} className="spin" /> Cargando reservas...</div>
       ) : reservas.length === 0 ? (
-        <div className="module-loading">Busca una reserva por código o filtra por cliente para ver resultados.</div>
+        <div className="module-loading">No se encontraron reservas.</div>
       ) : (
         <div className="data-table-wrapper">
           <table className="data-table">
@@ -123,7 +145,7 @@ export default function ReservasPage() {
                 <tr key={r.idReserva || r.codigoReserva}>
                   <td><code>{r.codigoReserva}</code></td>
                   <td>{r.nombreCliente || r.cliente}</td>
-                  <td>{r.vehiculo || r.descripcionVehiculo}</td>
+                  <td>{r.vehiculo || r.descripcionVehiculo || `${r.placaVehiculo || ''}`}</td>
                   <td>{r.fechaHoraRecogida ? new Date(r.fechaHoraRecogida).toLocaleDateString() : '-'}</td>
                   <td>{r.fechaHoraDevolucion ? new Date(r.fechaHoraDevolucion).toLocaleDateString() : '-'}</td>
                   <td><strong>${Number(r.totalReserva || r.total || 0).toFixed(2)}</strong></td>
