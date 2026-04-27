@@ -2,7 +2,7 @@ import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useAppStore } from '../../store/useAppStore';
 import {
-  User, CalendarCheck, FileText, Clock,
+  User, CalendarCheck, FileText, Clock, ReceiptText,
   LogOut, ChevronRight, ShoppingBag
 } from 'lucide-react';
 
@@ -10,6 +10,7 @@ const navigation = [
   { name: 'Mi Cuenta', path: '/mi-cuenta', icon: User },
   { name: 'Mis Reservas', path: '/mis-reservas', icon: CalendarCheck },
   { name: 'Mis Contratos', path: '/mis-contratos', icon: FileText },
+  { name: 'Mis Facturas', path: '/mis-facturas', icon: ReceiptText },
   { name: 'Historial', path: '/historial', icon: Clock },
 ];
 

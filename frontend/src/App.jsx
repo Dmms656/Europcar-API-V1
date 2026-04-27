@@ -28,6 +28,7 @@ import UsuariosPage from './pages/usuarios/UsuariosPage';
 import MiCuentaPage from './pages/cliente/MiCuentaPage';
 import MisReservasPage from './pages/cliente/MisReservasPage';
 import MisContratosPage from './pages/cliente/MisContratosPage';
+import MisFacturasPage from './pages/cliente/MisFacturasPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -98,6 +99,7 @@ export default function App() {
             <Route path="/mi-cuenta" element={<MiCuentaPage />} />
             <Route path="/mis-reservas" element={<MisReservasPage />} />
             <Route path="/mis-contratos" element={<MisContratosPage />} />
+            <Route path="/mis-facturas" element={<MisFacturasPage />} />
             <Route path="/historial" element={<MisReservasPage />} />
           </Route>
 

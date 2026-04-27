@@ -2,6 +2,7 @@ using Europcar.Rental.DataAccess.Context;
 using Europcar.Rental.DataAccess.Entities.Rental;
 using Europcar.Rental.DataManagement.Interfaces;
 using Europcar.Rental.DataManagement.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace Europcar.Rental.DataManagement.Services;
 
@@ -26,6 +27,30 @@ public class FacturaDataService : IFacturaDataService
         model.IdFactura = entity.IdFactura;
         model.FacturaGuid = entity.FacturaGuid;
         return model;
+    }
+
+    public async Task<IEnumerable<FacturaResumenModel>> GetByClienteIdAsync(int idCliente)
+    {
+        return await _context.Facturas
+            .AsNoTracking()
+            .Where(f => f.IdCliente == idCliente)
+            .OrderByDescending(f => f.FechaEmision)
+            .Select(f => new FacturaResumenModel
+            {
+                IdFactura = f.IdFactura,
+                NumeroFactura = f.NumeroFactura,
+                FechaEmision = f.FechaEmision,
+                Subtotal = f.Subtotal,
+                ValorIva = f.ValorIva,
+                Total = f.Total,
+                EstadoFactura = f.EstadoFactura,
+                ServicioOrigen = f.ServicioOrigen,
+                IdReserva = f.IdReserva,
+                CodigoReserva = f.Reserva != null ? f.Reserva.CodigoReserva : null,
+                IdContrato = f.IdContrato,
+                NumeroContrato = f.Contrato != null ? f.Contrato.NumeroContrato : null
+            })
+            .ToListAsync();
     }
 
     private static FacturaEntity BuildEntity(FacturaModel model, string usuario) => new()

@@ -6,4 +6,5 @@ public interface IFacturaDataService
 {
     Task<FacturaModel> AddAsync(FacturaModel model, string usuario);
     Task<FacturaModel> CreateAsync(FacturaModel model, string usuario);
+    Task<IEnumerable<FacturaResumenModel>> GetByClienteIdAsync(int idCliente);
 }
