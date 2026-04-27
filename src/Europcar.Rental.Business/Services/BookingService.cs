@@ -53,17 +53,29 @@ public class BookingService : IBookingService
             lista = lista.Where(v => v.TipoTransmision.Equals(request.Transmision, StringComparison.OrdinalIgnoreCase)).ToList();
 
         // Excluir vehículos con reservas solapadas en las fechas solicitadas
+        // Skip overlap check if no dates provided (e.g. homepage featured vehicles)
+        var hasFechas = request.FechaRecogida != default && request.FechaDevolucion != default
+                        && request.FechaDevolucion > request.FechaRecogida;
         var disponibles = new List<VehiculoModel>();
         foreach (var v in lista)
         {
-            var solapado = await _reservaDataService.ExisteSolapamientoAsync(
-                v.IdVehiculo, request.FechaRecogida, request.FechaDevolucion);
-            if (!solapado)
+            if (hasFechas)
+            {
+                var solapado = await _reservaDataService.ExisteSolapamientoAsync(
+                    v.IdVehiculo, request.FechaRecogida, request.FechaDevolucion);
+                if (!solapado)
+                    disponibles.Add(v);
+            }
+            else
+            {
                 disponibles.Add(v);
+            }
         }
 
         // Calcular días de alquiler (mínimo 1)
-        var dias = Math.Max(1, (int)Math.Ceiling((request.FechaDevolucion - request.FechaRecogida).TotalDays));
+        var dias = hasFechas
+            ? Math.Max(1, (int)Math.Ceiling((request.FechaDevolucion - request.FechaRecogida).TotalDays))
+            : 1;
 
         // Ordenar por precio
         disponibles = request.Sort?.ToLowerInvariant() == "precio_desc"
