@@ -117,17 +117,25 @@ public class ReservaDataService : IReservaDataService
 
     public async Task UpdateEstadoAsync(int id, string estado, string usuario, string? motivo = null)
     {
-        var entity = await _context.Reservas.FindAsync(id);
-        if (entity != null)
+        // Use ExecuteUpdateAsync to bypass the change tracker entirely.
+        // This avoids deadlocks when PagoEntity with FK to this reserva is in the same context.
+        var query = _context.Reservas.Where(r => r.IdReserva == id);
+
+        if (estado == "CANCELADA")
         {
-            entity.EstadoReserva = estado;
-            entity.ModificadoPorUsuario = usuario;
-            entity.FechaModificacionUtc = DateTimeOffset.UtcNow;
-            if (estado == "CANCELADA")
-            {
-                entity.FechaCancelacionUtc = DateTimeOffset.UtcNow;
-                entity.MotivoCancelacion = motivo;
-            }
+            await query.ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.EstadoReserva, estado)
+                .SetProperty(r => r.ModificadoPorUsuario, usuario)
+                .SetProperty(r => r.FechaModificacionUtc, DateTimeOffset.UtcNow)
+                .SetProperty(r => r.FechaCancelacionUtc, DateTimeOffset.UtcNow)
+                .SetProperty(r => r.MotivoCancelacion, motivo));
+        }
+        else
+        {
+            await query.ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.EstadoReserva, estado)
+                .SetProperty(r => r.ModificadoPorUsuario, usuario)
+                .SetProperty(r => r.FechaModificacionUtc, DateTimeOffset.UtcNow));
         }
     }
 

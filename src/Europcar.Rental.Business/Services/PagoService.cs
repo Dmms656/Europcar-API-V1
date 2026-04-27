@@ -87,14 +87,21 @@ public class PagoService : IPagoService
             ObservacionesFactura = $"Factura automática - Pago {codigo}",
         }, usuario);
 
-        // 3. Update reserva status in context (NO save yet)
+        // 3. Save pago + factura in one DB roundtrip
+        await _unitOfWork.SaveChangesAsync();
+
+        // 4. Update reserva status via direct SQL (ExecuteUpdateAsync - bypasses change tracker)
         if (request.IdReserva.HasValue)
         {
-            await _reservaDataService.UpdateEstadoAsync(request.IdReserva.Value, "CONFIRMADA", usuario);
+            try
+            {
+                await _reservaDataService.UpdateEstadoAsync(request.IdReserva.Value, "CONFIRMADA", usuario);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[WARN] Error confirmando reserva: {ex.Message}");
+            }
         }
-
-        // 4. SINGLE SaveChanges — one DB roundtrip for ALL three operations
-        await _unitOfWork.SaveChangesAsync();
 
         return new PagoResponse
         {
