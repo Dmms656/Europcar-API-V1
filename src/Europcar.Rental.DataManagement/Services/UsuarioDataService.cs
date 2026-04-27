@@ -93,19 +93,50 @@ public class UsuarioDataService : IUsuarioDataService
     public async Task AssignRoleAsync(int idUsuario, string roleName)
     {
         var role = await _context.Roles.FirstOrDefaultAsync(r => r.NombreRol == roleName);
-        if (role == null) return;
 
-        var userRole = new Europcar.Rental.DataAccess.Entities.Security.UsuarioRolEntity
+        // Auto-create the role if it doesn't exist
+        if (role == null)
         {
-            IdUsuario = idUsuario,
-            IdRol = role.IdRol,
-            EstadoUsuarioRol = "ACT",
-            Activo = true,
-            CreadoPorUsuario = "REGISTRO_WEB",
-            ModificadoPorUsuario = "REGISTRO_WEB"
-        };
+            role = new Europcar.Rental.DataAccess.Entities.Security.RolEntity
+            {
+                RolGuid = Guid.NewGuid(),
+                NombreRol = roleName,
+                DescripcionRol = $"Rol {roleName} auto-creado",
+                EsSistema = true,
+                EstadoRol = "ACT",
+                CreadoPorUsuario = "SYSTEM_SEED"
+            };
+            _context.Roles.Add(role);
+            await _context.SaveChangesAsync();
+        }
 
-        _context.UsuariosRoles.Add(userRole);
+        // Check if assignment already exists (including soft-deleted)
+        var existing = await _context.UsuariosRoles
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(ur => ur.IdUsuario == idUsuario && ur.IdRol == role.IdRol);
+
+        if (existing != null)
+        {
+            // Reactivate if it was soft-deleted
+            existing.Activo = true;
+            existing.EstadoUsuarioRol = "ACT";
+            existing.EsEliminado = false;
+            existing.ModificadoPorUsuario = "REGISTRO_WEB";
+            existing.FechaModificacionUtc = DateTimeOffset.UtcNow;
+        }
+        else
+        {
+            _context.UsuariosRoles.Add(new Europcar.Rental.DataAccess.Entities.Security.UsuarioRolEntity
+            {
+                IdUsuario = idUsuario,
+                IdRol = role.IdRol,
+                EstadoUsuarioRol = "ACT",
+                Activo = true,
+                CreadoPorUsuario = "REGISTRO_WEB",
+                ModificadoPorUsuario = "REGISTRO_WEB"
+            });
+        }
+
         await _context.SaveChangesAsync();
     }
 
