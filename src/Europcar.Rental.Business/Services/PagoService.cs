@@ -94,18 +94,19 @@ public class PagoService : IPagoService
             Console.WriteLine($"[WARN] Error preparando factura: {ex.Message}");
         }
 
-        // Step 3: Confirm reservation (just updates in context, no save yet)
-        if (request.IdReserva.HasValue)
-        {
-            try
-            {
-                await _reservaDataService.UpdateEstadoAsync(request.IdReserva.Value, "CONFIRMADA", usuario);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[WARN] Error confirmando reserva: {ex.Message}");
-            }
-        }
+        // Step 3: Confirm reservation (just updates - Auto-confirm reservation if it exists
+        // Note: Reservation confirmation moved to a separate step to avoid deadlocks
+        // if (request.IdReserva.HasValue)
+        // {
+        //     try
+        //     {
+        //         await _reservaDataService.UpdateEstadoAsync(request.IdReserva.Value, "CONFIRMADA", usuario);
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         Console.WriteLine($"[WARN] Error confirmando reserva: {ex.Message}");
+        //     }
+        // }
 
         // Step 4: Single SaveChanges for ALL operations (pago + factura + reserva update)
         await _unitOfWork.SaveChangesAsync();
