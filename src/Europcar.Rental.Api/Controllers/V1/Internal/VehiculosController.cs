@@ -36,6 +36,7 @@ public class VehiculosController : ControllerBase
     /// Buscar vehículos disponibles con filtros opcionales.
     /// </summary>
     [HttpGet("disponibles")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetDisponibles([FromQuery] BuscarVehiculosRequest request)
     {
         var result = await _vehiculoService.GetDisponiblesAsync(request);
@@ -46,6 +47,7 @@ public class VehiculosController : ControllerBase
     /// Obtener detalle de un vehículo por ID.
     /// </summary>
     [HttpGet("{id:int}")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetById(int id)
     {
         var result = await _vehiculoService.GetByIdAsync(id);
