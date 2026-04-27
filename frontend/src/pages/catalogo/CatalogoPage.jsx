@@ -76,11 +76,7 @@ export default function CatalogoPage() {
   }, [vehiculos, searchTerm, filtros]);
 
   const handleReservar = (vehiculo) => {
-    if (!isAuthenticated) {
-      navigate('/login', { state: { from: { pathname: `/reservar/${vehiculo.idVehiculo}` } } });
-    } else {
-      navigate(`/reservar/${vehiculo.idVehiculo}`);
-    }
+    navigate(`/reservar/${vehiculo.idVehiculo}`);
   };
 
   const clearFilters = () => {
