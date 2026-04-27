@@ -22,6 +22,17 @@ public class MantenimientosController : ControllerBase
     }
 
     /// <summary>
+    /// Obtener todos los mantenimientos.
+    /// </summary>
+    [HttpGet]
+    [Authorize(Roles = "ADMIN,AGENTE_POS")]
+    public async Task<IActionResult> GetAll()
+    {
+        var result = await _mantenimientoService.GetAllAsync();
+        return Ok(ApiResponse<object>.Ok(result));
+    }
+
+    /// <summary>
     /// Obtener un mantenimiento por su ID.
     /// </summary>
     [HttpGet("{id:int}")]

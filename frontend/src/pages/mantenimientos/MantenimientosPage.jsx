@@ -1,26 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { mantenimientosApi } from '../../api/mantenimientosApi';
 import { toast } from 'sonner';
-import { Wrench, Search, Plus, X, Loader2, CheckCircle } from 'lucide-react';
+import { Wrench, Search, Plus, X, Loader2, CheckCircle, RefreshCw } from 'lucide-react';
 
 export default function MantenimientosPage() {
   const [mantenimientos, setMantenimientos] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [searchVehiculo, setSearchVehiculo] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     idVehiculo: '', tipoMantenimiento: 'PREVENTIVO', descripcion: '', costoEstimado: '',
   });
 
-  const buscarPorVehiculo = async () => {
-    if (!searchVehiculo.trim()) return;
+  useEffect(() => { loadMantenimientos(); }, []);
+
+  const loadMantenimientos = async () => {
     setLoading(true);
     try {
-      const res = await mantenimientosApi.getByVehiculo(searchVehiculo.trim());
+      const res = await mantenimientosApi.getAll();
       setMantenimientos(res.data?.data || []);
-      if ((res.data?.data || []).length === 0) toast.info('No se encontraron mantenimientos');
-    } catch (e) { toast.error('Error buscando mantenimientos'); setMantenimientos([]); }
+    } catch (e) { toast.error('Error al cargar mantenimientos'); }
     finally { setLoading(false); }
   };
 
@@ -30,7 +30,7 @@ export default function MantenimientosPage() {
       await mantenimientosApi.create({ ...form, idVehiculo: Number(form.idVehiculo), costoEstimado: Number(form.costoEstimado) });
       toast.success('Mantenimiento registrado');
       setShowModal(false);
-      if (searchVehiculo) buscarPorVehiculo();
+      loadMantenimientos();
     } catch (e) { toast.error(e.response?.data?.message || 'Error'); }
     finally { setSaving(false); }
   };
@@ -40,48 +40,59 @@ export default function MantenimientosPage() {
     try {
       await mantenimientosApi.cerrar(id, {});
       toast.success('Mantenimiento cerrado');
-      if (searchVehiculo) buscarPorVehiculo();
+      loadMantenimientos();
     } catch (e) { toast.error(e.response?.data?.message || 'Error'); }
   };
+
+  const filtered = mantenimientos.filter(m => {
+    const text = `${m.codigoMantenimiento || ''} ${m.placaVehiculo || ''} ${m.tipoMantenimiento || ''} ${m.estadoMantenimiento || ''}`.toLowerCase();
+    return text.includes(search.toLowerCase());
+  });
 
   return (
     <div className="module-page">
       <div className="module-page__header">
-        <div><h1><Wrench size={24} /> Mantenimientos</h1><p>Gestión de mantenimientos vehiculares</p></div>
-        <button className="btn btn--primary" onClick={() => setShowModal(true)}><Plus size={16} /> Nuevo Mantenimiento</button>
+        <div><h1><Wrench size={24} /> Mantenimientos</h1><p>{mantenimientos.length} mantenimientos registrados</p></div>
+        <div className="module-page__actions">
+          <button className="btn btn--outline btn--sm" onClick={loadMantenimientos} disabled={loading}>
+            <RefreshCw size={16} className={loading ? 'spin' : ''} /> Recargar
+          </button>
+          <button className="btn btn--primary" onClick={() => setShowModal(true)}><Plus size={16} /> Nuevo Mantenimiento</button>
+        </div>
       </div>
       <div className="module-page__toolbar">
         <div className="search-box"><Search size={16} />
-          <input placeholder="ID de vehículo..." value={searchVehiculo} onChange={(e) => setSearchVehiculo(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && buscarPorVehiculo()} />
+          <input placeholder="Buscar por código, placa, tipo o estado..." value={search}
+            onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <button className="btn btn--outline btn--sm" onClick={buscarPorVehiculo}>Buscar</button>
       </div>
       {loading ? (
-        <div className="module-loading"><Loader2 size={24} className="spin" /> Cargando...</div>
-      ) : mantenimientos.length === 0 ? (
-        <div className="module-loading">Ingresa un ID de vehículo para ver sus mantenimientos.</div>
+        <div className="module-loading"><Loader2 size={24} className="spin" /> Cargando mantenimientos...</div>
       ) : (
         <div className="data-table-wrapper">
           <table className="data-table">
-            <thead><tr><th>ID</th><th>Vehículo</th><th>Tipo</th><th>Descripción</th><th>Costo</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Código</th><th>Vehículo</th><th>Tipo</th><th>Descripción</th><th>Costo</th><th>Inicio</th><th>Fin</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody>
-              {mantenimientos.map(m => (
+              {filtered.map(m => (
                 <tr key={m.idMantenimiento}>
-                  <td>{m.idMantenimiento}</td>
-                  <td>{m.idVehiculo}</td>
+                  <td><code>{m.codigoMantenimiento}</code></td>
+                  <td><strong>{m.placaVehiculo || `#${m.idVehiculo || '-'}`}</strong></td>
                   <td><span className="badge badge--outline">{m.tipoMantenimiento}</span></td>
-                  <td>{m.descripcion || '-'}</td>
-                  <td>${Number(m.costoEstimado || m.costo || 0).toFixed(2)}</td>
-                  <td>{m.fechaInicio ? new Date(m.fechaInicio).toLocaleDateString() : '-'}</td>
-                  <td><span className={`status-badge status-badge--${m.estadoMantenimiento === 'COMPLETADO' ? 'success' : 'warning'}`}>{m.estadoMantenimiento}</span></td>
+                  <td>{m.observaciones || '-'}</td>
+                  <td>${Number(m.costoMantenimiento || 0).toFixed(2)}</td>
+                  <td>{m.fechaInicioUtc ? new Date(m.fechaInicioUtc).toLocaleDateString() : '-'}</td>
+                  <td>{m.fechaFinUtc ? new Date(m.fechaFinUtc).toLocaleDateString() : '-'}</td>
+                  <td><span className={`status-badge status-badge--${m.estadoMantenimiento === 'CERRADO' ? 'success' : 'warning'}`}>{m.estadoMantenimiento}</span></td>
                   <td className="table-actions">
-                    {m.estadoMantenimiento !== 'COMPLETADO' && (
-                      <button className="icon-btn icon-btn--success" onClick={() => cerrar(m.idMantenimiento)} title="Cerrar"><CheckCircle size={15} /></button>
+                    {m.estadoMantenimiento !== 'CERRADO' && (
+                      <button className="icon-btn icon-btn--success" onClick={() => cerrar(m.idMantenimiento)} title="Cerrar">
+                        <CheckCircle size={15} />
+                      </button>
                     )}
                   </td>
                 </tr>
               ))}
+              {filtered.length === 0 && <tr><td colSpan={9} className="table-empty">No hay mantenimientos</td></tr>}
             </tbody>
           </table>
         </div>

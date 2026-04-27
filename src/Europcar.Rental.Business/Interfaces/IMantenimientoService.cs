@@ -20,6 +20,7 @@ namespace Europcar.Rental.Business.Interfaces;
 
 public interface IMantenimientoService
 {
+    Task<IEnumerable<MantenimientoResponse>> GetAllAsync();
     Task<MantenimientoResponse> GetByIdAsync(int id);
     Task<IEnumerable<MantenimientoResponse>> GetByVehiculoIdAsync(int idVehiculo);
     Task<MantenimientoResponse> CreateAsync(CrearMantenimientoRequest request, string usuario);

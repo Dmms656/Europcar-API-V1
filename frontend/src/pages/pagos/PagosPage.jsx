@@ -1,26 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { pagosApi } from '../../api/pagosApi';
 import { toast } from 'sonner';
-import { CreditCard, Search, Plus, X, Loader2 } from 'lucide-react';
+import { CreditCard, Search, Plus, X, Loader2, RefreshCw } from 'lucide-react';
 
 export default function PagosPage() {
   const [pagos, setPagos] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [searchReserva, setSearchReserva] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     idReserva: '', montoPago: '', metodoPago: 'TARJETA_CREDITO', referenciaPago: '', observaciones: '',
   });
 
-  const buscarPorReserva = async () => {
-    if (!searchReserva.trim()) return;
+  useEffect(() => { loadPagos(); }, []);
+
+  const loadPagos = async () => {
     setLoading(true);
     try {
-      const res = await pagosApi.getByReserva(searchReserva.trim());
+      const res = await pagosApi.getAll();
       setPagos(res.data?.data || []);
-      if ((res.data?.data || []).length === 0) toast.info('No se encontraron pagos para esta reserva');
-    } catch (e) { toast.error('Error buscando pagos'); setPagos([]); }
+    } catch (e) { toast.error('Error al cargar pagos'); }
     finally { setLoading(false); }
   };
 
@@ -30,44 +30,53 @@ export default function PagosPage() {
       await pagosApi.create({ ...form, idReserva: Number(form.idReserva), montoPago: Number(form.montoPago) });
       toast.success('Pago registrado');
       setShowModal(false);
-      if (searchReserva) buscarPorReserva();
+      loadPagos();
     } catch (e) { toast.error(e.response?.data?.message || 'Error al registrar pago'); }
     finally { setSaving(false); }
   };
 
+  const filtered = pagos.filter(p => {
+    const text = `${p.codigoPago || ''} ${p.codigoReserva || ''} ${p.nombreCliente || ''} ${p.metodoPago || ''}`.toLowerCase();
+    return text.includes(search.toLowerCase());
+  });
+
   return (
     <div className="module-page">
       <div className="module-page__header">
-        <div><h1><CreditCard size={24} /> Pagos</h1><p>Registro y consulta de pagos</p></div>
-        <button className="btn btn--primary" onClick={() => setShowModal(true)}><Plus size={16} /> Registrar Pago</button>
+        <div><h1><CreditCard size={24} /> Pagos</h1><p>{pagos.length} pagos registrados</p></div>
+        <div className="module-page__actions">
+          <button className="btn btn--outline btn--sm" onClick={loadPagos} disabled={loading}>
+            <RefreshCw size={16} className={loading ? 'spin' : ''} /> Recargar
+          </button>
+          <button className="btn btn--primary" onClick={() => setShowModal(true)}><Plus size={16} /> Registrar Pago</button>
+        </div>
       </div>
       <div className="module-page__toolbar">
         <div className="search-box"><Search size={16} />
-          <input placeholder="ID de reserva..." value={searchReserva} onChange={(e) => setSearchReserva(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && buscarPorReserva()} />
+          <input placeholder="Buscar por código, reserva, cliente o método..." value={search}
+            onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <button className="btn btn--outline btn--sm" onClick={buscarPorReserva}>Buscar pagos</button>
       </div>
       {loading ? (
-        <div className="module-loading"><Loader2 size={24} className="spin" /> Cargando...</div>
-      ) : pagos.length === 0 ? (
-        <div className="module-loading">Ingresa un ID de reserva para ver sus pagos.</div>
+        <div className="module-loading"><Loader2 size={24} className="spin" /> Cargando pagos...</div>
       ) : (
         <div className="data-table-wrapper">
           <table className="data-table">
-            <thead><tr><th>ID</th><th>Reserva</th><th>Monto</th><th>Método</th><th>Referencia</th><th>Fecha</th><th>Estado</th></tr></thead>
+            <thead><tr><th>Código</th><th>Reserva</th><th>Cliente</th><th>Monto</th><th>Método</th><th>Referencia</th><th>Fecha</th><th>Estado</th></tr></thead>
             <tbody>
-              {pagos.map(p => (
+              {filtered.map(p => (
                 <tr key={p.idPago}>
-                  <td>{p.idPago}</td>
-                  <td>{p.idReserva}</td>
-                  <td><strong>${Number(p.montoPago || p.monto || 0).toFixed(2)}</strong></td>
+                  <td><code>{p.codigoPago}</code></td>
+                  <td><code>{p.codigoReserva || '-'}</code></td>
+                  <td>{p.nombreCliente || '-'}</td>
+                  <td><strong>${Number(p.monto || 0).toFixed(2)}</strong></td>
                   <td><span className="badge badge--outline">{p.metodoPago}</span></td>
-                  <td>{p.referenciaPago || '-'}</td>
-                  <td>{p.fechaPago ? new Date(p.fechaPago).toLocaleDateString() : '-'}</td>
+                  <td>{p.referenciaExterna || '-'}</td>
+                  <td>{p.fechaPagoUtc ? new Date(p.fechaPagoUtc).toLocaleDateString() : '-'}</td>
                   <td><span className={`status-badge status-badge--${p.estadoPago === 'COMPLETADO' ? 'success' : 'warning'}`}>{p.estadoPago}</span></td>
                 </tr>
               ))}
+              {filtered.length === 0 && <tr><td colSpan={8} className="table-empty">No hay pagos</td></tr>}
             </tbody>
           </table>
         </div>

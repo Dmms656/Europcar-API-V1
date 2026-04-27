@@ -24,6 +24,12 @@ public class MantenimientoService : IMantenimientoService
         _unitOfWork = unitOfWork;
     }
 
+    public async Task<IEnumerable<MantenimientoResponse>> GetAllAsync()
+    {
+        var lista = await _mantenimientoDataService.GetAllAsync();
+        return lista.Select(MapToResponse);
+    }
+
     public async Task<MantenimientoResponse> GetByIdAsync(int id)
     {
         var m = await _mantenimientoDataService.GetByIdAsync(id)

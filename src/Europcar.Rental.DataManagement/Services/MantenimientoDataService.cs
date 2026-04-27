@@ -11,6 +11,15 @@ public class MantenimientoDataService : IMantenimientoDataService
     private readonly RentalDbContext _context;
     public MantenimientoDataService(RentalDbContext context) => _context = context;
 
+    public async Task<IEnumerable<MantenimientoModel>> GetAllAsync()
+    {
+        return await _context.Mantenimientos
+            .Include(m => m.Vehiculo)
+            .OrderByDescending(m => m.FechaInicioUtc)
+            .Select(m => MapToModel(m))
+            .ToListAsync();
+    }
+
     public async Task<MantenimientoModel?> GetByIdAsync(int id)
     {
         var m = await _context.Mantenimientos

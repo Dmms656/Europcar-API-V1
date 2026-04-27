@@ -11,6 +11,16 @@ public class PagoDataService : IPagoDataService
     private readonly RentalDbContext _context;
     public PagoDataService(RentalDbContext context) => _context = context;
 
+    public async Task<IEnumerable<PagoModel>> GetAllAsync()
+    {
+        return await _context.Pagos
+            .Include(p => p.Cliente)
+            .Include(p => p.Reserva)
+            .OrderByDescending(p => p.FechaPagoUtc)
+            .Select(p => MapToModel(p))
+            .ToListAsync();
+    }
+
     public async Task<PagoModel?> GetByIdAsync(int id)
     {
         var p = await _context.Pagos

@@ -20,6 +20,7 @@ namespace Europcar.Rental.Business.Interfaces;
 
 public interface IPagoService
 {
+    Task<IEnumerable<PagoResponse>> GetAllAsync();
     Task<PagoResponse> GetByIdAsync(int id);
     Task<IEnumerable<PagoResponse>> GetByReservaIdAsync(int idReserva);
     Task<PagoResponse> CreateAsync(CrearPagoRequest request, string usuario);

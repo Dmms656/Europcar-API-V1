@@ -4,6 +4,7 @@ namespace Europcar.Rental.DataManagement.Interfaces;
 
 public interface IPagoDataService
 {
+    Task<IEnumerable<PagoModel>> GetAllAsync();
     Task<PagoModel?> GetByIdAsync(int id);
     Task<IEnumerable<PagoModel>> GetByReservaIdAsync(int idReserva);
     Task<PagoModel> AddAsync(PagoModel model, string usuario);

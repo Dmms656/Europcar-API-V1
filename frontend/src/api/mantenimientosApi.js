@@ -1,6 +1,7 @@
 import api from './axiosClient';
 
 export const mantenimientosApi = {
+  getAll: () => api.get('/Mantenimientos'),
   getById: (id) => api.get(`/Mantenimientos/${id}`),
   getByVehiculo: (idVehiculo) => api.get(`/Mantenimientos/vehiculo/${idVehiculo}`),
   create: (data) => api.post('/Mantenimientos', data),

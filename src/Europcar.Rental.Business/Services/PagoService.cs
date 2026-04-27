@@ -16,6 +16,31 @@ public class PagoService : IPagoService
         _context = context;
     }
 
+    public async Task<IEnumerable<PagoResponse>> GetAllAsync()
+    {
+        return await _context.Pagos
+            .Include(p => p.Cliente)
+            .Include(p => p.Reserva)
+            .OrderByDescending(p => p.FechaPagoUtc)
+            .Select(p => new PagoResponse
+            {
+                IdPago = p.IdPago,
+                PagoGuid = p.PagoGuid,
+                CodigoPago = p.CodigoPago,
+                TipoPago = p.TipoPago,
+                MetodoPago = p.MetodoPago,
+                EstadoPago = p.EstadoPago,
+                Monto = p.Monto,
+                Moneda = p.Moneda,
+                FechaPagoUtc = p.FechaPagoUtc,
+                ReferenciaExterna = p.ReferenciaExterna,
+                NombreCliente = p.Cliente != null ? p.Cliente.CliNombre1 + " " + p.Cliente.CliApellido1 : null,
+                CodigoReserva = p.Reserva != null ? p.Reserva.CodigoReserva : null,
+                ObservacionesPago = p.ObservacionesPago
+            })
+            .ToListAsync();
+    }
+
     public async Task<PagoResponse> GetByIdAsync(int id)
     {
         var p = await _context.Pagos
