@@ -2,7 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useAppStore } from '../../store/useAppStore';
 import {
-  LayoutDashboard, Users, CalendarCheck, FileText,
+  LayoutDashboard, Users, Car, CalendarCheck, FileText,
   CreditCard, Wrench, LogOut, ChevronRight, Shield
 } from 'lucide-react';
 
