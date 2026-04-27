@@ -49,8 +49,7 @@ public class PagoDataService : IPagoDataService
             FechaPagoUtc = DateTimeOffset.UtcNow,
             ObservacionesPago = model.ObservacionesPago,
             CreadoPorUsuario = usuario,
-            OrigenRegistro = "API",
-            FechaRegistroUtc = DateTimeOffset.UtcNow
+            OrigenRegistro = "API"
         };
         await _context.Pagos.AddAsync(entity);
         await _context.SaveChangesAsync();
