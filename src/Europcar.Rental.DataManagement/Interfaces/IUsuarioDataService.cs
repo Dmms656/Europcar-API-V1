@@ -13,5 +13,6 @@ public interface IUsuarioDataService
     Task<int> CreateUserAsync(string username, string correo, string passwordHash, string passwordSalt, int? idCliente);
     Task AssignRoleAsync(int idUsuario, string roleName);
     Task UpdateEstadoAsync(int idUsuario, string estado);
+    Task UpdateRolesAsync(int idUsuario, List<string> roles);
     Task DeleteAsync(int idUsuario);
 }

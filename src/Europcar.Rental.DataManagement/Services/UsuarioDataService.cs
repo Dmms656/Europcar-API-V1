@@ -129,7 +129,7 @@ public class UsuarioDataService : IUsuarioDataService
             BloqueadoHastaUtc = u.BloqueadoHastaUtc,
             IdCliente = u.IdCliente,
             Roles = u.UsuariosRoles
-                .Where(ur => ur.Activo && ur.EstadoUsuarioRol == "ACT")
+                .Where(ur => ur.Rol != null)
                 .Select(ur => ur.Rol.NombreRol)
                 .ToList()
         });
@@ -156,7 +156,7 @@ public class UsuarioDataService : IUsuarioDataService
             BloqueadoHastaUtc = u.BloqueadoHastaUtc,
             IdCliente = u.IdCliente,
             Roles = u.UsuariosRoles
-                .Where(ur => ur.Activo && ur.EstadoUsuarioRol == "ACT")
+                .Where(ur => ur.Rol != null)
                 .Select(ur => ur.Rol.NombreRol)
                 .ToList()
         };
@@ -190,5 +190,31 @@ public class UsuarioDataService : IUsuarioDataService
             await _context.SaveChangesAsync();
         }
     }
-}
+    public async Task UpdateRolesAsync(int idUsuario, List<string> roles)
+    {
+        // Remove existing roles
+        var existingRoles = await _context.UsuariosRoles
+            .IgnoreQueryFilters()
+            .Where(ur => ur.IdUsuario == idUsuario)
+            .ToListAsync();
+        _context.UsuariosRoles.RemoveRange(existingRoles);
 
+        // Add new roles
+        foreach (var roleName in roles)
+        {
+            var role = await _context.Roles.FirstOrDefaultAsync(r => r.NombreRol == roleName);
+            if (role == null) continue;
+
+            _context.UsuariosRoles.Add(new Europcar.Rental.DataAccess.Entities.Security.UsuarioRolEntity
+            {
+                IdUsuario = idUsuario,
+                IdRol = role.IdRol,
+                EstadoUsuarioRol = "ACT",
+                Activo = true,
+                CreadoPorUsuario = "ADMIN_PANEL",
+                ModificadoPorUsuario = "ADMIN_PANEL"
+            });
+        }
+        await _context.SaveChangesAsync();
+    }
+}

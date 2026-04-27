@@ -100,6 +100,16 @@ public class UsuariosController : ControllerBase
         await _usuarioDataService.DeleteAsync(id);
         return Ok(ApiResponse<object>.Ok(null, "Usuario eliminado"));
     }
+
+    /// <summary>
+    /// Actualizar los roles de un usuario.
+    /// </summary>
+    [HttpPut("{id:int}/roles")]
+    public async Task<IActionResult> UpdateRoles(int id, [FromBody] UpdateRolesRequest request)
+    {
+        await _usuarioDataService.UpdateRolesAsync(id, request.Roles);
+        return Ok(ApiResponse<object>.Ok(null, "Roles actualizados"));
+    }
 }
 
 public class CreateUsuarioRequest
@@ -113,4 +123,9 @@ public class CreateUsuarioRequest
 public class UpdateEstadoRequest
 {
     public string Estado { get; set; } = "ACT";
+}
+
+public class UpdateRolesRequest
+{
+    public List<string> Roles { get; set; } = new();
 }
