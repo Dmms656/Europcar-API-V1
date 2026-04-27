@@ -1,8 +1,10 @@
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Europcar.Rental.Api.Models.Common;
 using Europcar.Rental.DataAccess.Context;
 using Europcar.Rental.DataManagement.Common;
 using Europcar.Rental.DataManagement.Interfaces;
@@ -21,7 +23,59 @@ public static class ServiceCollectionExtensions
 
         services.AddDbContext<RentalDbContext>(options =>
             options.UseNpgsql(connStr, npgsqlOptions =>
-                npgsqlOptions.EnableRetryOnFailure(3)));
+                npgsqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 3,
+                    maxRetryDelay: TimeSpan.FromSeconds(5),
+                    errorCodesToAdd: null)));
+
+        return services;
+    }
+
+    /// <summary>
+    /// Convierte automáticamente fallos de model binding y validaciones de DataAnnotations
+    /// en un <see cref="ApiResponse{T}"/> uniforme con status 400/422 y errores por campo,
+    /// para que el frontend nunca reciba shapes distintos.
+    /// </summary>
+    public static IServiceCollection AddApiBehavior(this IServiceCollection services)
+    {
+        services.Configure<ApiBehaviorOptions>(options =>
+        {
+            options.InvalidModelStateResponseFactory = context =>
+            {
+                var errors = context.ModelState
+                    .Where(kv => kv.Value is { Errors.Count: > 0 })
+                    .ToDictionary(
+                        kv => kv.Key,
+                        kv => kv.Value!.Errors
+                            .Select(e => string.IsNullOrWhiteSpace(e.ErrorMessage)
+                                ? (e.Exception?.Message ?? "Valor inválido")
+                                : e.ErrorMessage)
+                            .ToArray());
+
+                var traceId = context.HttpContext.TraceIdentifier;
+                var response = new ApiResponse<object>
+                {
+                    Success = false,
+                    StatusCode = 422,
+                    Message = "Uno o más campos no son válidos",
+                    Errors = errors,
+                    TraceId = traceId
+                };
+
+                return new UnprocessableEntityObjectResult(response)
+                {
+                    ContentTypes = { "application/json" }
+                };
+            };
+        });
+
+        return services;
+    }
+
+    public static IServiceCollection AddHealthChecksConfiguration(this IServiceCollection services)
+    {
+        services.AddHealthChecks()
+            .AddDbContextCheck<RentalDbContext>("database", tags: new[] { "ready" });
 
         return services;
     }

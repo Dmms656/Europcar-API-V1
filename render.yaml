@@ -1,0 +1,17 @@
+# Opcional: Blueprint de Render (IaC). Si tu frontend ya está creado a mano en el dashboard,
+# añade la regla allí en su lugar: Redirects/Rewrites → Source `/*` → Destination `/index.html` → Rewrite.
+# Ver: https://render.com/docs/deploy-create-react-app#using-client-side-routing
+services:
+  - type: web
+    name: europcar-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    buildFilter:
+      paths:
+        - frontend/**
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

@@ -1,9 +1,13 @@
+using System.Text.Json;
 using Europcar.Rental.Api.Extensions;
 using Europcar.Rental.Api.Middleware;
+using Europcar.Rental.Api.Models.Common;
 using Europcar.Rental.Business.Services;
 using Europcar.Rental.DataAccess.Context;
 using Europcar.Rental.DataAccess.Entities.Security;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,160 +18,20 @@ builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddApiVersioningConfiguration();
 builder.Services.AddSwaggerDocumentation();
 builder.Services.AddCorsPolicy();
+builder.Services.AddHealthChecksConfiguration();
 builder.Services.AddControllers();
+builder.Services.AddApiBehavior();
 builder.Services.AddEndpointsApiExplorer();
 
 var app = builder.Build();
 
-// === Seed del usuario admin.dev si no existe ===
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<RentalDbContext>();
-    try
-    {
-        var adminExists = await db.UsuariosApp
-            .IgnoreQueryFilters()
-            .AnyAsync(u => u.Username == "admin.dev");
-
-        if (!adminExists)
-        {
-            var (hash, salt) = AuthService.CreatePasswordHash("12345");
-            
-            var adminUser = new UsuarioAppEntity
-            {
-                UsuarioGuid = Guid.NewGuid(),
-                Username = "admin.dev",
-                Correo = "admin@europcar.dev",
-                PasswordHash = hash,
-                PasswordSalt = salt,
-                RequiereCambioPassword = false,
-                EstadoUsuario = "ACT",
-                Activo = true,
-                CreadoPorUsuario = "SYSTEM",
-                FechaRegistroUtc = DateTimeOffset.UtcNow
-            };
-            db.UsuariosApp.Add(adminUser);
-            await db.SaveChangesAsync();
-
-            // Asignar rol ADMIN
-            var adminRol = await db.Roles
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(r => r.NombreRol == "ADMIN");
-            if (adminRol != null)
-            {
-                db.UsuariosRoles.Add(new UsuarioRolEntity
-                {
-                    IdUsuario = adminUser.IdUsuario,
-                    IdRol = adminRol.IdRol,
-                    EstadoUsuarioRol = "ACT",
-                    Activo = true,
-                    CreadoPorUsuario = "SYSTEM",
-                    FechaRegistroUtc = DateTimeOffset.UtcNow
-                });
-                await db.SaveChangesAsync();
-            }
-
-            Console.WriteLine("✅ Usuario admin.dev creado con contraseña '12345'");
-        }
-
-        // Seed usuario agente.pos
-        var agenteExists = await db.UsuariosApp
-            .IgnoreQueryFilters()
-            .AnyAsync(u => u.Username == "agente.pos");
-
-        if (!agenteExists)
-        {
-            var (hash, salt) = AuthService.CreatePasswordHash("12345");
-            
-            var agenteUser = new UsuarioAppEntity
-            {
-                UsuarioGuid = Guid.NewGuid(),
-                Username = "agente.pos",
-                Correo = "agente@europcar.dev",
-                PasswordHash = hash,
-                PasswordSalt = salt,
-                RequiereCambioPassword = false,
-                EstadoUsuario = "ACT",
-                Activo = true,
-                CreadoPorUsuario = "SYSTEM",
-                FechaRegistroUtc = DateTimeOffset.UtcNow
-            };
-            db.UsuariosApp.Add(agenteUser);
-            await db.SaveChangesAsync();
-
-            var agenteRol = await db.Roles
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(r => r.NombreRol == "AGENTE_POS");
-            if (agenteRol != null)
-            {
-                db.UsuariosRoles.Add(new UsuarioRolEntity
-                {
-                    IdUsuario = agenteUser.IdUsuario,
-                    IdRol = agenteRol.IdRol,
-                    EstadoUsuarioRol = "ACT",
-                    Activo = true,
-                    CreadoPorUsuario = "SYSTEM",
-                    FechaRegistroUtc = DateTimeOffset.UtcNow
-                });
-                await db.SaveChangesAsync();
-            }
-
-            Console.WriteLine("✅ Usuario agente.pos creado con contraseña '12345'");
-        }
-
-        // Seed usuario cliente.web
-        var clienteWebExists = await db.UsuariosApp
-            .IgnoreQueryFilters()
-            .AnyAsync(u => u.Username == "cliente.web");
-
-        if (!clienteWebExists)
-        {
-            var (hash, salt) = AuthService.CreatePasswordHash("12345");
-            
-            var clienteUser = new UsuarioAppEntity
-            {
-                UsuarioGuid = Guid.NewGuid(),
-                Username = "cliente.web",
-                Correo = "cliente@europcar.dev",
-                PasswordHash = hash,
-                PasswordSalt = salt,
-                RequiereCambioPassword = false,
-                EstadoUsuario = "ACT",
-                Activo = true,
-                CreadoPorUsuario = "SYSTEM",
-                FechaRegistroUtc = DateTimeOffset.UtcNow
-            };
-            db.UsuariosApp.Add(clienteUser);
-            await db.SaveChangesAsync();
-
-            var clienteRol = await db.Roles
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(r => r.NombreRol == "CLIENTE_WEB");
-            if (clienteRol != null)
-            {
-                db.UsuariosRoles.Add(new UsuarioRolEntity
-                {
-                    IdUsuario = clienteUser.IdUsuario,
-                    IdRol = clienteRol.IdRol,
-                    EstadoUsuarioRol = "ACT",
-                    Activo = true,
-                    CreadoPorUsuario = "SYSTEM",
-                    FechaRegistroUtc = DateTimeOffset.UtcNow
-                });
-                await db.SaveChangesAsync();
-            }
-
-            Console.WriteLine("✅ Usuario cliente.web creado con contraseña '12345'");
-        }
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"⚠️ Seed warning: {ex.Message}");
-    }
-}
-
 // === Pipeline ===
+// El middleware global de errores debe ir lo más arriba posible para
+// capturar excepciones de cualquier middleware/endpoint posterior.
 app.UseMiddleware<GlobalExceptionMiddleware>();
+
+// === Seed inicial (resiliente y aislado) ===
+await SeedDatabaseAsync(app);
 
 app.UseSwagger();
 app.UseSwaggerUI(c =>
@@ -181,7 +45,135 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-Console.WriteLine("🚗 Europcar Rental API iniciada");
-Console.WriteLine("📖 Swagger: https://localhost:5001/swagger");
+// === Health checks ===
+// /health/live  -> proceso vivo (responde rápido sin dependencias)
+// /health/ready -> dependencias OK (DB)
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = _ => false,
+    ResponseWriter = WriteHealthResponseAsync
+});
 
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = c => c.Tags.Contains("ready"),
+    ResponseWriter = WriteHealthResponseAsync
+});
+
+app.Logger.LogInformation("🚗 Europcar Rental API iniciada. Swagger: /swagger");
 app.Run();
+
+
+// ============================================================================
+// Helpers locales
+// ============================================================================
+
+static async Task SeedDatabaseAsync(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    var sp = scope.ServiceProvider;
+    var logger = sp.GetRequiredService<ILogger<Program>>();
+    var db = sp.GetRequiredService<RentalDbContext>();
+
+    try
+    {
+        // EnableRetryOnFailure ya cubre transitorios; aquí logueamos nivel alto.
+        await SeedUserIfMissingAsync(db, "admin.dev", "admin@europcar.dev", "ADMIN", logger);
+        await SeedUserIfMissingAsync(db, "agente.pos", "agente@europcar.dev", "AGENTE_POS", logger);
+        await SeedUserIfMissingAsync(db, "cliente.web", "cliente@europcar.dev", "CLIENTE_WEB", logger);
+    }
+    catch (Exception ex)
+    {
+        // No queremos que un fallo del seed tumbe la API; sólo lo reportamos.
+        logger.LogWarning(ex, "Seed inicial falló: {Message}", ex.Message);
+    }
+}
+
+static async Task SeedUserIfMissingAsync(
+    RentalDbContext db,
+    string username,
+    string correo,
+    string rol,
+    ILogger logger)
+{
+    var exists = await db.UsuariosApp
+        .IgnoreQueryFilters()
+        .AnyAsync(u => u.Username == username);
+
+    if (exists) return;
+
+    var (hash, salt) = AuthService.CreatePasswordHash("12345");
+
+    var user = new UsuarioAppEntity
+    {
+        UsuarioGuid = Guid.NewGuid(),
+        Username = username,
+        Correo = correo,
+        PasswordHash = hash,
+        PasswordSalt = salt,
+        RequiereCambioPassword = false,
+        EstadoUsuario = "ACT",
+        Activo = true,
+        CreadoPorUsuario = "SYSTEM",
+        FechaRegistroUtc = DateTimeOffset.UtcNow
+    };
+    db.UsuariosApp.Add(user);
+    await db.SaveChangesAsync();
+
+    var rolEntity = await db.Roles
+        .IgnoreQueryFilters()
+        .FirstOrDefaultAsync(r => r.NombreRol == rol);
+
+    if (rolEntity != null)
+    {
+        db.UsuariosRoles.Add(new UsuarioRolEntity
+        {
+            IdUsuario = user.IdUsuario,
+            IdRol = rolEntity.IdRol,
+            EstadoUsuarioRol = "ACT",
+            Activo = true,
+            CreadoPorUsuario = "SYSTEM",
+            FechaRegistroUtc = DateTimeOffset.UtcNow
+        });
+        await db.SaveChangesAsync();
+    }
+    else
+    {
+        logger.LogWarning("Seed: rol '{Rol}' no existe; usuario '{Username}' creado sin rol.", rol, username);
+    }
+
+    logger.LogInformation("Seed: usuario '{Username}' creado con contraseña por defecto.", username);
+}
+
+static Task WriteHealthResponseAsync(HttpContext context, HealthReport report)
+{
+    context.Response.ContentType = "application/json; charset=utf-8";
+
+    var payload = new ApiResponse<object>
+    {
+        Success = report.Status == HealthStatus.Healthy,
+        StatusCode = report.Status == HealthStatus.Healthy ? 200 : 503,
+        Message = report.Status.ToString(),
+        Data = new
+        {
+            status = report.Status.ToString(),
+            totalDuration = report.TotalDuration.TotalMilliseconds,
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                description = e.Value.Description,
+                duration = e.Value.Duration.TotalMilliseconds,
+                error = e.Value.Exception?.Message
+            })
+        },
+        TraceId = context.TraceIdentifier
+    };
+
+    var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+    });
+    return context.Response.WriteAsync(json);
+}

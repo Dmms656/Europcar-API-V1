@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { authApi } from '../../api/authApi';
+import { getErrorMessage, getFieldErrors } from '../../utils/errorHandler';
 import { Car, Eye, EyeOff, Loader2, Shield, User, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
@@ -17,6 +18,7 @@ export default function LoginPage() {
   const login = useAuthStore((s) => s.login);
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
 
   const fieldErrors = {
     username: touched.username && !username.trim() ? 'El usuario es requerido' : '',
@@ -39,7 +41,7 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const response = await authApi.login({ username, password });
+      const response = await authApi.login({ username, password }, { suppressErrorToast: true });
       const data = response.data.data;
       const isAdmin = data.roles?.some(r => ['ADMIN', 'AGENTE_POS'].includes(r));
 
@@ -52,15 +54,21 @@ export default function LoginPage() {
       const userType = isAdmin && tab === 'admin' ? 'admin' : 'cliente';
       login(data, userType);
 
-      const from = location.state?.from?.pathname;
+      const fromQuery = searchParams.get('from');
+      const fromState = location.state?.from?.pathname;
+      const from = fromQuery || fromState;
       if (from) {
         navigate(from, { replace: true });
       } else {
         navigate(userType === 'admin' ? '/dashboard' : '/mi-cuenta', { replace: true });
       }
     } catch (err) {
-      const msg = err.response?.data?.message || 'Error al iniciar sesión';
-      setError(msg);
+      const fieldErrs = getFieldErrors(err);
+      if (Object.keys(fieldErrs).length > 0) {
+        setError(Object.values(fieldErrs)[0]);
+      } else {
+        setError(getErrorMessage(err));
+      }
     } finally {
       setLoading(false);
     }
