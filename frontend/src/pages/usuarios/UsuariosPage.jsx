@@ -1,42 +1,42 @@
-import { useState } from 'react';
-import { Users, Plus, Edit3, Trash2, Shield, Search, X, Save, Eye, EyeOff, Key } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { usuariosApi } from '../../api/usuariosApi';
+import { Users, Plus, Trash2, Shield, Search, X, Eye, EyeOff, Key, Loader2, RefreshCw, ToggleLeft, ToggleRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ROLES_DISPONIBLES = ['ADMIN', 'AGENTE_POS', 'CLIENTE'];
 
-const usuariosMock = [
-  { id: 1, username: 'admin.dev', correo: 'admin@europcar.ec', roles: ['ADMIN'], estado: 'ACTIVO', fechaCreacion: '2026-01-15' },
-  { id: 2, username: 'agente.quito', correo: 'agente1@europcar.ec', roles: ['AGENTE_POS'], estado: 'ACTIVO', fechaCreacion: '2026-02-20' },
-  { id: 3, username: 'cliente.web', correo: 'cliente@mail.com', roles: ['CLIENTE'], estado: 'ACTIVO', fechaCreacion: '2026-03-10' },
-  { id: 4, username: 'agente.gye', correo: 'agente2@europcar.ec', roles: ['AGENTE_POS'], estado: 'INACTIVO', fechaCreacion: '2026-01-05' },
-];
-
 export default function UsuariosPage() {
-  const [usuarios, setUsuarios] = useState(usuariosMock);
+  const [usuarios, setUsuarios] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
-    username: '', correo: '', password: '', roles: [], estado: 'ACTIVO',
+    username: '', correo: '', password: '', roles: [],
   });
 
+  useEffect(() => { loadUsuarios(); }, []);
+
+  const loadUsuarios = async () => {
+    setLoading(true);
+    try {
+      const res = await usuariosApi.getAll();
+      setUsuarios(res.data?.data || []);
+    } catch (e) {
+      toast.error('Error al cargar usuarios');
+    } finally { setLoading(false); }
+  };
+
   const filtered = usuarios.filter(u =>
-    u.username.toLowerCase().includes(search.toLowerCase()) ||
-    u.correo.toLowerCase().includes(search.toLowerCase()) ||
-    u.roles.some(r => r.toLowerCase().includes(search.toLowerCase()))
+    u.username?.toLowerCase().includes(search.toLowerCase()) ||
+    u.correo?.toLowerCase().includes(search.toLowerCase()) ||
+    u.roles?.some(r => r.toLowerCase().includes(search.toLowerCase()))
   );
 
   const openCreate = () => {
-    setEditingUser(null);
-    setForm({ username: '', correo: '', password: '', roles: [], estado: 'ACTIVO' });
-    setShowModal(true);
-  };
-
-  const openEdit = (user) => {
-    setEditingUser(user);
-    setForm({ username: user.username, correo: user.correo, password: '', roles: [...user.roles], estado: user.estado });
+    setForm({ username: '', correo: '', password: '', roles: [] });
     setShowModal(true);
   };
 
@@ -47,39 +47,42 @@ export default function UsuariosPage() {
     }));
   };
 
-  const handleSave = () => {
-    if (!form.username || !form.correo || form.roles.length === 0) {
+  const handleSave = async () => {
+    if (!form.username || !form.correo || !form.password || form.roles.length === 0) {
       toast.error('Completa todos los campos requeridos');
       return;
     }
-    if (!editingUser && !form.password) {
-      toast.error('La contraseña es requerida para nuevos usuarios');
-      return;
-    }
-
-    if (editingUser) {
-      setUsuarios(prev => prev.map(u => u.id === editingUser.id
-        ? { ...u, username: form.username, correo: form.correo, roles: form.roles, estado: form.estado }
-        : u
-      ));
-      toast.success('Usuario actualizado');
-    } else {
-      setUsuarios(prev => [...prev, {
-        id: Date.now(), username: form.username, correo: form.correo,
-        roles: form.roles, estado: form.estado, fechaCreacion: new Date().toISOString().slice(0, 10),
-      }]);
+    setSaving(true);
+    try {
+      await usuariosApi.create(form);
       toast.success('Usuario creado');
-    }
-    setShowModal(false);
+      setShowModal(false);
+      loadUsuarios();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Error al crear usuario');
+    } finally { setSaving(false); }
   };
 
-  const handleDelete = (user) => {
-    if (user.username === 'admin.dev') {
-      toast.error('No se puede eliminar al administrador principal');
-      return;
+  const toggleEstado = async (user) => {
+    const newEstado = user.activo ? 'INA' : 'ACT';
+    try {
+      await usuariosApi.updateEstado(user.idUsuario, newEstado);
+      toast.success(`Usuario ${newEstado === 'ACT' ? 'activado' : 'desactivado'}`);
+      loadUsuarios();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Error al cambiar estado');
     }
-    setUsuarios(prev => prev.filter(u => u.id !== user.id));
-    toast.success(`Usuario ${user.username} eliminado`);
+  };
+
+  const handleDelete = async (user) => {
+    if (!confirm(`¿Eliminar al usuario "${user.username}"? Esta acción no se puede deshacer.`)) return;
+    try {
+      await usuariosApi.delete(user.idUsuario);
+      toast.success(`Usuario ${user.username} eliminado`);
+      loadUsuarios();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Error al eliminar');
+    }
   };
 
   const roleColor = (role) => {
@@ -96,11 +99,16 @@ export default function UsuariosPage() {
       <div className="module-page__header">
         <div>
           <h1><Users size={28} /> Gestión de Usuarios</h1>
-          <p className="page-subtitle">Administra cuentas de usuario y permisos</p>
+          <p>{usuarios.length} usuarios en el sistema</p>
         </div>
-        <button className="btn btn--primary" onClick={openCreate}>
-          <Plus size={18} /> Nuevo Usuario
-        </button>
+        <div className="module-page__actions">
+          <button className="btn btn--outline btn--sm" onClick={loadUsuarios} disabled={loading}>
+            <RefreshCw size={16} className={loading ? 'spin' : ''} /> Recargar
+          </button>
+          <button className="btn btn--primary" onClick={openCreate}>
+            <Plus size={18} /> Nuevo Usuario
+          </button>
+        </div>
       </div>
 
       <div className="module-page__toolbar">
@@ -109,69 +117,74 @@ export default function UsuariosPage() {
           <input type="text" placeholder="Buscar por usuario, correo o rol..." value={search}
             onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <span className="module-page__count">{filtered.length} usuarios</span>
       </div>
 
-      <div className="data-table-wrapper">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Usuario</th>
-              <th>Correo</th>
-              <th>Roles</th>
-              <th>Estado</th>
-              <th>Creado</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((u) => (
-              <tr key={u.id}>
-                <td>
-                  <div className="user-cell">
-                    <div className="user-cell__avatar">{u.username.charAt(0).toUpperCase()}</div>
-                    <span className="user-cell__name">{u.username}</span>
-                  </div>
-                </td>
-                <td>{u.correo}</td>
-                <td>
-                  <div className="role-tags">
-                    {u.roles.map(r => (
-                      <span key={r} className="role-tag" style={{ borderColor: roleColor(r), color: roleColor(r) }}>
-                        <Shield size={12} /> {r}
-                      </span>
-                    ))}
-                  </div>
-                </td>
-                <td>
-                  <span className={`status-badge status-badge--${u.estado.toLowerCase()}`}>
-                    {u.estado}
-                  </span>
-                </td>
-                <td>{new Date(u.fechaCreacion).toLocaleDateString('es-EC')}</td>
-                <td>
-                  <div className="table-actions">
-                    <button className="btn btn--ghost btn--sm" onClick={() => openEdit(u)}>
-                      <Edit3 size={15} />
-                    </button>
-                    <button className="btn btn--ghost btn--sm btn--danger" onClick={() => handleDelete(u)}>
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                </td>
+      {loading ? (
+        <div className="module-loading"><Loader2 size={24} className="spin" /> Cargando usuarios...</div>
+      ) : (
+        <div className="data-table-wrapper">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Usuario</th>
+                <th>Correo</th>
+                <th>Roles</th>
+                <th>Estado</th>
+                <th>Acciones</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {filtered.map((u) => (
+                <tr key={u.idUsuario}>
+                  <td>{u.idUsuario}</td>
+                  <td>
+                    <div className="user-cell">
+                      <div className="user-cell__avatar">{u.username?.charAt(0).toUpperCase()}</div>
+                      <span className="user-cell__name">{u.username}</span>
+                    </div>
+                  </td>
+                  <td>{u.correo}</td>
+                  <td>
+                    <div className="role-tags">
+                      {u.roles?.map(r => (
+                        <span key={r} className="role-tag" style={{ borderColor: roleColor(r), color: roleColor(r) }}>
+                          <Shield size={12} /> {r}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td>
+                    <span className={`status-badge status-badge--${u.activo ? 'success' : 'danger'}`}>
+                      {u.activo ? 'ACTIVO' : 'INACTIVO'}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="table-actions">
+                      <button className="icon-btn" onClick={() => toggleEstado(u)}
+                        title={u.activo ? 'Desactivar' : 'Activar'}>
+                        {u.activo ? <ToggleRight size={18} color="var(--color-success)" /> : <ToggleLeft size={18} />}
+                      </button>
+                      <button className="icon-btn icon-btn--danger" onClick={() => handleDelete(u)} title="Eliminar">
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && <tr><td colSpan={6} className="table-empty">No se encontraron usuarios</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {/* Modal */}
+      {/* Modal Crear Usuario */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
-              <h2>{editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}</h2>
-              <button className="btn btn--ghost btn--sm" onClick={() => setShowModal(false)}><X size={18} /></button>
+              <h2>Nuevo Usuario</h2>
+              <button className="icon-btn" onClick={() => setShowModal(false)}><X size={18} /></button>
             </div>
             <div className="modal__body">
               <div className="form-group">
@@ -186,7 +199,7 @@ export default function UsuariosPage() {
               </div>
               <div className="form-group">
                 <label className="form-label">
-                  <Key size={14} /> {editingUser ? 'Nueva Contraseña (dejar vacío para mantener)' : 'Contraseña *'}
+                  <Key size={14} /> Contraseña *
                 </label>
                 <div className="form-input-wrapper">
                   <input type={showPassword ? 'text' : 'password'} className="form-input"
@@ -196,14 +209,6 @@ export default function UsuariosPage() {
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Estado</label>
-                <select className="form-input" value={form.estado}
-                  onChange={(e) => setForm({ ...form, estado: e.target.value })}>
-                  <option value="ACTIVO">Activo</option>
-                  <option value="INACTIVO">Inactivo</option>
-                </select>
               </div>
               <div className="form-group">
                 <label className="form-label"><Shield size={14} /> Roles / Permisos *</label>
@@ -222,8 +227,8 @@ export default function UsuariosPage() {
             </div>
             <div className="modal__footer">
               <button className="btn btn--ghost" onClick={() => setShowModal(false)}>Cancelar</button>
-              <button className="btn btn--primary" onClick={handleSave}>
-                <Save size={16} /> {editingUser ? 'Guardar Cambios' : 'Crear Usuario'}
+              <button className="btn btn--primary" onClick={handleSave} disabled={saving}>
+                {saving ? <><Loader2 size={16} className="spin" /> Creando...</> : 'Crear Usuario'}
               </button>
             </div>
           </div>
