@@ -77,6 +77,8 @@ public class AuthService : IAuthService
         // Check if username already exists
         if (await _usuarioDataService.ExistsByUsernameAsync(request.Username))
             throw new BusinessException("El nombre de usuario ya está en uso");
+        if (await _usuarioDataService.ExistsByCorreoAsync(request.Correo))
+            throw new BusinessException("El correo ya está en uso");
 
         // Hash password
         var (hash, salt) = CreatePasswordHash(request.Password);
@@ -102,18 +104,20 @@ public class AuthService : IAuthService
             idCliente = existingCliente.IdCliente;
         }
 
-        // Mode 2: Create new client from registration data
-        if (!idCliente.HasValue && !string.IsNullOrEmpty(request.Nombre))
+        // Always create a client when there is no linkage yet.
+        if (!idCliente.HasValue)
         {
-            var codigoCliente = $"CLT-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
+            var safeUsername = request.Username.Trim();
+            var nombre = string.IsNullOrWhiteSpace(request.Nombre) ? safeUsername : request.Nombre.Trim();
+            var apellido = string.IsNullOrWhiteSpace(request.Apellido) ? "WEB" : request.Apellido.Trim();
             var newCliente = await _clienteDataService.CreateAsync(new DataManagement.Models.ClienteModel
             {
-                CodigoCliente = codigoCliente,
+                CodigoCliente = GenerateClientCode(),
                 TipoIdentificacion = "CED",
-                NumeroIdentificacion = request.Cedula ?? "",
-                Nombre1 = request.Nombre ?? "",
-                Apellido1 = request.Apellido ?? "",
-                Telefono = request.Telefono ?? "",
+                NumeroIdentificacion = BuildClientIdentification(request.Cedula),
+                Nombre1 = nombre,
+                Apellido1 = apellido,
+                Telefono = string.IsNullOrWhiteSpace(request.Telefono) ? "0000000000" : request.Telefono.Trim(),
                 Correo = request.Correo,
                 DireccionPrincipal = request.Direccion,
                 FechaNacimiento = DateOnly.FromDateTime(DateTime.Today.AddYears(-25))
@@ -148,6 +152,19 @@ public class AuthService : IAuthService
         var salt = Convert.ToBase64String(hmac.Key);
         var hash = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(password)));
         return (hash, salt);
+    }
+
+    private static string GenerateClientCode()
+    {
+        return $"CLT-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..8].ToUpper()}";
+    }
+
+    private static string BuildClientIdentification(string? cedula)
+    {
+        if (!string.IsNullOrWhiteSpace(cedula))
+            return cedula.Trim();
+
+        return $"AUTO-{Guid.NewGuid().ToString("N")[..12].ToUpper()}";
     }
 
     private (string Token, DateTime Expiration) GenerateJwtToken(int userId, string username, string correo, List<string> roles)

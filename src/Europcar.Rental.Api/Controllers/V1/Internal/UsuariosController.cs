@@ -14,10 +14,12 @@ namespace Europcar.Rental.Api.Controllers.V1.Internal;
 public class UsuariosController : ControllerBase
 {
     private readonly IUsuarioDataService _usuarioDataService;
+    private readonly IClienteDataService _clienteDataService;
 
-    public UsuariosController(IUsuarioDataService usuarioDataService)
+    public UsuariosController(IUsuarioDataService usuarioDataService, IClienteDataService clienteDataService)
     {
         _usuarioDataService = usuarioDataService;
+        _clienteDataService = clienteDataService;
     }
 
     /// <summary>
@@ -68,12 +70,34 @@ public class UsuariosController : ControllerBase
     {
         if (await _usuarioDataService.ExistsByUsernameAsync(request.Username))
             return Conflict(ApiResponse<object>.Fail("El nombre de usuario ya existe"));
+        if (await _usuarioDataService.ExistsByCorreoAsync(request.Correo))
+            return Conflict(ApiResponse<object>.Fail("El correo ya existe"));
+
+        var nombre = string.IsNullOrWhiteSpace(request.Nombre) ? request.Username.Trim() : request.Nombre.Trim();
+        var apellido = string.IsNullOrWhiteSpace(request.Apellido) ? "INTERNO" : request.Apellido.Trim();
+        var cliente = await _clienteDataService.CreateAsync(new DataManagement.Models.ClienteModel
+        {
+            CodigoCliente = GenerateClientCode(),
+            TipoIdentificacion = "CED",
+            NumeroIdentificacion = BuildClientIdentification(request.Cedula),
+            Nombre1 = nombre,
+            Apellido1 = apellido,
+            Telefono = string.IsNullOrWhiteSpace(request.Telefono) ? "0000000000" : request.Telefono.Trim(),
+            Correo = request.Correo,
+            DireccionPrincipal = request.Direccion,
+            FechaNacimiento = DateOnly.FromDateTime(DateTime.Today.AddYears(-25))
+        });
 
         var (hash, salt) = AuthService.CreatePasswordHash(request.Password);
         var userId = await _usuarioDataService.CreateUserAsync(
-            request.Username, request.Correo, hash, salt, null);
+            request.Username, request.Correo, hash, salt, cliente.IdCliente);
 
-        foreach (var role in request.Roles)
+        var roles = request.Roles
+            .Append("CLIENTE_WEB")
+            .Where(r => !string.IsNullOrWhiteSpace(r))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var role in roles)
         {
             await _usuarioDataService.AssignRoleAsync(userId, role);
         }
@@ -110,6 +134,19 @@ public class UsuariosController : ControllerBase
         await _usuarioDataService.UpdateRolesAsync(id, request.Roles);
         return Ok(ApiResponse<object>.Ok(null, "Roles actualizados"));
     }
+
+    private static string GenerateClientCode()
+    {
+        return $"CLT-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..8].ToUpper()}";
+    }
+
+    private static string BuildClientIdentification(string? cedula)
+    {
+        if (!string.IsNullOrWhiteSpace(cedula))
+            return cedula.Trim();
+
+        return $"AUTO-{Guid.NewGuid().ToString("N")[..12].ToUpper()}";
+    }
 }
 
 public class CreateUsuarioRequest
@@ -118,6 +155,11 @@ public class CreateUsuarioRequest
     public string Correo { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
     public List<string> Roles { get; set; } = new();
+    public string? Nombre { get; set; }
+    public string? Apellido { get; set; }
+    public string? Cedula { get; set; }
+    public string? Telefono { get; set; }
+    public string? Direccion { get; set; }
 }
 
 public class UpdateEstadoRequest

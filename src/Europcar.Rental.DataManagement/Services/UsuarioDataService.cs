@@ -68,6 +68,11 @@ public class UsuarioDataService : IUsuarioDataService
         return await _context.UsuariosApp.AnyAsync(u => u.Username == username);
     }
 
+    public async Task<bool> ExistsByCorreoAsync(string correo)
+    {
+        return await _context.UsuariosApp.AnyAsync(u => u.Correo == correo);
+    }
+
     public async Task<int> CreateUserAsync(string username, string correo, string passwordHash, string passwordSalt, int? idCliente)
     {
         var entity = new Europcar.Rental.DataAccess.Entities.Security.UsuarioAppEntity
