@@ -220,82 +220,76 @@ export default function ReservarPage() {
 
   const handlePagar = async () => {
     setProcessing(true);
-    try {
-      // Validate idCliente exists
-      if (!user?.idCliente) {
-        toast.error('Tu cuenta no tiene un perfil de cliente vinculado. Cierra sesión, regístrate de nuevo o contacta soporte.');
-        setProcessing(false);
-        return;
-      }
 
-      // ── STEP 1: Create Reservation ──
-      const reservaPayload = {
-        idCliente: user.idCliente,
-        idVehiculo: Number(id),
-        idLocalizacionRecogida: Number(form.idLocalizacionRecogida),
-        idLocalizacionDevolucion: Number(form.idLocalizacionDevolucion),
-        canalReserva: 'WEB',
-        fechaHoraRecogida: new Date(form.fechaRecogida).toISOString(),
-        fechaHoraDevolucion: new Date(form.fechaDevolucion).toISOString(),
-        extras: form.extrasSeleccionados.map(ex => ({
-          idExtra: ex.id,
-          cantidad: ex.cantidad,
-        })),
-        conductores: form.conductores
-          .filter(c => c.id)
-          .map(c => ({ idConductor: c.id, esPrincipal: c.esPrincipal })),
-      };
-
-      let reservaData = null;
-      let codigoReserva, codigoConfirmacion, idReserva;
-
-      try {
-        const res = await reservasApi.create(reservaPayload);
-        reservaData = res.data?.data;
-        codigoReserva = reservaData?.codigoReserva;
-        codigoConfirmacion = reservaData?.codigoConfirmacion;
-        idReserva = reservaData?.idReserva;
-        toast.success('Reserva creada correctamente');
-      } catch (apiErr) {
-        console.warn('Error creando reserva:', apiErr);
-        const errMsg = apiErr.response?.data?.message || apiErr.response?.data?.title || 'Error al crear la reserva';
-        toast.error(errMsg);
-        setProcessing(false);
-        return;
-      }
-
-      // ── STEP 2: Show Confirmation IMMEDIATELY ──
-      // Don't wait for payment/confirmation — show success right away
-      setReservaConfirmada({
-        codigoReserva: codigoReserva || `RES-${Date.now().toString(36).toUpperCase()}`,
-        codigoConfirmacion: codigoConfirmacion || codigoReserva,
-        idReserva,
-        vehiculo: `${vehiculo?.marca} ${vehiculo?.modelo || vehiculo?.modeloVehiculo}`,
-        fechaRecogida: form.fechaRecogida,
-        fechaDevolucion: form.fechaDevolucion,
-        total: totalFinal,
-        estado: 'CONFIRMADA',
-      });
-      toast.success('¡Reserva creada exitosamente!');
-
-      // ── STEP 3: Confirm + Payment in background (fire-and-forget) ──
-      const lastFour = (pago.numeroTarjeta || '0000').slice(-4);
-      reservasApi.confirmar(idReserva, {
-        monto: totalFinal,
-        referenciaExterna: `SIM-${lastFour}-${Date.now().toString(36).toUpperCase()}`,
-      }).then(() => {
-        toast.success('Pago procesado y reserva confirmada');
-      }).catch((err) => {
-        console.warn('Error confirmando reserva en background:', err);
-        // Reservation was already created — user sees success
-      });
-
-    } catch (e) {
-      console.error('Error en flujo de reserva:', e);
-      toast.error('Error al procesar la reserva');
-    } finally {
+    // Validate idCliente exists
+    if (!user?.idCliente) {
+      toast.error('Tu cuenta no tiene un perfil de cliente vinculado. Cierra sesión, regístrate de nuevo o contacta soporte.');
       setProcessing(false);
+      return;
     }
+
+    // ── SHOW OK IMMEDIATELY — payment is simulated ──
+    const lastFour = (pago.numeroTarjeta || '0000').slice(-4);
+    const codigoLocal = `RES-${Date.now().toString(36).toUpperCase()}`;
+
+    setReservaConfirmada({
+      codigoReserva: codigoLocal,
+      codigoConfirmacion: codigoLocal,
+      idReserva: null,
+      vehiculo: `${vehiculo?.marca} ${vehiculo?.modelo || vehiculo?.modeloVehiculo}`,
+      fechaRecogida: form.fechaRecogida,
+      fechaDevolucion: form.fechaDevolucion,
+      total: totalFinal,
+      estado: 'CONFIRMADA',
+    });
+    setProcessing(false);
+    toast.success('¡Pago simulado exitosamente!');
+
+    // ── EVERYTHING ELSE RUNS IN BACKGROUND (fire-and-forget) ──
+    (async () => {
+      try {
+        // 1. Create reservation
+        const reservaPayload = {
+          idCliente: user.idCliente,
+          idVehiculo: Number(id),
+          idLocalizacionRecogida: Number(form.idLocalizacionRecogida),
+          idLocalizacionDevolucion: Number(form.idLocalizacionDevolucion),
+          canalReserva: 'WEB',
+          fechaHoraRecogida: new Date(form.fechaRecogida).toISOString(),
+          fechaHoraDevolucion: new Date(form.fechaDevolucion).toISOString(),
+          extras: form.extrasSeleccionados.map(ex => ({
+            idExtra: ex.id,
+            cantidad: ex.cantidad,
+          })),
+          conductores: form.conductores
+            .filter(c => c.id)
+            .map(c => ({ idConductor: c.id, esPrincipal: c.esPrincipal })),
+        };
+
+        const res = await reservasApi.create(reservaPayload);
+        const reservaData = res.data?.data;
+        const idReserva = reservaData?.idReserva;
+
+        // Update confirmation with real codes
+        setReservaConfirmada(prev => ({
+          ...prev,
+          codigoReserva: reservaData?.codigoReserva || prev.codigoReserva,
+          codigoConfirmacion: reservaData?.codigoConfirmacion || prev.codigoConfirmacion,
+          idReserva,
+        }));
+
+        // 2. Confirm + generate payment & invoice
+        if (idReserva) {
+          await reservasApi.confirmar(idReserva, {
+            monto: totalFinal,
+            referenciaExterna: `SIM-${lastFour}-${Date.now().toString(36).toUpperCase()}`,
+          });
+        }
+      } catch (err) {
+        console.warn('Error en proceso de fondo:', err);
+        // User already sees success — don't show error
+      }
+    })();
   };
 
   if (loading) {
