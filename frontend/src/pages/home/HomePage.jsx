@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { bookingApi } from '../../api/bookingApi';
-import { useAuthStore } from '../../store/useAuthStore';
 import {
-  Car, MapPin, Calendar, Search, Shield, Clock, Star,
-  ChevronRight, LogIn, Fuel, Users, Settings2, ShoppingBag, User
+  Car, MapPin, Search, Shield, Star,
+  ChevronRight, LogIn, Fuel, Users, Settings2, ShoppingBag, ArrowRight, Zap, ShieldCheck
 } from 'lucide-react';
 import DateTimePicker from '../../components/ui/DateTimePicker';
 
@@ -12,7 +11,6 @@ const isValidImageUrl = (url) => url && (url.startsWith('http://') || url.starts
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const { isAuthenticated, userType } = useAuthStore();
   const [localizaciones, setLocalizaciones] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [vehiculosDestacados, setVehiculosDestacados] = useState([]);
@@ -31,11 +29,14 @@ export default function HomePage() {
       const [locRes, catRes, vehRes] = await Promise.allSettled([
         bookingApi.getLocalizaciones({}),
         bookingApi.getCategorias(),
-        bookingApi.buscarVehiculos({ page: 1, limit: 6 }),
+        bookingApi.buscarVehiculos({ page: 1, limit: 5 }),
       ]);
       if (locRes.status === 'fulfilled') setLocalizaciones(locRes.value.data?.data?.localizaciones || []);
       if (catRes.status === 'fulfilled') setCategorias(catRes.value.data?.data?.categorias || []);
-      if (vehRes.status === 'fulfilled') setVehiculosDestacados(vehRes.value.data?.data?.vehiculos || []);
+      if (vehRes.status === 'fulfilled') {
+        const vehiculos = vehRes.value.data?.data?.vehiculos || [];
+        setVehiculosDestacados(vehiculos.slice(0, 5));
+      }
     } catch (e) {
       console.error('Error loading homepage data:', e);
     } finally {
@@ -54,34 +55,6 @@ export default function HomePage() {
 
   return (
     <div className="home">
-      {/* Navbar */}
-      <nav className="home-nav">
-        <div className="home-nav__inner">
-          <div className="home-nav__logo">
-            <Car size={28} />
-            <span>Europcar</span>
-          </div>
-          <div className="home-nav__links">
-            <Link to="/catalogo" className="home-nav__link">
-              <ShoppingBag size={16} /> Catálogo
-            </Link>
-            <a href="#vehiculos" className="home-nav__link">Vehículos</a>
-            <a href="#como-funciona" className="home-nav__link">Cómo funciona</a>
-            {isAuthenticated ? (
-              <Link to={userType === 'admin' ? '/dashboard' : '/mi-cuenta'} className="home-nav__btn">
-                <User size={16} />
-                {userType === 'admin' ? 'Panel Admin' : 'Mi Cuenta'}
-              </Link>
-            ) : (
-              <Link to="/login" className="home-nav__btn">
-                <LogIn size={16} />
-                Iniciar Sesión
-              </Link>
-            )}
-          </div>
-        </div>
-      </nav>
-
       {/* Hero Section */}
       <section className="hero">
         <div className="hero__bg" />
@@ -170,12 +143,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Featured Vehicles */}
+      {/* Fleet */}
       <section className="home-section" id="vehiculos">
         <div className="home-section__inner">
           <div className="home-section__header">
-            <h2>Vehículos Destacados</h2>
-            <p>Explora nuestra flota y encuentra el vehículo perfecto</p>
+            <h2>Nuestra Flota</h2>
+            <p>Conoce los primeros vehículos disponibles de nuestro catálogo</p>
           </div>
 
           {loading ? (
@@ -189,39 +162,79 @@ export default function HomePage() {
             </div>
           ) : (
             <>
-              <div className="vehicle-grid">
+              <div className="catalog-grid">
                 {vehiculosDestacados.map((v) => (
-                  <div key={v.idVehiculo || v.vehiculoGuid} className="vehicle-card"
-                    onClick={() => navigate(`/reservar/${v.idVehiculo}`)}
-                    style={{ cursor: 'pointer' }}>
-                    <div className="vehicle-card__img">
+                  <div key={v.idVehiculo || v.vehiculoGuid} className="catalog-card">
+                    <div className="catalog-card__image">
                       {isValidImageUrl(v.imagenUrl) ? (
-                        <img src={v.imagenUrl} alt={`${v.marca} ${v.modelo}`} />
+                        <img src={v.imagenUrl} alt={`${v.marca} ${v.modelo || v.modeloVehiculo}`} />
                       ) : (
-                        <div className="vehicle-card__img-placeholder">
-                          <Car size={48} />
-                          <span className="vehicle-card__img-label">{v.marca} {v.modelo}</span>
+                        <div className="catalog-card__image-placeholder">
+                          <Car size={56} />
+                          <span>{v.marca} {v.modelo || v.modeloVehiculo}</span>
                         </div>
                       )}
-                      <span className="vehicle-card__badge">{v.categoria || v.categoriaVehiculo}</span>
-                    </div>
-                    <div className="vehicle-card__body">
-                      <h3 className="vehicle-card__title">{v.marca} {v.modelo || v.modeloVehiculo}</h3>
-                      <p className="vehicle-card__year">{v.anioFabricacion} · {v.color}</p>
-                      <div className="vehicle-card__specs">
-                        <span><Users size={14} /> {v.capacidadPasajeros} pax</span>
-                        <span><Fuel size={14} /> {v.tipoCombustible}</span>
-                        <span><Settings2 size={14} /> {v.tipoTransmision}</span>
-                        <span><MapPin size={14} /> {v.localizacion}</span>
-                      </div>
-                      <div className="vehicle-card__footer">
-                        <div className="vehicle-card__price">
-                          <span className="vehicle-card__price-amount">${Number(v.precioBaseDia || 0).toFixed(2)}</span>
-                          <span className="vehicle-card__price-unit">/día</span>
-                        </div>
-                        <span className="btn btn--primary btn--sm">
-                          Reservar <ChevronRight size={14} />
+                      <div className="catalog-card__badges">
+                        <span className="catalog-card__badge catalog-card__badge--category">
+                          {v.categoria || v.categoriaVehiculo}
                         </span>
+                        {(v.tipoCombustible === 'ELECTRICO' || v.tipoCombustible === 'HIBRIDO') && (
+                          <span className="catalog-card__badge catalog-card__badge--eco">
+                            <Zap size={12} /> Eco
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="catalog-card__body">
+                      <div className="catalog-card__header">
+                        <h3 className="catalog-card__title">{v.marca} {v.modelo || v.modeloVehiculo}</h3>
+                        <span className="catalog-card__year">{v.anioFabricacion}</span>
+                      </div>
+
+                      <div className="catalog-card__specs">
+                        <div className="catalog-card__spec">
+                          <Users size={15} />
+                          <span>{v.capacidadPasajeros} pasajeros</span>
+                        </div>
+                        <div className="catalog-card__spec">
+                          <Fuel size={15} />
+                          <span>{v.tipoCombustible}</span>
+                        </div>
+                        <div className="catalog-card__spec">
+                          <Settings2 size={15} />
+                          <span>{v.tipoTransmision}</span>
+                        </div>
+                        <div className="catalog-card__spec">
+                          <MapPin size={15} />
+                          <span>{v.localizacion}</span>
+                        </div>
+                      </div>
+
+                      <div className="catalog-card__features">
+                        {v.aireAcondicionado && (
+                          <span className="catalog-card__feature">
+                            <ShieldCheck size={14} /> A/C
+                          </span>
+                        )}
+                        <span className="catalog-card__feature">
+                          <Star size={14} /> {v.capacidadMaletas} maletas
+                        </span>
+                      </div>
+
+                      <div className="catalog-card__footer">
+                        <div className="catalog-card__price">
+                          <span className="catalog-card__price-amount">
+                            ${Number(v.precioBaseDia || v.precioDia || 0).toFixed(2)}
+                          </span>
+                          <span className="catalog-card__price-unit">/día</span>
+                        </div>
+                        <button
+                          className="btn btn--primary catalog-card__btn"
+                          onClick={() => navigate(`/reservar/${v.idVehiculo}`)}
+                        >
+                          Reservar <ArrowRight size={16} />
+                        </button>
                       </div>
                     </div>
                   </div>
