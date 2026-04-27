@@ -16,6 +16,7 @@ public class ReservaResponse
     public decimal Total { get; set; }
     public string? NombreCliente { get; set; }
     public string? PlacaVehiculo { get; set; }
+    public string? DescripcionVehiculo { get; set; }
 
     /// <summary>
     /// Extras asociados a esta reserva.

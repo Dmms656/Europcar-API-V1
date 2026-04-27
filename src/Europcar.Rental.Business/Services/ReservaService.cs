@@ -225,6 +225,7 @@ public class ReservaService : IReservaService
         Total = r.Total,
         NombreCliente = r.NombreCliente,
         PlacaVehiculo = r.PlacaVehiculo,
+        DescripcionVehiculo = r.DescripcionVehiculo,
         Extras = r.Extras.Select(e => new ReservaExtraItemResponse
         {
             IdReservaExtra = e.IdReservaExtra,

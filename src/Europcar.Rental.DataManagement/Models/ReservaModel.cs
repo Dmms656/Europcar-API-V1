@@ -21,5 +21,6 @@ public class ReservaModel
     public string EstadoReserva { get; set; } = "PENDIENTE";
     public string? NombreCliente { get; set; }
     public string? PlacaVehiculo { get; set; }
+    public string? DescripcionVehiculo { get; set; }
     public List<ReservaExtraModel> Extras { get; set; } = new();
 }

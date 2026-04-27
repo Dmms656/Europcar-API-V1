@@ -67,7 +67,7 @@ export default function MisReservasPage() {
               </div>
               <div className="reserva-item__info">
                 <div className="reserva-item__header">
-                  <h3>{r.placaVehiculo || r.vehiculo || 'Vehículo'}</h3>
+                  <h3>{r.descripcionVehiculo || r.vehiculo || 'Vehículo'} {r.placaVehiculo ? `(${r.placaVehiculo})` : ''}</h3>
                   <span className="reserva-item__badge" style={{ background: estadoColors[r.estadoReserva || r.estado] || 'var(--color-border)' }}>
                     {r.estadoReserva || r.estado}
                   </span>
@@ -107,7 +107,7 @@ export default function MisReservasPage() {
               <div className="detail-grid">
                 <div className="detail-item">
                   <span className="detail-label"><Car size={14} /> Vehículo</span>
-                  <span className="detail-value">{selected.placaVehiculo || selected.vehiculo || '—'}</span>
+                  <span className="detail-value">{selected.descripcionVehiculo || selected.vehiculo || '—'} {selected.placaVehiculo ? `• Placa: ${selected.placaVehiculo}` : ''}</span>
                 </div>
                 <div className="detail-item">
                   <span className="detail-label"><User size={14} /> Cliente</span>

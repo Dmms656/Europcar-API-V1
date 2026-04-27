@@ -28,7 +28,7 @@ public class ReservaDataService : IReservaDataService
     {
         var r = await _context.Reservas
             .Include(r => r.Cliente)
-            .Include(r => r.Vehiculo)
+            .Include(r => r.Vehiculo).ThenInclude(v => v.Marca)
             .Include(r => r.Extras).ThenInclude(e => e.Extra)
             .FirstOrDefaultAsync(r => r.IdReserva == id);
         return r == null ? null : MapToModel(r);
@@ -38,7 +38,7 @@ public class ReservaDataService : IReservaDataService
     {
         var reservas = await _context.Reservas
             .Include(r => r.Cliente)
-            .Include(r => r.Vehiculo)
+            .Include(r => r.Vehiculo).ThenInclude(v => v.Marca)
             .Include(r => r.Extras).ThenInclude(e => e.Extra)
             .Where(r => r.IdCliente == idCliente)
             .OrderByDescending(r => r.FechaHoraRecogida)
@@ -168,6 +168,7 @@ public class ReservaDataService : IReservaDataService
         EstadoReserva = r.EstadoReserva,
         NombreCliente = r.Cliente != null ? $"{r.Cliente.CliNombre1} {r.Cliente.CliApellido1}" : null,
         PlacaVehiculo = r.Vehiculo?.PlacaVehiculo,
+        DescripcionVehiculo = r.Vehiculo?.Marca != null ? $"{r.Vehiculo.Marca.NombreMarca} {r.Vehiculo.ModeloVehiculo}" : r.Vehiculo?.ModeloVehiculo,
         Extras = r.Extras?.Where(e => e.EstadoReservaExtra == "ACT").Select(e => new ReservaExtraModel
         {
             IdReservaExtra = e.IdReservaExtra,
