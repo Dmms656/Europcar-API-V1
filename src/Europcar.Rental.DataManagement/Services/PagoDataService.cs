@@ -52,7 +52,7 @@ public class PagoDataService : IPagoDataService
             OrigenRegistro = "API"
         };
         await _context.Pagos.AddAsync(entity);
-        // Note: SaveChanges handled by UnitOfWork in PagoService
+        await _context.SaveChangesAsync();
         model.IdPago = entity.IdPago;
         model.PagoGuid = entity.PagoGuid;
         return model;

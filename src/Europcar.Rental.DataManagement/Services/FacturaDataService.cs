@@ -32,7 +32,7 @@ public class FacturaDataService : IFacturaDataService
         };
 
         await _context.Facturas.AddAsync(entity);
-        // Note: SaveChanges handled by UnitOfWork in caller
+        await _context.SaveChangesAsync();
 
         model.IdFactura = entity.IdFactura;
         model.FacturaGuid = entity.FacturaGuid;

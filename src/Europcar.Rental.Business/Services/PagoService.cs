@@ -50,6 +50,7 @@ public class PagoService : IPagoService
 
         var codigo = $"PAG-{Guid.NewGuid().ToString("N")[..10].ToUpper()}";
 
+        // Step 1: Create pago and save immediately
         var model = new PagoModel
         {
             CodigoPago = codigo,
@@ -64,10 +65,9 @@ public class PagoService : IPagoService
             ObservacionesPago = request.Observaciones
         };
 
-        // Step 1: Create pago (just adds to context, no save yet)
         var created = await _pagoDataService.CreateAsync(model, usuario);
 
-        // Step 2: Create factura (just adds to context, no save yet)
+        // Step 2: Create factura in a separate save
         try
         {
             var ivaRate = 0.15m;
@@ -91,27 +91,23 @@ public class PagoService : IPagoService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[WARN] Error preparando factura: {ex.Message}");
+            Console.WriteLine($"[WARN] Error generando factura: {ex.Message}");
         }
 
-        // Step 3: Confirm reservation (just updates - Auto-confirm reservation if it exists
-        // Note: Reservation confirmation moved to a separate step to avoid deadlocks
-        // if (request.IdReserva.HasValue)
-        // {
-        //     try
-        //     {
-        //         await _reservaDataService.UpdateEstadoAsync(request.IdReserva.Value, "CONFIRMADA", usuario);
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         Console.WriteLine($"[WARN] Error confirmando reserva: {ex.Message}");
-        //     }
-        // }
+        // Step 3: Confirm reservation in a separate save
+        if (request.IdReserva.HasValue)
+        {
+            try
+            {
+                await _reservaDataService.UpdateEstadoAsync(request.IdReserva.Value, "CONFIRMADA", usuario);
+                await _unitOfWork.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[WARN] Error confirmando reserva: {ex.Message}");
+            }
+        }
 
-        // Step 4: Single SaveChanges for ALL operations (pago + factura + reserva update)
-        await _unitOfWork.SaveChangesAsync();
-
-        // Return response directly from the model we already have
         return new PagoResponse
         {
             IdPago = created.IdPago,
