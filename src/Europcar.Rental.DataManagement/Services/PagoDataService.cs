@@ -31,32 +31,45 @@ public class PagoDataService : IPagoDataService
             .ToListAsync();
     }
 
+    private PagoEntity? _lastAddedEntity;
+
+    public async Task<PagoModel> AddAsync(PagoModel model, string usuario)
+    {
+        var entity = BuildEntity(model, usuario);
+        await _context.Pagos.AddAsync(entity);
+        _lastAddedEntity = entity;
+        // IdPago will be populated after caller's SaveChangesAsync
+        return model;
+    }
+
     public async Task<PagoModel> CreateAsync(PagoModel model, string usuario)
     {
-        var entity = new PagoEntity
-        {
-            PagoGuid = Guid.NewGuid(),
-            CodigoPago = model.CodigoPago,
-            IdReserva = model.IdReserva,
-            IdContrato = model.IdContrato,
-            IdCliente = model.IdCliente,
-            TipoPago = model.TipoPago,
-            MetodoPago = model.MetodoPago,
-            EstadoPago = model.EstadoPago,
-            ReferenciaExterna = model.ReferenciaExterna,
-            Monto = model.Monto,
-            Moneda = model.Moneda,
-            FechaPagoUtc = DateTimeOffset.UtcNow,
-            ObservacionesPago = model.ObservacionesPago,
-            CreadoPorUsuario = usuario,
-            OrigenRegistro = "API"
-        };
+        var entity = BuildEntity(model, usuario);
         await _context.Pagos.AddAsync(entity);
         await _context.SaveChangesAsync();
         model.IdPago = entity.IdPago;
         model.PagoGuid = entity.PagoGuid;
         return model;
     }
+
+    private static PagoEntity BuildEntity(PagoModel model, string usuario) => new()
+    {
+        PagoGuid = Guid.NewGuid(),
+        CodigoPago = model.CodigoPago,
+        IdReserva = model.IdReserva,
+        IdContrato = model.IdContrato,
+        IdCliente = model.IdCliente,
+        TipoPago = model.TipoPago,
+        MetodoPago = model.MetodoPago,
+        EstadoPago = model.EstadoPago,
+        ReferenciaExterna = model.ReferenciaExterna,
+        Monto = model.Monto,
+        Moneda = model.Moneda,
+        FechaPagoUtc = DateTimeOffset.UtcNow,
+        ObservacionesPago = model.ObservacionesPago,
+        CreadoPorUsuario = usuario,
+        OrigenRegistro = "API"
+    };
 
     public async Task UpdateEstadoAsync(int id, string estado, string usuario)
     {

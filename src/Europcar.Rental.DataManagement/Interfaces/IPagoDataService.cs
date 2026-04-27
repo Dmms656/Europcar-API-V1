@@ -6,6 +6,7 @@ public interface IPagoDataService
 {
     Task<PagoModel?> GetByIdAsync(int id);
     Task<IEnumerable<PagoModel>> GetByReservaIdAsync(int idReserva);
+    Task<PagoModel> AddAsync(PagoModel model, string usuario);
     Task<PagoModel> CreateAsync(PagoModel model, string usuario);
     Task UpdateEstadoAsync(int id, string estado, string usuario);
 }

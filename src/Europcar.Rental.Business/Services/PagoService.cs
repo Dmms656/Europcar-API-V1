@@ -50,7 +50,9 @@ public class PagoService : IPagoService
 
         var codigo = $"PAG-{Guid.NewGuid().ToString("N")[..10].ToUpper()}";
 
-        // Step 1: Create pago and save immediately
+        // === Build ALL entities in the context first, THEN single SaveChanges ===
+
+        // 1. Add Pago to context (NO save yet)
         var model = new PagoModel
         {
             CodigoPago = codigo,
@@ -64,63 +66,49 @@ public class PagoService : IPagoService
             Monto = request.Monto,
             ObservacionesPago = request.Observaciones
         };
+        await _pagoDataService.AddAsync(model, usuario);
 
-        var created = await _pagoDataService.CreateAsync(model, usuario);
-
-        // Step 2: Create factura in a separate save
-        try
+        // 2. Add Factura to context (NO save yet)
+        var ivaRate = 0.15m;
+        var subtotal = Math.Round(request.Monto / (1 + ivaRate), 2);
+        var valorIva = request.Monto - subtotal;
+        await _facturaDataService.AddAsync(new FacturaModel
         {
-            var ivaRate = 0.15m;
-            var subtotal = Math.Round(request.Monto / (1 + ivaRate), 2);
-            var valorIva = request.Monto - subtotal;
+            NumeroFactura = $"FAC-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpper()}",
+            IdCliente = request.IdCliente,
+            IdReserva = request.IdReserva,
+            IdContrato = request.IdContrato,
+            Subtotal = subtotal,
+            ValorIva = valorIva,
+            Total = request.Monto,
+            EstadoFactura = "EMITIDA",
+            ServicioOrigen = "RESERVA_WEB",
+            OrigenCanalFactura = "WEB",
+            ObservacionesFactura = $"Factura automática - Pago {codigo}",
+        }, usuario);
 
-            await _facturaDataService.CreateAsync(new FacturaModel
-            {
-                NumeroFactura = $"FAC-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpper()}",
-                IdCliente = request.IdCliente,
-                IdReserva = request.IdReserva,
-                IdContrato = request.IdContrato,
-                Subtotal = subtotal,
-                ValorIva = valorIva,
-                Total = request.Monto,
-                EstadoFactura = "EMITIDA",
-                ServicioOrigen = "RESERVA_WEB",
-                OrigenCanalFactura = "WEB",
-                ObservacionesFactura = $"Factura automática - Pago {codigo}",
-            }, usuario);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[WARN] Error generando factura: {ex.Message}");
-        }
-
-        // Step 3: Confirm reservation in a separate save
+        // 3. Update reserva status in context (NO save yet)
         if (request.IdReserva.HasValue)
         {
-            try
-            {
-                await _reservaDataService.UpdateEstadoAsync(request.IdReserva.Value, "CONFIRMADA", usuario);
-                await _unitOfWork.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[WARN] Error confirmando reserva: {ex.Message}");
-            }
+            await _reservaDataService.UpdateEstadoAsync(request.IdReserva.Value, "CONFIRMADA", usuario);
         }
+
+        // 4. SINGLE SaveChanges — one DB roundtrip for ALL three operations
+        await _unitOfWork.SaveChangesAsync();
 
         return new PagoResponse
         {
-            IdPago = created.IdPago,
-            PagoGuid = created.PagoGuid,
-            CodigoPago = created.CodigoPago,
-            TipoPago = created.TipoPago,
-            MetodoPago = created.MetodoPago,
-            EstadoPago = created.EstadoPago,
-            Monto = created.Monto,
-            Moneda = created.Moneda,
+            IdPago = model.IdPago,
+            PagoGuid = model.PagoGuid,
+            CodigoPago = codigo,
+            TipoPago = request.TipoPago,
+            MetodoPago = request.MetodoPago,
+            EstadoPago = "APROBADO",
+            Monto = request.Monto,
+            Moneda = "USD",
             FechaPagoUtc = DateTimeOffset.UtcNow,
-            ReferenciaExterna = created.ReferenciaExterna,
-            ObservacionesPago = created.ObservacionesPago
+            ReferenciaExterna = request.ReferenciaExterna,
+            ObservacionesPago = request.Observaciones
         };
     }
 
