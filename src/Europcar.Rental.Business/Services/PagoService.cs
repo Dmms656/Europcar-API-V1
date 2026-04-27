@@ -110,8 +110,21 @@ public class PagoService : IPagoService
         // Step 4: Single SaveChanges for ALL operations (pago + factura + reserva update)
         await _unitOfWork.SaveChangesAsync();
 
-        var result = await _pagoDataService.GetByIdAsync(created.IdPago);
-        return MapToResponse(result!);
+        // Return response directly from the model we already have
+        return new PagoResponse
+        {
+            IdPago = created.IdPago,
+            PagoGuid = created.PagoGuid,
+            CodigoPago = created.CodigoPago,
+            TipoPago = created.TipoPago,
+            MetodoPago = created.MetodoPago,
+            EstadoPago = created.EstadoPago,
+            Monto = created.Monto,
+            Moneda = created.Moneda,
+            FechaPagoUtc = DateTimeOffset.UtcNow,
+            ReferenciaExterna = created.ReferenciaExterna,
+            ObservacionesPago = created.ObservacionesPago
+        };
     }
 
     private static PagoResponse MapToResponse(PagoModel p) => new()
