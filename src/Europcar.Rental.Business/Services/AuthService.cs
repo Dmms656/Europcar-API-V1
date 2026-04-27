@@ -156,7 +156,8 @@ public class AuthService : IAuthService
 
     private static string GenerateClientCode()
     {
-        return $"CLT-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..8].ToUpper()}";
+        // Keep length <= 20 to satisfy rental.CLIENTES.codigo_cliente VARCHAR(20)
+        return $"CLT-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpper()}";
     }
 
     private static string BuildClientIdentification(string? cedula)
