@@ -3,24 +3,29 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { vehiculosApi } from '../../api/vehiculosApi';
 import { reservasApi } from '../../api/reservasApi';
 import { pagosApi } from '../../api/pagosApi';
+import { authApi } from '../../api/authApi';
 import DateTimePicker from '../../components/ui/DateTimePicker';
 import { bookingApi } from '../../api/bookingApi';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
   Car, MapPin, Calendar, Package, CreditCard, Check,
   ArrowLeft, ArrowRight, Fuel, Users, Settings2, Plus,
-  Minus, ShieldCheck, Loader2, CheckCircle2, X, AlertCircle
+  Minus, ShieldCheck, Loader2, CheckCircle2, X, AlertCircle, UserPlus, Eye, EyeOff
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const STEPS = ['Fechas', 'Conductores', 'Extras', 'Resumen', 'Pago'];
 const IVA_RATE = 0.15;
 const isValidImageUrl = (url) => url && (url.startsWith('http://') || url.startsWith('https://'));
 
 export default function ReservarPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, login } = useAuthStore();
+
+  // Guest flow: if not authenticated, add 'Identificación' as first step
+  const STEPS = isAuthenticated
+    ? ['Fechas', 'Conductores', 'Extras', 'Resumen', 'Pago']
+    : ['Identificación', 'Fechas', 'Conductores', 'Extras', 'Resumen', 'Pago'];
 
   const [step, setStep] = useState(0);
   const [vehiculo, setVehiculo] = useState(null);
@@ -31,6 +36,14 @@ export default function ReservarPage() {
   const [reservaConfirmada, setReservaConfirmada] = useState(null);
   const [stepErrors, setStepErrors] = useState({});
   const [shake, setShake] = useState(false);
+
+  // Guest registration form
+  const [guestForm, setGuestForm] = useState({
+    nombre: '', apellido: '', cedula: '', correo: '',
+    telefono: '', direccion: '', username: '', password: '',
+  });
+  const [showGuestPassword, setShowGuestPassword] = useState(false);
+  const [guestProcessing, setGuestProcessing] = useState(false);
 
   // Form state
   const [form, setForm] = useState({
@@ -54,10 +67,6 @@ export default function ReservarPage() {
   });
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login', { state: { from: { pathname: `/reservar/${id}` } } });
-      return;
-    }
     loadData();
   }, [id]);
 
@@ -182,7 +191,8 @@ export default function ReservarPage() {
 
   const getStepErrors = () => {
     const errs = {};
-    if (step === 0) {
+    const currentStep = STEPS[step];
+    if (currentStep === 'Fechas') {
       if (!form.fechaRecogida) errs.fechaRecogida = 'Selecciona fecha de recogida';
       if (!form.fechaDevolucion) errs.fechaDevolucion = 'Selecciona fecha de devolución';
       if (form.fechaRecogida && form.fechaDevolucion && new Date(form.fechaDevolucion) <= new Date(form.fechaRecogida))
@@ -190,11 +200,11 @@ export default function ReservarPage() {
       if (!form.idLocalizacionRecogida) errs.idLocalizacionRecogida = 'Selecciona sucursal de recogida';
       if (!form.idLocalizacionDevolucion) errs.idLocalizacionDevolucion = 'Selecciona sucursal de devolución';
     }
-    if (step === 1) {
+    if (currentStep === 'Conductores') {
       if (form.conductores.length === 0) errs.conductores = 'Debe haber al menos un conductor';
       if (!form.conductores.some(c => c.esPrincipal)) errs.conductores = 'Debe haber un conductor principal';
     }
-    if (step === 4) {
+    if (currentStep === 'Pago') {
       if (!pago.nombreTitular.trim()) errs.nombreTitular = 'Nombre del titular requerido';
       if (!pago.numeroTarjeta || pago.numeroTarjeta.replace(/\s/g, '').length < 16) errs.numeroTarjeta = 'Número de tarjeta inválido (16 dígitos)';
       if (!pago.mesExpiracion) errs.mesExpiracion = 'Mes requerido';
@@ -204,7 +214,49 @@ export default function ReservarPage() {
     return errs;
   };
 
+  // Guest registration handler
+  const handleGuestRegister = async () => {
+    const { nombre, apellido, cedula, correo, username, password, telefono, direccion } = guestForm;
+    if (!nombre || !apellido || !cedula || !correo || !username || !password) {
+      toast.error('Completa todos los campos obligatorios');
+      return;
+    }
+    if (password.length < 5) {
+      toast.error('La contraseña debe tener al menos 5 caracteres');
+      return;
+    }
+    setGuestProcessing(true);
+    try {
+      // Register the user (creates user + client)
+      await authApi.register({ nombre, apellido, cedula, correo, username, password, telefono, direccion });
+      // Auto-login
+      const loginRes = await authApi.login({ username, password });
+      const loginData = loginRes.data?.data;
+      login(loginData, 'cliente');
+      toast.success('¡Cuenta creada! Continuemos con tu reserva.');
+      // Move to next step & assign principal conductor
+      setForm(prev => ({
+        ...prev,
+        conductores: [{
+          id: null,
+          nombre: `${nombre} ${apellido}`,
+          licencia: '',
+          edad: '',
+          telefono: telefono || '',
+          esPrincipal: true,
+          esCliente: true,
+        }]
+      }));
+      setStep(step + 1);
+    } catch (e) {
+      const msg = e.response?.data?.message || 'Error al crear la cuenta';
+      toast.error(msg);
+    } finally { setGuestProcessing(false); }
+  };
+
   const handleNext = () => {
+    // Guest step is handled by handleGuestRegister, not handleNext
+    if (STEPS[step] === 'Identificación') return;
     const errs = getStepErrors();
     if (Object.keys(errs).length > 0) {
       setStepErrors(errs);
@@ -440,8 +492,71 @@ export default function ReservarPage() {
 
           {/* Step Content */}
           <div className="reservar-main">
-            {/* Step 0: Dates */}
-            {step === 0 && (
+            {/* Guest Identification Step */}
+            {STEPS[step] === 'Identificación' && (
+              <div className="reservar-step-content">
+                <h2><UserPlus size={24} /> Datos del Cliente</h2>
+                <p style={{color:'var(--color-text-secondary)', marginBottom:'1.5rem'}}>
+                  Crea una cuenta para continuar con tu reserva, o <a href="/login" style={{color:'var(--color-primary)'}}>inicia sesión</a> si ya tienes una.
+                </p>
+                <div className="reservar-form-grid">
+                  <div className="form-group">
+                    <label className="form-label">Nombre *</label>
+                    <input className="form-input" placeholder="Juan" value={guestForm.nombre}
+                      onChange={e => setGuestForm({...guestForm, nombre: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Apellido *</label>
+                    <input className="form-input" placeholder="Pérez" value={guestForm.apellido}
+                      onChange={e => setGuestForm({...guestForm, apellido: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Cédula / Identificación *</label>
+                    <input className="form-input" placeholder="1712345678" value={guestForm.cedula}
+                      onChange={e => setGuestForm({...guestForm, cedula: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Correo Electrónico *</label>
+                    <input className="form-input" type="email" placeholder="correo@ejemplo.com" value={guestForm.correo}
+                      onChange={e => setGuestForm({...guestForm, correo: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Teléfono</label>
+                    <input className="form-input" placeholder="0991234567" value={guestForm.telefono}
+                      onChange={e => setGuestForm({...guestForm, telefono: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Dirección</label>
+                    <input className="form-input" placeholder="Av. Principal 123" value={guestForm.direccion}
+                      onChange={e => setGuestForm({...guestForm, direccion: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Nombre de Usuario *</label>
+                    <input className="form-input" placeholder="juan.perez" value={guestForm.username}
+                      onChange={e => setGuestForm({...guestForm, username: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Contraseña *</label>
+                    <div className="form-input-wrapper">
+                      <input className="form-input" type={showGuestPassword ? 'text' : 'password'}
+                        placeholder="••••••••" value={guestForm.password}
+                        onChange={e => setGuestForm({...guestForm, password: e.target.value})} />
+                      <button type="button" className="form-input-toggle" onClick={() => setShowGuestPassword(!showGuestPassword)}>
+                        {showGuestPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div style={{marginTop:'1.5rem', display:'flex', justifyContent:'flex-end'}}>
+                  <button className="btn btn--primary" onClick={handleGuestRegister} disabled={guestProcessing}>
+                    {guestProcessing ? <><Loader2 size={16} className="spin" /> Creando cuenta...</> : <><ArrowRight size={16} /> Crear Cuenta y Continuar</>}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step: Dates */}
+            {STEPS[step] === 'Fechas' && (
               <div className="reservar-step-content">
                 <h2><Calendar size={24} /> Fechas y Ubicación</h2>
                 <div className="reservar-form-grid">
@@ -501,7 +616,7 @@ export default function ReservarPage() {
             )}
 
             {/* Step 1: Conductores */}
-            {step === 1 && (
+            {STEPS[step] === 'Conductores' && (
               <div className="reservar-step-content">
                 <h2><Users size={24} /> Conductores</h2>
                 <p className="reservar-step-desc">El cliente se asigna automáticamente como conductor principal. Puedes cambiarlo o agregar conductores adicionales.</p>
@@ -616,7 +731,7 @@ export default function ReservarPage() {
             )}
 
             {/* Step 2: Extras */}
-            {step === 2 && (
+            {STEPS[step] === 'Extras' && (
               <div className="reservar-step-content">
                 <h2><Package size={24} /> Extras y Accesorios</h2>
                 <p className="reservar-step-desc">Personaliza tu experiencia con extras opcionales</p>
@@ -662,7 +777,7 @@ export default function ReservarPage() {
             )}
 
             {/* Step 3: Summary */}
-            {step === 3 && (
+            {STEPS[step] === 'Resumen' && (
               <div className="reservar-step-content">
                 <h2><ShieldCheck size={24} /> Resumen de Reserva</h2>
                 <div className="resumen-grid">
@@ -699,7 +814,7 @@ export default function ReservarPage() {
             )}
 
             {/* Step 4: Payment */}
-            {step === 4 && (
+            {STEPS[step] === 'Pago' && (
               <div className="reservar-step-content">
                 <h2><CreditCard size={24} /> Pasarela de Pago</h2>
                 <div className="pago-card">

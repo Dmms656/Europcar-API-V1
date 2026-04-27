@@ -64,11 +64,9 @@ export default function App() {
           <Route path="/login" element={<WithNavbar><LoginPage /></WithNavbar>} />
           <Route path="/registro" element={<WithNavbar><RegisterPage /></WithNavbar>} />
 
-          {/* Reservation flow (requires any auth) */}
+          {/* Reservation flow (guest or authenticated) */}
           <Route path="/reservar/:id" element={
-            <ProtectedRoute>
-              <WithNavbar><ReservarPage /></WithNavbar>
-            </ProtectedRoute>
+            <WithNavbar><ReservarPage /></WithNavbar>
           } />
 
           {/* Admin routes — Navbar + Sidebar */}

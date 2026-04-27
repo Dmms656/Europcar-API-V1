@@ -11,7 +11,6 @@ namespace Europcar.Rental.Api.Controllers.V1.Internal;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-[Authorize]
 public class ReservasController : ControllerBase
 {
     private readonly IReservaService _reservaService;
