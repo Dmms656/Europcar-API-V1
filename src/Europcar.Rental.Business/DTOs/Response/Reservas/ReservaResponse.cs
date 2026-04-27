@@ -7,6 +7,7 @@ public class ReservaResponse
     public string CodigoReserva { get; set; } = string.Empty;
     public string CodigoConfirmacion { get; set; } = string.Empty;
     public string EstadoReserva { get; set; } = string.Empty;
+    public int IdCliente { get; set; }
     public DateTimeOffset FechaHoraRecogida { get; set; }
     public DateTimeOffset FechaHoraDevolucion { get; set; }
     public decimal Subtotal { get; set; }

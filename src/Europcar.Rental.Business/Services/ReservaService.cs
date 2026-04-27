@@ -233,6 +233,13 @@ public class ReservaService : IReservaService
         if (reserva.EstadoReserva == "FINALIZADA" || reserva.EstadoReserva == "CANCELADA")
             throw new BusinessException($"No se puede cancelar una reserva en estado {reserva.EstadoReserva}");
 
+        // Bloqueo de cancelación para reservas cuya recogida ya ocurrió.
+        // Una reserva en curso o pasada queda lockeada y debe seguir el flujo administrativo.
+        if (reserva.FechaHoraRecogida <= DateTimeOffset.UtcNow)
+            throw new BusinessException(
+                "No se puede cancelar una reserva cuya fecha de recogida ya ha pasado. " +
+                "Las reservas en curso o pasadas quedan bloqueadas para cancelación por el cliente.");
+
         // Liberar stock de extras que lo requieran
         if (reserva.Extras.Count > 0)
         {
@@ -283,6 +290,7 @@ public class ReservaService : IReservaService
         CodigoReserva = r.CodigoReserva,
         CodigoConfirmacion = r.CodigoConfirmacion,
         EstadoReserva = r.EstadoReserva,
+        IdCliente = r.IdCliente,
         FechaHoraRecogida = r.FechaHoraRecogida,
         FechaHoraDevolucion = r.FechaHoraDevolucion,
         Subtotal = r.Subtotal,

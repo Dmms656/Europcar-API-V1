@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Europcar.Rental.Api.Models.Common;
 using Europcar.Rental.Business.DTOs.Request.Reservas;
+using Europcar.Rental.Business.Exceptions;
 using Europcar.Rental.Business.Interfaces;
 using Europcar.Rental.DataManagement.Interfaces;
 using Europcar.Rental.DataManagement.Models;
@@ -18,14 +19,22 @@ namespace Europcar.Rental.Api.Controllers.V1.Internal;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/admin/reservas")]
+[Authorize]
 public class ReservasController : ControllerBase
 {
+    private const string AdminRoles = "ADMIN,AGENTE_POS";
+
     private readonly IReservaService _reservaService;
+    private readonly IReservaDataService _reservaDataService;
     private readonly IClienteDataService _clienteDataService;
 
-    public ReservasController(IReservaService reservaService, IClienteDataService clienteDataService)
+    public ReservasController(
+        IReservaService reservaService,
+        IReservaDataService reservaDataService,
+        IClienteDataService clienteDataService)
     {
         _reservaService = reservaService;
+        _reservaDataService = reservaDataService;
         _clienteDataService = clienteDataService;
     }
 
@@ -33,12 +42,12 @@ public class ReservasController : ControllerBase
     /// Crear o encontrar un cliente invitado (sin cuenta de usuario).
     /// </summary>
     [HttpPost("guest-client")]
+    [AllowAnonymous]
     public async Task<IActionResult> GuestClient([FromBody] GuestClientRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Cedula) || string.IsNullOrWhiteSpace(request.Nombre))
             return BadRequest(ApiResponse<object>.Fail("Cédula y nombre son obligatorios"));
 
-        // Try to find existing client by cédula
         var existing = await _clienteDataService.GetByIdentificacionAsync(request.Cedula.Trim());
         if (existing != null)
         {
@@ -53,7 +62,6 @@ public class ReservasController : ControllerBase
             }, "Cliente existente encontrado"));
         }
 
-        // Create new client
         var codigo = $"CLT-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
         var newCliente = await _clienteDataService.CreateAsync(new ClienteModel
         {
@@ -86,7 +94,7 @@ public class ReservasController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CrearReservaRequest request)
     {
         var result = await _reservaService.CreateAsync(request);
-        return CreatedAtAction(nameof(GetByCodigo), new { codigo = result.CodigoReserva }, 
+        return CreatedAtAction(nameof(GetByCodigo), new { codigo = result.CodigoReserva },
             ApiResponse<object>.Ok(result, "Reserva creada exitosamente"));
     }
 
@@ -106,6 +114,7 @@ public class ReservasController : ControllerBase
     [HttpGet("cliente/{idCliente:int}")]
     public async Task<IActionResult> GetByCliente(int idCliente)
     {
+        EnsureMismoClienteOAdmin(idCliente);
         var result = await _reservaService.GetByClienteIdAsync(idCliente);
         return Ok(ApiResponse<object>.Ok(result));
     }
@@ -122,14 +131,63 @@ public class ReservasController : ControllerBase
     }
 
     /// <summary>
-    /// Cancelar una reserva.
+    /// Cancelar una reserva. Para clientes (rol CLIENTE / sin rol admin) sólo se permite
+    /// cancelar reservas propias y cuya fecha de recogida sea futura. Las pasadas quedan
+    /// bloqueadas. Pagos y facturas asociados se anulan automáticamente.
     /// </summary>
     [HttpPut("{id:int}/cancelar")]
     public async Task<IActionResult> Cancelar(int id, [FromBody] CancelarReservaRequest request)
     {
+        if (request == null || string.IsNullOrWhiteSpace(request.Motivo))
+            throw new BusinessException("El motivo de cancelación es requerido");
+
+        await EnsurePuedeCancelarAsync(id);
+
         var usuario = User.FindFirstValue(ClaimTypes.Name) ?? "GUEST";
         var result = await _reservaService.CancelarAsync(id, request.Motivo, usuario);
         return Ok(ApiResponse<object>.Ok(result, "Reserva cancelada exitosamente"));
+    }
+
+    // ============================================================
+    // Helpers de autorización
+    // ============================================================
+
+    /// <summary>
+    /// Garantiza que un usuario sin rol administrativo sólo pueda actuar
+    /// sobre las reservas asociadas a su propio cliente.
+    /// </summary>
+    private async Task EnsurePuedeCancelarAsync(int idReserva)
+    {
+        if (EsAdminOAgente()) return;
+
+        var reserva = await _reservaDataService.GetByIdAsync(idReserva)
+            ?? throw new NotFoundException($"Reserva con ID {idReserva} no encontrada");
+
+        var idClienteUsuario = GetIdClienteClaim()
+            ?? throw new ForbiddenException("Tu usuario no está asociado a un cliente");
+
+        if (reserva.IdCliente != idClienteUsuario)
+            throw new ForbiddenException("No puedes cancelar reservas que no te pertenecen");
+    }
+
+    private void EnsureMismoClienteOAdmin(int idCliente)
+    {
+        if (EsAdminOAgente()) return;
+
+        var idClienteUsuario = GetIdClienteClaim();
+        if (idClienteUsuario == null || idClienteUsuario.Value != idCliente)
+            throw new ForbiddenException("No puedes consultar reservas de otros clientes");
+    }
+
+    private bool EsAdminOAgente()
+    {
+        return AdminRoles.Split(',').Any(r => User.IsInRole(r));
+    }
+
+    private int? GetIdClienteClaim()
+    {
+        var raw = User.FindFirstValue("idCliente");
+        return int.TryParse(raw, out var id) ? id : null;
     }
 }
 

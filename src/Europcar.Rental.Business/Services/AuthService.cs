@@ -49,7 +49,7 @@ public class AuthService : IAuthService
         await _usuarioDataService.UpdateUltimoLoginAsync(user.IdUsuario);
         await _unitOfWork.SaveChangesAsync();
 
-        var token = GenerateJwtToken(user.IdUsuario, user.Username, user.Correo, user.Roles);
+        var token = GenerateJwtToken(user.IdUsuario, user.Username, user.Correo, user.Roles, user.IdCliente);
 
         // Lookup client name if user is linked to a client
         string? nombreCompleto = null;
@@ -168,7 +168,7 @@ public class AuthService : IAuthService
         return $"AUTO-{Guid.NewGuid().ToString("N")[..12].ToUpper()}";
     }
 
-    private (string Token, DateTime Expiration) GenerateJwtToken(int userId, string username, string correo, List<string> roles)
+    private (string Token, DateTime Expiration) GenerateJwtToken(int userId, string username, string correo, List<string> roles, int? idCliente)
     {
         var jwtSection = _configuration.GetSection("JwtSettings");
         var secretKey = jwtSection["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey no configurado");
@@ -186,6 +186,12 @@ public class AuthService : IAuthService
             new(ClaimTypes.Email, correo),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
+
+        // Custom claim para validar pertenencia (p. ej. cancelación de reservas).
+        if (idCliente.HasValue)
+        {
+            claims.Add(new Claim("idCliente", idCliente.Value.ToString()));
+        }
 
         foreach (var role in roles)
         {

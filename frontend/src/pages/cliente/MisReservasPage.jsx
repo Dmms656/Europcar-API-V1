@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CalendarCheck, Clock, Car, Eye, X, DollarSign, Hash, User, FileText, Loader2, Inbox, XCircle } from 'lucide-react';
+import { CalendarCheck, Clock, Car, Eye, X, DollarSign, Hash, User, FileText, Loader2, Inbox, XCircle, Lock } from 'lucide-react';
 import { reservasApi } from '../../api/reservasApi';
 import { useAuthStore } from '../../store/useAuthStore';
 import { toast } from 'sonner';
@@ -66,9 +66,25 @@ export default function MisReservasPage() {
     } finally { setCancelling(false); }
   };
 
+  // Una reserva sólo se puede cancelar si:
+  //  - su estado es PENDIENTE o CONFIRMADA, y
+  //  - su fecha de recogida está en el futuro (las pasadas/en curso quedan lockeadas).
+  const isFutura = (r) => {
+    const fecha = r.fechaHoraRecogida || r.fechaRecogida;
+    if (!fecha) return false;
+    return new Date(fecha).getTime() > Date.now();
+  };
+
   const canCancel = (r) => {
     const estado = r.estadoReserva || r.estado;
-    return estado === 'PENDIENTE' || estado === 'CONFIRMADA';
+    const estadoOk = estado === 'PENDIENTE' || estado === 'CONFIRMADA';
+    return estadoOk && isFutura(r);
+  };
+
+  const isLocked = (r) => {
+    const estado = r.estadoReserva || r.estado;
+    const estadoCancelable = estado === 'PENDIENTE' || estado === 'CONFIRMADA';
+    return estadoCancelable && !isFutura(r);
   };
 
   if (loading) {
@@ -121,6 +137,15 @@ export default function MisReservasPage() {
                   <button className="btn btn--ghost btn--sm" style={{color:'var(--color-danger)'}} onClick={() => openCancelModal(r)}>
                     <XCircle size={16} /> Cancelar
                   </button>
+                )}
+                {isLocked(r) && (
+                  <span
+                    className="reserva-item__badge"
+                    title="Esta reserva ya inició o pasó su fecha de recogida y no puede cancelarse desde el portal del cliente."
+                    style={{ background: 'var(--color-border)', color: 'var(--color-text-secondary)', display:'inline-flex', alignItems:'center', gap:4 }}
+                  >
+                    <Lock size={12} /> Bloqueada
+                  </span>
                 )}
               </div>
             </div>
@@ -201,6 +226,23 @@ export default function MisReservasPage() {
                   <button className="btn btn--outline" style={{borderColor:'var(--color-danger)', color:'var(--color-danger)'}} onClick={() => openCancelModal(selected)}>
                     <XCircle size={16} /> Cancelar esta reserva
                   </button>
+                </div>
+              )}
+              {isLocked(selected) && (
+                <div style={{
+                  marginTop: '1rem',
+                  padding: '0.75rem 1rem',
+                  background: 'rgba(148, 163, 184, 0.12)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px dashed var(--color-border)',
+                  color: 'var(--color-text-secondary)',
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  gap: 8,
+                  alignItems: 'center'
+                }}>
+                  <Lock size={14} />
+                  Esta reserva ya inició o su fecha de recogida pasó. La cancelación queda bloqueada para el cliente; contacta a soporte si necesitas asistencia.
                 </div>
               )}
             </div>
