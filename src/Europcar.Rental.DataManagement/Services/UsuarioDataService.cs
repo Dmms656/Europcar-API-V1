@@ -192,29 +192,55 @@ public class UsuarioDataService : IUsuarioDataService
     }
     public async Task UpdateRolesAsync(int idUsuario, List<string> roles)
     {
-        // Remove existing roles
+        // Get ALL existing user-role records (including soft-deleted)
         var existingRoles = await _context.UsuariosRoles
             .IgnoreQueryFilters()
             .Where(ur => ur.IdUsuario == idUsuario)
+            .Include(ur => ur.Rol)
             .ToListAsync();
-        _context.UsuariosRoles.RemoveRange(existingRoles);
 
-        // Add new roles
+        // Deactivate all current roles
+        foreach (var ur in existingRoles)
+        {
+            ur.Activo = false;
+            ur.EstadoUsuarioRol = "INA";
+            ur.EsEliminado = true;
+            ur.ModificadoPorUsuario = "ADMIN_PANEL";
+            ur.FechaModificacionUtc = DateTimeOffset.UtcNow;
+        }
+
+        // Activate or create each desired role
         foreach (var roleName in roles)
         {
             var role = await _context.Roles.FirstOrDefaultAsync(r => r.NombreRol == roleName);
             if (role == null) continue;
 
-            _context.UsuariosRoles.Add(new Europcar.Rental.DataAccess.Entities.Security.UsuarioRolEntity
+            // Check if a record already exists for this user+role
+            var existing = existingRoles.FirstOrDefault(ur => ur.IdRol == role.IdRol);
+            if (existing != null)
             {
-                IdUsuario = idUsuario,
-                IdRol = role.IdRol,
-                EstadoUsuarioRol = "ACT",
-                Activo = true,
-                CreadoPorUsuario = "ADMIN_PANEL",
-                ModificadoPorUsuario = "ADMIN_PANEL"
-            });
+                // Reactivate the existing record
+                existing.Activo = true;
+                existing.EstadoUsuarioRol = "ACT";
+                existing.EsEliminado = false;
+                existing.ModificadoPorUsuario = "ADMIN_PANEL";
+                existing.FechaModificacionUtc = DateTimeOffset.UtcNow;
+            }
+            else
+            {
+                // Create new record
+                _context.UsuariosRoles.Add(new Europcar.Rental.DataAccess.Entities.Security.UsuarioRolEntity
+                {
+                    IdUsuario = idUsuario,
+                    IdRol = role.IdRol,
+                    EstadoUsuarioRol = "ACT",
+                    Activo = true,
+                    CreadoPorUsuario = "ADMIN_PANEL",
+                    ModificadoPorUsuario = "ADMIN_PANEL"
+                });
+            }
         }
+
         await _context.SaveChangesAsync();
     }
 }
