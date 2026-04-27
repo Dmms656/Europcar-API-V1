@@ -146,7 +146,7 @@ public class ReservaDataService : IReservaDataService
             ReservaConductorGuid = Guid.NewGuid(),
             IdReserva = idReserva,
             IdConductor = idConductor,
-            TipoConductor = esPrincipal ? "PRINCIPAL" : "ADICIONAL",
+            TipoConductor = esPrincipal ? "TITULAR" : "ADICIONAL",
             EsPrincipal = esPrincipal,
             CargoConductorJoven = cargoConductorJoven,
             EstadoReservaConductor = "ACT",
