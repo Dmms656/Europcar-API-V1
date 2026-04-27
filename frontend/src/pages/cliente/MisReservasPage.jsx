@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { CalendarCheck, Clock, Car, Eye, X, DollarSign, Hash, User, FileText, Loader2, Inbox, XCircle, Lock } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { CalendarCheck, Clock, Car, Eye, X, DollarSign, Hash, User, FileText, Loader2, Inbox, XCircle, Lock, ShoppingBag } from 'lucide-react';
 import { reservasApi } from '../../api/reservasApi';
 import { useAuthStore } from '../../store/useAuthStore';
 import { toast } from 'sonner';
+import { isReservaActiva, isReservaCancelable, isReservaBloqueada } from '../../utils/reservas';
 
 const estadoColors = {
   PENDIENTE: 'var(--color-warning)',
@@ -33,7 +35,10 @@ export default function MisReservasPage() {
       if (!idCliente) { setLoading(false); return; }
       const res = await reservasApi.getByCliente(idCliente);
       const data = res.data?.data;
-      setReservas(Array.isArray(data) ? data : []);
+      const all = Array.isArray(data) ? data : [];
+      // En "Mis Reservas" sólo mostramos las activas (no canceladas/finalizadas y aún no devueltas).
+      // Las pasadas se consultan en /historial.
+      setReservas(all.filter(isReservaActiva));
     } catch (err) {
       console.warn('Error cargando reservas:', err);
       setReservas([]);
@@ -66,26 +71,8 @@ export default function MisReservasPage() {
     } finally { setCancelling(false); }
   };
 
-  // Una reserva sólo se puede cancelar si:
-  //  - su estado es PENDIENTE o CONFIRMADA, y
-  //  - su fecha de recogida está en el futuro (las pasadas/en curso quedan lockeadas).
-  const isFutura = (r) => {
-    const fecha = r.fechaHoraRecogida || r.fechaRecogida;
-    if (!fecha) return false;
-    return new Date(fecha).getTime() > Date.now();
-  };
-
-  const canCancel = (r) => {
-    const estado = r.estadoReserva || r.estado;
-    const estadoOk = estado === 'PENDIENTE' || estado === 'CONFIRMADA';
-    return estadoOk && isFutura(r);
-  };
-
-  const isLocked = (r) => {
-    const estado = r.estadoReserva || r.estado;
-    const estadoCancelable = estado === 'PENDIENTE' || estado === 'CONFIRMADA';
-    return estadoCancelable && !isFutura(r);
-  };
+  const canCancel = isReservaCancelable;
+  const isLocked = isReservaBloqueada;
 
   if (loading) {
     return (
@@ -99,13 +86,24 @@ export default function MisReservasPage() {
     <div className="mis-reservas-page">
       <div className="page-header">
         <h1><CalendarCheck size={28} /> Mis Reservas</h1>
-        <p className="page-subtitle">Historial de todas tus reservas</p>
+        <p className="page-subtitle">Reservas activas (próximas o en curso). Para reservas pasadas consulta el <Link to="/historial">historial</Link>.</p>
       </div>
 
       {reservas.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '3rem 1rem', opacity: 0.6 }}>
+        <div style={{ textAlign: 'center', padding: '3rem 1rem', opacity: 0.7 }}>
           <Inbox size={48} />
-          <p style={{ marginTop: '1rem', fontSize: '1.1rem' }}>No tienes reservas registradas aún.</p>
+          <p style={{ marginTop: '1rem', fontSize: '1.1rem' }}>No tienes reservas activas en este momento.</p>
+          <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
+            ¿Quieres reservar un vehículo? Explora el <Link to="/catalogo">catálogo</Link> o revisa tu <Link to="/historial">historial</Link>.
+          </p>
+          <div style={{ marginTop: '1.25rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+            <Link to="/catalogo" className="btn btn--accent">
+              <ShoppingBag size={16} /> Reservar vehículo
+            </Link>
+            <Link to="/historial" className="btn btn--ghost">
+              <Clock size={16} /> Ver historial
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="reservas-list">

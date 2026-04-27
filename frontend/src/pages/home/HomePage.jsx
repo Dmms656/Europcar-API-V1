@@ -2,19 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { bookingApi } from '../../api/bookingApi';
 import {
-  Car, MapPin, Search, Shield, Star,
-  ChevronRight, LogIn, Fuel, Users, Settings2, ShoppingBag, ArrowRight, Zap, ShieldCheck
+  Car, MapPin, Search, Shield, LogIn, ShoppingBag
 } from 'lucide-react';
 import DateTimePicker from '../../components/ui/DateTimePicker';
-
-const isValidImageUrl = (url) => url && (url.startsWith('http://') || url.startsWith('https://'));
 
 export default function HomePage() {
   const navigate = useNavigate();
   const [localizaciones, setLocalizaciones] = useState([]);
   const [categorias, setCategorias] = useState([]);
-  const [vehiculosDestacados, setVehiculosDestacados] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   const [searchForm, setSearchForm] = useState({
     idLocalizacion: '',
@@ -26,21 +21,14 @@ export default function HomePage() {
 
   const loadData = async () => {
     try {
-      const [locRes, catRes, vehRes] = await Promise.allSettled([
+      const [locRes, catRes] = await Promise.allSettled([
         bookingApi.getLocalizaciones({}),
         bookingApi.getCategorias(),
-        bookingApi.buscarVehiculos({ page: 1, limit: 5 }),
       ]);
       if (locRes.status === 'fulfilled') setLocalizaciones(locRes.value.data?.data?.localizaciones || []);
       if (catRes.status === 'fulfilled') setCategorias(catRes.value.data?.data?.categorias || []);
-      if (vehRes.status === 'fulfilled') {
-        const vehiculos = vehRes.value.data?.data?.vehiculos || [];
-        setVehiculosDestacados(vehiculos.slice(0, 5));
-      }
     } catch (e) {
       console.error('Error loading homepage data:', e);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -140,113 +128,6 @@ export default function HomePage() {
             <span className="home-stat__number">4.8</span>
             <span className="home-stat__label">Calificación</span>
           </div>
-        </div>
-      </section>
-
-      {/* Fleet */}
-      <section className="home-section" id="vehiculos">
-        <div className="home-section__inner">
-          <div className="home-section__header">
-            <h2>Nuestra Flota</h2>
-            <p>Conoce los primeros vehículos disponibles de nuestro catálogo</p>
-          </div>
-
-          {loading ? (
-            <div className="home-loading">Cargando vehículos...</div>
-          ) : vehiculosDestacados.length === 0 ? (
-            <div className="home-loading">
-              <p>Conectando con la API...</p>
-              <p style={{fontSize:'0.8rem',color:'var(--color-text-muted)',marginTop:'0.5rem'}}>
-                La API en Render puede tardar ~30s en despertar si estaba inactiva.
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="catalog-grid">
-                {vehiculosDestacados.map((v) => (
-                  <div key={v.idVehiculo || v.vehiculoGuid} className="catalog-card">
-                    <div className="catalog-card__image">
-                      {isValidImageUrl(v.imagenUrl) ? (
-                        <img src={v.imagenUrl} alt={`${v.marca} ${v.modelo || v.modeloVehiculo}`} />
-                      ) : (
-                        <div className="catalog-card__image-placeholder">
-                          <Car size={56} />
-                          <span>{v.marca} {v.modelo || v.modeloVehiculo}</span>
-                        </div>
-                      )}
-                      <div className="catalog-card__badges">
-                        <span className="catalog-card__badge catalog-card__badge--category">
-                          {v.categoria || v.categoriaVehiculo}
-                        </span>
-                        {(v.tipoCombustible === 'ELECTRICO' || v.tipoCombustible === 'HIBRIDO') && (
-                          <span className="catalog-card__badge catalog-card__badge--eco">
-                            <Zap size={12} /> Eco
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="catalog-card__body">
-                      <div className="catalog-card__header">
-                        <h3 className="catalog-card__title">{v.marca} {v.modelo || v.modeloVehiculo}</h3>
-                        <span className="catalog-card__year">{v.anioFabricacion}</span>
-                      </div>
-
-                      <div className="catalog-card__specs">
-                        <div className="catalog-card__spec">
-                          <Users size={15} />
-                          <span>{v.capacidadPasajeros} pasajeros</span>
-                        </div>
-                        <div className="catalog-card__spec">
-                          <Fuel size={15} />
-                          <span>{v.tipoCombustible}</span>
-                        </div>
-                        <div className="catalog-card__spec">
-                          <Settings2 size={15} />
-                          <span>{v.tipoTransmision}</span>
-                        </div>
-                        <div className="catalog-card__spec">
-                          <MapPin size={15} />
-                          <span>{v.localizacion}</span>
-                        </div>
-                      </div>
-
-                      <div className="catalog-card__features">
-                        {v.aireAcondicionado && (
-                          <span className="catalog-card__feature">
-                            <ShieldCheck size={14} /> A/C
-                          </span>
-                        )}
-                        <span className="catalog-card__feature">
-                          <Star size={14} /> {v.capacidadMaletas} maletas
-                        </span>
-                      </div>
-
-                      <div className="catalog-card__footer">
-                        <div className="catalog-card__price">
-                          <span className="catalog-card__price-amount">
-                            ${Number(v.precioBaseDia || v.precioDia || 0).toFixed(2)}
-                          </span>
-                          <span className="catalog-card__price-unit">/día</span>
-                        </div>
-                        <button
-                          className="btn btn--primary catalog-card__btn"
-                          onClick={() => navigate(`/reservar/${v.idVehiculo}`)}
-                        >
-                          Reservar <ArrowRight size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="home-section__cta">
-                <Link to="/catalogo" className="btn btn--outline btn--lg">
-                  Ver todo el catálogo <ChevronRight size={18} />
-                </Link>
-              </div>
-            </>
-          )}
         </div>
       </section>
 
