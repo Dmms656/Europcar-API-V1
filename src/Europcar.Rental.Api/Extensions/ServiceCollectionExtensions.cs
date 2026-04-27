@@ -16,8 +16,12 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration)
     {
+        var connStr = configuration.GetConnectionString("RentalDb")
+            + ";Timeout=10;Command Timeout=10;Maximum Pool Size=10;Connection Idle Lifetime=30;Connection Pruning Interval=5;";
+
         services.AddDbContext<RentalDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("RentalDb")));
+            options.UseNpgsql(connStr, npgsqlOptions =>
+                npgsqlOptions.EnableRetryOnFailure(2)));
 
         return services;
     }
