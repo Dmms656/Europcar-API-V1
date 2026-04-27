@@ -6,4 +6,5 @@ export const reservasApi = {
   getByCliente: (idCliente) => api.get(`/Reservas/cliente/${idCliente}`),
   confirmar: (id, data) => api.put(`/Reservas/${id}/confirmar`, data || {}),
   cancelar: (id, motivo) => api.put(`/Reservas/${id}/cancelar`, { motivo }),
+  guestClient: (data) => api.post('/Reservas/guest-client', data),
 };

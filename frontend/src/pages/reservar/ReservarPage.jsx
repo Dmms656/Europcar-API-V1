@@ -3,14 +3,13 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { vehiculosApi } from '../../api/vehiculosApi';
 import { reservasApi } from '../../api/reservasApi';
 import { pagosApi } from '../../api/pagosApi';
-import { authApi } from '../../api/authApi';
 import DateTimePicker from '../../components/ui/DateTimePicker';
 import { bookingApi } from '../../api/bookingApi';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
   Car, MapPin, Calendar, Package, CreditCard, Check,
   ArrowLeft, ArrowRight, Fuel, Users, Settings2, Plus,
-  Minus, ShieldCheck, Loader2, CheckCircle2, X, AlertCircle, UserPlus, Eye, EyeOff
+  Minus, ShieldCheck, Loader2, CheckCircle2, X, AlertCircle, UserPlus
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -20,7 +19,7 @@ const isValidImageUrl = (url) => url && (url.startsWith('http://') || url.starts
 export default function ReservarPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, isAuthenticated, login } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
 
   // Guest flow: if not authenticated, add 'Identificación' as first step
   const STEPS = isAuthenticated
@@ -37,13 +36,13 @@ export default function ReservarPage() {
   const [stepErrors, setStepErrors] = useState({});
   const [shake, setShake] = useState(false);
 
-  // Guest registration form
+  // Guest client form (no user account needed)
   const [guestForm, setGuestForm] = useState({
     nombre: '', apellido: '', cedula: '', correo: '',
-    telefono: '', direccion: '', username: '', password: '',
+    telefono: '', direccion: '',
   });
-  const [showGuestPassword, setShowGuestPassword] = useState(false);
   const [guestProcessing, setGuestProcessing] = useState(false);
+  const [guestClientId, setGuestClientId] = useState(null);
 
   // Form state
   const [form, setForm] = useState({
@@ -214,49 +213,41 @@ export default function ReservarPage() {
     return errs;
   };
 
-  // Guest registration handler
-  const handleGuestRegister = async () => {
-    const { nombre, apellido, cedula, correo, username, password, telefono, direccion } = guestForm;
-    if (!nombre || !apellido || !cedula || !correo || !username || !password) {
-      toast.error('Completa todos los campos obligatorios');
-      return;
-    }
-    if (password.length < 5) {
-      toast.error('La contraseña debe tener al menos 5 caracteres');
+  // Guest client handler (no user account required)
+  const handleGuestClient = async () => {
+    const { nombre, apellido, cedula, correo } = guestForm;
+    if (!nombre || !cedula) {
+      toast.error('Nombre y cédula son obligatorios');
       return;
     }
     setGuestProcessing(true);
     try {
-      // Register the user (creates user + client)
-      await authApi.register({ nombre, apellido, cedula, correo, username, password, telefono, direccion });
-      // Auto-login
-      const loginRes = await authApi.login({ username, password });
-      const loginData = loginRes.data?.data;
-      login(loginData, 'cliente');
-      toast.success('¡Cuenta creada! Continuemos con tu reserva.');
-      // Move to next step & assign principal conductor
+      const res = await reservasApi.guestClient(guestForm);
+      const data = res.data?.data;
+      setGuestClientId(data.idCliente);
+      toast.success(data.esNuevo ? '¡Cliente creado!' : 'Cliente encontrado. Continuemos.');
+      // Assign as principal conductor
       setForm(prev => ({
         ...prev,
         conductores: [{
           id: null,
-          nombre: `${nombre} ${apellido}`,
+          nombre: `${nombre} ${apellido || ''}`.trim(),
           licencia: '',
           edad: '',
-          telefono: telefono || '',
+          telefono: guestForm.telefono || '',
           esPrincipal: true,
           esCliente: true,
         }]
       }));
       setStep(step + 1);
     } catch (e) {
-      const msg = e.response?.data?.message || 'Error al crear la cuenta';
-      toast.error(msg);
+      toast.error(e.response?.data?.message || 'Error al registrar cliente');
     } finally { setGuestProcessing(false); }
   };
 
   const handleNext = () => {
-    // Guest step is handled by handleGuestRegister, not handleNext
     if (STEPS[step] === 'Identificación') return;
+
     const errs = getStepErrors();
     if (Object.keys(errs).length > 0) {
       setStepErrors(errs);
@@ -273,9 +264,10 @@ export default function ReservarPage() {
   const handlePagar = async () => {
     setProcessing(true);
 
-    // Validate idCliente exists
-    if (!user?.idCliente) {
-      toast.error('Tu cuenta no tiene un perfil de cliente vinculado. Cierra sesión, regístrate de nuevo o contacta soporte.');
+    // Validate idCliente exists (from user account or guest client)
+    const clientId = user?.idCliente || guestClientId;
+    if (!clientId) {
+      toast.error('No se pudo identificar el cliente. Regresa al primer paso.');
       setProcessing(false);
       return;
     }
@@ -302,7 +294,7 @@ export default function ReservarPage() {
       try {
         // 1. Create reservation
         const reservaPayload = {
-          idCliente: user.idCliente,
+          idCliente: clientId,
           idVehiculo: Number(id),
           idLocalizacionRecogida: Number(form.idLocalizacionRecogida),
           idLocalizacionDevolucion: Number(form.idLocalizacionDevolucion),
@@ -497,7 +489,8 @@ export default function ReservarPage() {
               <div className="reservar-step-content">
                 <h2><UserPlus size={24} /> Datos del Cliente</h2>
                 <p style={{color:'var(--color-text-secondary)', marginBottom:'1.5rem'}}>
-                  Crea una cuenta para continuar con tu reserva, o <a href="/login" style={{color:'var(--color-primary)'}}>inicia sesión</a> si ya tienes una.
+                  Ingresa tus datos para continuar. Si ya tienes una cuenta, <a href="/login" style={{color:'var(--color-primary)'}}>inicia sesión aquí</a>.
+                  <br /><small>Si tu cédula ya está registrada, se reutilizará tu perfil existente.</small>
                 </p>
                 <div className="reservar-form-grid">
                   <div className="form-group">
@@ -506,7 +499,7 @@ export default function ReservarPage() {
                       onChange={e => setGuestForm({...guestForm, nombre: e.target.value})} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Apellido *</label>
+                    <label className="form-label">Apellido</label>
                     <input className="form-input" placeholder="Pérez" value={guestForm.apellido}
                       onChange={e => setGuestForm({...guestForm, apellido: e.target.value})} />
                   </div>
@@ -516,7 +509,7 @@ export default function ReservarPage() {
                       onChange={e => setGuestForm({...guestForm, cedula: e.target.value})} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Correo Electrónico *</label>
+                    <label className="form-label">Correo Electrónico</label>
                     <input className="form-input" type="email" placeholder="correo@ejemplo.com" value={guestForm.correo}
                       onChange={e => setGuestForm({...guestForm, correo: e.target.value})} />
                   </div>
@@ -530,26 +523,10 @@ export default function ReservarPage() {
                     <input className="form-input" placeholder="Av. Principal 123" value={guestForm.direccion}
                       onChange={e => setGuestForm({...guestForm, direccion: e.target.value})} />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Nombre de Usuario *</label>
-                    <input className="form-input" placeholder="juan.perez" value={guestForm.username}
-                      onChange={e => setGuestForm({...guestForm, username: e.target.value})} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Contraseña *</label>
-                    <div className="form-input-wrapper">
-                      <input className="form-input" type={showGuestPassword ? 'text' : 'password'}
-                        placeholder="••••••••" value={guestForm.password}
-                        onChange={e => setGuestForm({...guestForm, password: e.target.value})} />
-                      <button type="button" className="form-input-toggle" onClick={() => setShowGuestPassword(!showGuestPassword)}>
-                        {showGuestPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                  </div>
                 </div>
                 <div style={{marginTop:'1.5rem', display:'flex', justifyContent:'flex-end'}}>
-                  <button className="btn btn--primary" onClick={handleGuestRegister} disabled={guestProcessing}>
-                    {guestProcessing ? <><Loader2 size={16} className="spin" /> Creando cuenta...</> : <><ArrowRight size={16} /> Crear Cuenta y Continuar</>}
+                  <button className="btn btn--primary" onClick={handleGuestClient} disabled={guestProcessing}>
+                    {guestProcessing ? <><Loader2 size={16} className="spin" /> Verificando...</> : <><ArrowRight size={16} /> Continuar</>}
                   </button>
                 </div>
               </div>
