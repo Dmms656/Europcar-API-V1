@@ -14,6 +14,8 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [touched, setTouched] = useState({});
   const [shake, setShake] = useState(false);
+  const [checkingCedula, setCheckingCedula] = useState(false);
+  const [cedulaExists, setCedulaExists] = useState(false);
 
   const [form, setForm] = useState({
     username: '', correo: '', password: '', confirmPassword: '',
@@ -21,8 +23,38 @@ export default function RegisterPage() {
     idClienteExistente: '',
   });
 
-  const updateField = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
+  const updateField = (field, value) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    if (field === 'cedula') {
+      setCedulaExists(false);
+    }
+  };
   const handleBlur = (field) => setTouched(p => ({ ...p, [field]: true }));
+
+  const validateCedulaExists = async () => {
+    const cedula = form.cedula.trim();
+    if (mode !== 'nuevo' || !cedula || validators.cedula(cedula)) {
+      setCedulaExists(false);
+      return false;
+    }
+
+    setCheckingCedula(true);
+    try {
+      const response = await authApi.cedulaExists(cedula);
+      const exists = Boolean(response?.data?.data?.exists);
+      setCedulaExists(exists);
+      if (exists) {
+        const msg = 'La cédula ya está registrada. Usa "Cliente Existente" para vincular tu cuenta.';
+        setError(msg);
+        toast.error(msg);
+      }
+      return exists;
+    } catch {
+      return false;
+    } finally {
+      setCheckingCedula(false);
+    }
+  };
 
   // Compute errors
   const errors = {};
@@ -33,7 +65,9 @@ export default function RegisterPage() {
   if (mode === 'nuevo') {
     errors.nombre = validators.required(form.nombre, 'El nombre');
     errors.apellido = validators.required(form.apellido, 'El apellido');
-    errors.cedula = validators.required(form.cedula, 'La cédula') || validators.cedula(form.cedula);
+    errors.cedula = validators.required(form.cedula, 'La cédula')
+      || validators.cedula(form.cedula)
+      || (cedulaExists ? 'La cédula ya está registrada' : '');
     errors.telefono = form.telefono ? validators.phone(form.telefono) : '';
   }
   if (mode === 'existente') {
@@ -56,6 +90,15 @@ export default function RegisterPage() {
       const firstErr = Object.values(errors).find(e => e);
       if (firstErr) toast.error(firstErr);
       return;
+    }
+
+    if (mode === 'nuevo') {
+      const exists = await validateCedulaExists();
+      if (exists) {
+        setShake(true);
+        setTimeout(() => setShake(false), 500);
+        return;
+      }
     }
 
     setLoading(true);
@@ -156,7 +199,9 @@ export default function RegisterPage() {
               {renderField('cedula', <>
                 <label className="form-label">Cédula / Pasaporte *</label>
                 <input className="form-input" placeholder="1712345678" value={form.cedula}
-                  onChange={(e) => updateField('cedula', e.target.value)} onBlur={() => handleBlur('cedula')} />
+                  onChange={(e) => updateField('cedula', e.target.value)}
+                  onBlur={async () => { handleBlur('cedula'); await validateCedulaExists(); }} />
+                {checkingCedula && <span className="form-helper">Validando cédula...</span>}
               </>)}
               <div className="register-row">
                 {renderField('telefono', <>

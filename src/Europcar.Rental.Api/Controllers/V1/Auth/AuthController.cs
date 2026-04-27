@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Europcar.Rental.Api.Models.Common;
 using Europcar.Rental.Business.DTOs.Request.Auth;
 using Europcar.Rental.Business.Interfaces;
+using Europcar.Rental.DataManagement.Interfaces;
 
 namespace Europcar.Rental.Api.Controllers.V1.Auth;
 
@@ -12,10 +13,12 @@ namespace Europcar.Rental.Api.Controllers.V1.Auth;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly IClienteDataService _clienteDataService;
 
-    public AuthController(IAuthService authService)
+    public AuthController(IAuthService authService, IClienteDataService clienteDataService)
     {
         _authService = authService;
+        _clienteDataService = clienteDataService;
     }
 
     /// <summary>
@@ -36,5 +39,18 @@ public class AuthController : ControllerBase
     {
         var result = await _authService.RegisterAsync(request);
         return Ok(ApiResponse<object>.Ok(result, "Registro exitoso"));
+    }
+
+    /// <summary>
+    /// Validar si una cédula/identificación ya existe.
+    /// </summary>
+    [HttpGet("cedula-exists")]
+    public async Task<IActionResult> CedulaExists([FromQuery] string cedula)
+    {
+        if (string.IsNullOrWhiteSpace(cedula))
+            return BadRequest(ApiResponse<object>.Fail("La cédula es requerida"));
+
+        var existing = await _clienteDataService.GetByIdentificacionAsync(cedula.Trim());
+        return Ok(ApiResponse<object>.Ok(new { exists = existing != null }));
     }
 }
