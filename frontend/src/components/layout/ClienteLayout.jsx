@@ -2,8 +2,8 @@ import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useAppStore } from '../../store/useAppStore';
 import {
-  Car, User, CalendarCheck, FileText, Clock,
-  LogOut, X, ChevronRight, ShoppingBag
+  User, CalendarCheck, FileText, Clock,
+  LogOut, ChevronRight, ShoppingBag
 } from 'lucide-react';
 
 const navigation = [
