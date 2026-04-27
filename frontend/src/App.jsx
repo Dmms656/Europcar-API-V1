@@ -3,6 +3,7 @@ import { Toaster } from 'sonner';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import MainLayout from './components/layout/MainLayout';
 import ClienteLayout from './components/layout/ClienteLayout';
+import Navbar from './components/layout/Navbar';
 import { ProtectedRoute } from './routes/ProtectedRoute';
 
 // Public pages
@@ -34,6 +35,16 @@ const queryClient = new QueryClient({
   },
 });
 
+/** Wrapper that adds the shared Navbar above any page */
+function WithNavbar({ children }) {
+  return (
+    <>
+      <Navbar />
+      {children}
+    </>
+  );
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -46,25 +57,25 @@ export default function App() {
           richColors
         />
         <Routes>
-          {/* Public routes */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/buscar" element={<BuscarPage />} />
-          <Route path="/catalogo" element={<CatalogoPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/registro" element={<RegisterPage />} />
+          {/* Public routes — all with Navbar */}
+          <Route path="/" element={<WithNavbar><HomePage /></WithNavbar>} />
+          <Route path="/buscar" element={<WithNavbar><BuscarPage /></WithNavbar>} />
+          <Route path="/catalogo" element={<WithNavbar><CatalogoPage /></WithNavbar>} />
+          <Route path="/login" element={<WithNavbar><LoginPage /></WithNavbar>} />
+          <Route path="/registro" element={<WithNavbar><RegisterPage /></WithNavbar>} />
 
           {/* Reservation flow (requires any auth) */}
           <Route path="/reservar/:id" element={
             <ProtectedRoute>
-              <ReservarPage />
+              <WithNavbar><ReservarPage /></WithNavbar>
             </ProtectedRoute>
           } />
 
-          {/* Admin routes */}
+          {/* Admin routes — Navbar + Sidebar */}
           <Route
             element={
               <ProtectedRoute allowedTypes={['admin']}>
-                <MainLayout />
+                <WithNavbar><MainLayout /></WithNavbar>
               </ProtectedRoute>
             }
           >
@@ -78,11 +89,11 @@ export default function App() {
             <Route path="/usuarios" element={<UsuariosPage />} />
           </Route>
 
-          {/* Client portal routes */}
+          {/* Client portal routes — Navbar + Sidebar */}
           <Route
             element={
               <ProtectedRoute allowedTypes={['cliente']}>
-                <ClienteLayout />
+                <WithNavbar><ClienteLayout /></WithNavbar>
               </ProtectedRoute>
             }
           >

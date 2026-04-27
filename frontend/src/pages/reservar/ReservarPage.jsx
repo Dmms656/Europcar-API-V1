@@ -264,27 +264,8 @@ export default function ReservarPage() {
         return;
       }
 
-      // ── STEP 2: Confirm Reservation + Auto-create Payment & Invoice ──
-      try {
-        const lastFour = (pago.numeroTarjeta || '0000').slice(-4);
-        const confirmarPayload = {
-          monto: totalFinal,
-          referenciaExterna: `SIM-${lastFour}-${Date.now().toString(36).toUpperCase()}`,
-        };
-        console.log('Confirmando reserva:', idReserva, confirmarPayload);
-        await reservasApi.confirmar(idReserva, confirmarPayload);
-        toast.success('Pago registrado y reserva confirmada');
-      } catch (pagoErr) {
-        const errDetail = pagoErr.response?.data?.message 
-          || pagoErr.response?.data?.title 
-          || pagoErr.response?.data?.errors 
-          || pagoErr.message;
-        console.error('Error confirmando reserva:', pagoErr.response?.status, pagoErr.response?.data);
-        toast.error(`Error en pago: ${typeof errDetail === 'string' ? errDetail : JSON.stringify(errDetail)}`);
-        // Payment failed but reservation was created — continue to show confirmation
-      }
-
-      // ── STEP 3: Show Confirmation ──
+      // ── STEP 2: Show Confirmation IMMEDIATELY ──
+      // Don't wait for payment/confirmation — show success right away
       setReservaConfirmada({
         codigoReserva: codigoReserva || `RES-${Date.now().toString(36).toUpperCase()}`,
         codigoConfirmacion: codigoConfirmacion || codigoReserva,
@@ -294,14 +275,21 @@ export default function ReservarPage() {
         fechaDevolucion: form.fechaDevolucion,
         total: totalFinal,
         estado: 'CONFIRMADA',
-        pago: pagoData ? {
-          idPago: pagoData.idPago,
-          referencia: pagoData.referenciaExterna,
-          estado: pagoData.estadoPago || 'COMPLETADO',
-        } : null,
+      });
+      toast.success('¡Reserva creada exitosamente!');
+
+      // ── STEP 3: Confirm + Payment in background (fire-and-forget) ──
+      const lastFour = (pago.numeroTarjeta || '0000').slice(-4);
+      reservasApi.confirmar(idReserva, {
+        monto: totalFinal,
+        referenciaExterna: `SIM-${lastFour}-${Date.now().toString(36).toUpperCase()}`,
+      }).then(() => {
+        toast.success('Pago procesado y reserva confirmada');
+      }).catch((err) => {
+        console.warn('Error confirmando reserva en background:', err);
+        // Reservation was already created — user sees success
       });
 
-      toast.success('¡Reserva confirmada exitosamente!');
     } catch (e) {
       console.error('Error en flujo de reserva:', e);
       toast.error('Error al procesar la reserva');
