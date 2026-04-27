@@ -88,26 +88,6 @@ export default function CatalogoPage() {
 
   return (
     <div className="catalogo-page">
-      {/* Navigation */}
-      <nav className="home-nav home-nav--catalog">
-        <div className="home-nav__inner">
-          <Link to="/" className="home-nav__logo">
-            <Car size={28} />
-            <span>Europcar</span>
-          </Link>
-          <div className="home-nav__links">
-            <Link to="/" className="home-nav__link"><Home size={16} /> Inicio</Link>
-            <Link to="/catalogo" className="home-nav__link home-nav__link--active">Catálogo</Link>
-            {isAuthenticated ? (
-              <Link to={userType === 'admin' ? '/dashboard' : '/mi-cuenta'} className="home-nav__btn">
-                {userType === 'admin' ? 'Panel Admin' : 'Mi Cuenta'}
-              </Link>
-            ) : (
-              <Link to="/login" className="home-nav__btn"><LogIn size={16} /> Iniciar Sesión</Link>
-            )}
-          </div>
-        </div>
-      </nav>
 
       {/* Hero Banner */}
       <div className="catalog-hero">
