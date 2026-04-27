@@ -22,7 +22,7 @@ public interface IReservaService
 {
     Task<ReservaResponse> GetByCodigoAsync(string codigo);
     Task<ReservaResponse> CreateAsync(CrearReservaRequest request);
-    Task<ReservaResponse> ConfirmarAsync(int id, string usuario);
+    Task<ReservaResponse> ConfirmarAsync(int id, string usuario, decimal? monto = null, string? referenciaExterna = null);
     Task<ReservaResponse> CancelarAsync(int id, string motivo, string usuario);
     Task<IEnumerable<ReservaResponse>> GetByClienteIdAsync(int idCliente);
 }

@@ -53,14 +53,13 @@ public class ReservasController : ControllerBase
     }
 
     /// <summary>
-    /// Confirmar una reserva pendiente.
+    /// Confirmar una reserva pendiente y registrar el pago + factura.
     /// </summary>
     [HttpPut("{id:int}/confirmar")]
-    [Authorize(Roles = "ADMIN,AGENTE_POS")]
-    public async Task<IActionResult> Confirmar(int id)
+    public async Task<IActionResult> Confirmar(int id, [FromBody] ConfirmarReservaRequest? request = null)
     {
         var usuario = User.FindFirstValue(ClaimTypes.Name) ?? "API";
-        var result = await _reservaService.ConfirmarAsync(id, usuario);
+        var result = await _reservaService.ConfirmarAsync(id, usuario, request?.Monto, request?.ReferenciaExterna);
         return Ok(ApiResponse<object>.Ok(result, "Reserva confirmada exitosamente"));
     }
 

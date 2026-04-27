@@ -264,29 +264,22 @@ export default function ReservarPage() {
         return;
       }
 
-      // ── STEP 2: Register Payment ──
-      let pagoData = null;
+      // ── STEP 2: Confirm Reservation + Auto-create Payment & Invoice ──
       try {
         const lastFour = (pago.numeroTarjeta || '0000').slice(-4);
-        const pagoPayload = {
-          idReserva: idReserva,
-          idCliente: user.idCliente,
-          tipoPago: 'COBRO',
-          metodoPago: 'TARJETA',
+        const confirmarPayload = {
           monto: totalFinal,
           referenciaExterna: `SIM-${lastFour}-${Date.now().toString(36).toUpperCase()}`,
-          observaciones: `Pago web - Tarjeta terminada en ${lastFour} - Titular: ${pago.nombreTitular || 'N/A'}`,
         };
-        console.log('Enviando pago:', pagoPayload);
-        const pagoRes = await pagosApi.create(pagoPayload);
-        pagoData = pagoRes.data?.data;
-        toast.success('Pago registrado correctamente');
+        console.log('Confirmando reserva:', idReserva, confirmarPayload);
+        await reservasApi.confirmar(idReserva, confirmarPayload);
+        toast.success('Pago registrado y reserva confirmada');
       } catch (pagoErr) {
         const errDetail = pagoErr.response?.data?.message 
           || pagoErr.response?.data?.title 
           || pagoErr.response?.data?.errors 
           || pagoErr.message;
-        console.error('Error registrando pago:', pagoErr.response?.status, pagoErr.response?.data);
+        console.error('Error confirmando reserva:', pagoErr.response?.status, pagoErr.response?.data);
         toast.error(`Error en pago: ${typeof errDetail === 'string' ? errDetail : JSON.stringify(errDetail)}`);
         // Payment failed but reservation was created — continue to show confirmation
       }
