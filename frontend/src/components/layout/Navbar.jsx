@@ -1,15 +1,24 @@
-import { NavLink, Link, useNavigate } from 'react-router-dom';
+import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useAppStore } from '../../store/useAppStore';
 import { Car, Home, ShoppingBag, User, Shield, LogOut, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 
 export default function Navbar() {
   const { user, token, logout, hasAnyRole } = useAuthStore();
+  const { sidebarOpen, toggleSidebar } = useAppStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const isAdmin = hasAnyRole?.('ADMIN', 'AGENTE_POS');
   const isLoggedIn = !!token;
+
+  // Check if we are in a route that has a sidebar
+  const isDashboardRoute = [
+    '/dashboard', '/clientes', '/vehiculos', '/reservas', '/contratos', '/pagos', '/mantenimientos', '/usuarios',
+    '/mi-cuenta', '/mis-reservas', '/mis-contratos', '/historial'
+  ].some(path => location.pathname.startsWith(path));
 
   const handleLogout = () => {
     logout();
@@ -64,14 +73,21 @@ export default function Navbar() {
               Iniciar Sesión
             </Link>
           )}
-          <button className="navbar__hamburger" onClick={() => setMenuOpen(!menuOpen)}>
-            {menuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+          {/* Menu button logic depends on route */}
+          {isDashboardRoute ? (
+            <button className="navbar__hamburger" onClick={toggleSidebar}>
+              {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          ) : (
+            <button className="navbar__hamburger" onClick={() => setMenuOpen(!menuOpen)}>
+              {menuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Mobile Menu */}
-      {menuOpen && (
+      {/* Mobile Menu (Only shows if NOT in dashboard, because dashboard has sidebar) */}
+      {menuOpen && !isDashboardRoute && (
         <div className="navbar__mobile">
           <NavLink to="/" end className="navbar__mobile-link" onClick={() => setMenuOpen(false)}>
             <Home size={18} /> Inicio

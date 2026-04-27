@@ -1,10 +1,10 @@
 import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useAppStore } from '../../store/useAppStore';
 import {
   Car, User, CalendarCheck, FileText, Clock,
-  LogOut, Menu, X, ChevronRight, ShoppingBag
+  LogOut, X, ChevronRight, ShoppingBag
 } from 'lucide-react';
-import { useState } from 'react';
 
 const navigation = [
   { name: 'Mi Cuenta', path: '/mi-cuenta', icon: User },
@@ -15,8 +15,8 @@ const navigation = [
 
 export default function ClienteLayout() {
   const { user, logout } = useAuthStore();
+  const { sidebarOpen, setSidebarOpen } = useAppStore();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -30,17 +30,7 @@ export default function ClienteLayout() {
       )}
 
       <aside className={`sidebar sidebar--cliente ${sidebarOpen ? 'sidebar--open' : ''}`}>
-        <div className="sidebar__header">
-          <Link to="/" className="sidebar__logo">
-            <Car size={28} />
-            <span className="sidebar__brand">Europcar</span>
-          </Link>
-          <button className="sidebar__close" onClick={() => setSidebarOpen(false)}>
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="sidebar__cta">
+        <div className="sidebar__cta" style={{ marginTop: 'var(--spacing-md)' }}>
           <Link to="/catalogo" className="btn btn--accent btn--full" onClick={() => setSidebarOpen(false)}>
             <ShoppingBag size={18} />
             <span>Reservar Vehículo</span>
@@ -82,20 +72,7 @@ export default function ClienteLayout() {
       </aside>
 
       <main className="main-content">
-        <header className="topbar topbar--cliente">
-          <button className="topbar__menu" onClick={() => setSidebarOpen(true)}>
-            <Menu size={22} />
-          </button>
-          <div className="topbar__title">Mi Portal</div>
-          <div className="topbar__actions">
-            <Link to="/catalogo" className="topbar__cta">
-              <ShoppingBag size={18} />
-              <span>Catálogo</span>
-            </Link>
-            <span className="topbar__user-name">{user?.username}</span>
-          </div>
-        </header>
-        <div className="page-content">
+        <div className="page-content" style={{ marginTop: 'var(--spacing-md)' }}>
           <Outlet />
         </div>
       </main>

@@ -1,10 +1,10 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useAppStore } from '../../store/useAppStore';
 import {
   LayoutDashboard, Users, Car, CalendarCheck, FileText,
-  CreditCard, Wrench, LogOut, Menu, X, ChevronRight, Shield
+  CreditCard, Wrench, LogOut, X, ChevronRight, Shield
 } from 'lucide-react';
-import { useState } from 'react';
 
 const navigation = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: [] },
@@ -19,8 +19,8 @@ const navigation = [
 
 export default function MainLayout() {
   const { user, logout, hasAnyRole } = useAuthStore();
+  const { sidebarOpen, setSidebarOpen } = useAppStore();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -40,16 +40,6 @@ export default function MainLayout() {
 
       {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'sidebar--open' : ''}`}>
-        <div className="sidebar__header">
-          <div className="sidebar__logo">
-            <Car size={28} />
-            <span className="sidebar__brand">Europcar</span>
-          </div>
-          <button className="sidebar__close" onClick={() => setSidebarOpen(false)}>
-            <X size={20} />
-          </button>
-        </div>
-
         <nav className="sidebar__nav">
           {visibleNavigation.map((item) => (
             <NavLink
@@ -88,18 +78,7 @@ export default function MainLayout() {
 
       {/* Main content */}
       <main className="main-content">
-        <header className="topbar">
-          <button className="topbar__menu" onClick={() => setSidebarOpen(true)}>
-            <Menu size={22} />
-          </button>
-          <div className="topbar__title">
-            {import.meta.env.VITE_APP_NAME}
-          </div>
-          <div className="topbar__user">
-            <span>{user?.username}</span>
-          </div>
-        </header>
-        <div className="page-content">
+        <div className="page-content" style={{ marginTop: 'var(--spacing-md)' }}>
           <Outlet />
         </div>
       </main>

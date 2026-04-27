@@ -100,19 +100,17 @@ input, select, textarea { font-family: inherit; }
    ============================================= */
 .sidebar {
   width: var(--sidebar-width);
-  height: 100vh;
+  height: calc(100vh - 60px);
   position: fixed;
   left: 0;
-  top: 0;
+  top: 60px;
   background: var(--color-surface);
   border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  z-index: 100;
+  z-index: 90;
   transition: transform var(--transition-base);
 }
-
-.sidebar__header {
   padding: var(--spacing-lg);
   border-bottom: 1px solid var(--color-border);
   display: flex;
@@ -1033,7 +1031,7 @@ input, select, textarea { font-family: inherit; }
   .sidebar { transform: translateX(-100%); }
   .sidebar--open { transform: translateX(0); }
   .sidebar__close { display: block; }
-  .sidebar-overlay { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; backdrop-filter: blur(2px); }
+  .sidebar-overlay { display: block; position: fixed; inset: 0; top: 60px; background: rgba(0,0,0,0.5); z-index: 89; backdrop-filter: blur(2px); }
   .main-content { margin-left: 0; }
   .topbar__menu { display: block; }
   .hero__title { font-size: 2rem; }
