@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CalendarCheck, Clock, MapPin, Car, Eye, X, DollarSign, Hash, User, FileText, Loader2, Inbox } from 'lucide-react';
+import { CalendarCheck, Clock, Car, Eye, X, DollarSign, Hash, User, FileText, Loader2, Inbox, XCircle } from 'lucide-react';
 import { reservasApi } from '../../api/reservasApi';
 import { useAuthStore } from '../../store/useAuthStore';
 import { toast } from 'sonner';
@@ -17,6 +17,10 @@ export default function MisReservasPage() {
   const [reservas, setReservas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelMotivo, setCancelMotivo] = useState('');
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     loadReservas();
@@ -36,6 +40,35 @@ export default function MisReservasPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openCancelModal = (reserva) => {
+    setCancelTarget(reserva);
+    setCancelMotivo('');
+    setShowCancelModal(true);
+    setSelected(null); // close detail modal if open
+  };
+
+  const handleCancelar = async () => {
+    if (!cancelMotivo.trim()) {
+      toast.error('Ingresa el motivo de cancelación');
+      return;
+    }
+    setCancelling(true);
+    try {
+      await reservasApi.cancelar(cancelTarget.idReserva, cancelMotivo.trim());
+      toast.success('Reserva cancelada. Pagos y facturas asociados han sido anulados.');
+      setShowCancelModal(false);
+      setCancelTarget(null);
+      loadReservas();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Error al cancelar la reserva');
+    } finally { setCancelling(false); }
+  };
+
+  const canCancel = (r) => {
+    const estado = r.estadoReserva || r.estado;
+    return estado === 'PENDIENTE' || estado === 'CONFIRMADA';
   };
 
   if (loading) {
@@ -80,9 +113,16 @@ export default function MisReservasPage() {
                   <span className="reserva-item__total">${(r.total || 0).toFixed(2)}</span>
                 </div>
               </div>
-              <button className="btn btn--ghost btn--sm" onClick={() => setSelected(r)}>
-                <Eye size={16} /> Ver
-              </button>
+              <div style={{display:'flex', gap:'0.5rem', alignItems:'center'}}>
+                <button className="btn btn--ghost btn--sm" onClick={() => setSelected(r)}>
+                  <Eye size={16} /> Ver
+                </button>
+                {canCancel(r) && (
+                  <button className="btn btn--ghost btn--sm" style={{color:'var(--color-danger)'}} onClick={() => openCancelModal(r)}>
+                    <XCircle size={16} /> Cancelar
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -155,6 +195,56 @@ export default function MisReservasPage() {
                 <span>Total</span>
                 <span className="detail-total__amount"><DollarSign size={16} />{(selected.total || 0).toFixed(2)}</span>
               </div>
+
+              {canCancel(selected) && (
+                <div style={{marginTop:'1rem', textAlign:'center'}}>
+                  <button className="btn btn--outline" style={{borderColor:'var(--color-danger)', color:'var(--color-danger)'}} onClick={() => openCancelModal(selected)}>
+                    <XCircle size={16} /> Cancelar esta reserva
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelModal && cancelTarget && (
+        <div className="modal-overlay" onClick={() => setShowCancelModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal__header">
+              <h2>Cancelar Reserva</h2>
+              <button className="icon-btn" onClick={() => setShowCancelModal(false)}><X size={18} /></button>
+            </div>
+            <div className="modal__body">
+              <div style={{
+                padding: '1rem',
+                background: 'rgba(239, 68, 68, 0.1)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                marginBottom: '1rem'
+              }}>
+                <p style={{color:'var(--color-danger)', fontWeight:600, marginBottom:'0.5rem'}}>⚠️ Esta acción no se puede deshacer</p>
+                <p style={{fontSize:'0.85rem', color:'var(--color-text-secondary)'}}>
+                  Al cancelar la reserva <strong>{cancelTarget.codigoReserva}</strong>, se anularán automáticamente
+                  todos los pagos y facturas asociados.
+                </p>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Motivo de cancelación *</label>
+                <textarea className="form-input" rows={3} value={cancelMotivo}
+                  onChange={(e) => setCancelMotivo(e.target.value)}
+                  placeholder="Describe el motivo por el cual deseas cancelar tu reserva..."
+                  style={{resize:'vertical'}} />
+              </div>
+            </div>
+            <div className="modal__footer">
+              <button className="btn btn--ghost" onClick={() => setShowCancelModal(false)}>Volver</button>
+              <button className="btn" disabled={cancelling}
+                style={{background:'var(--color-danger)', color:'white'}}
+                onClick={handleCancelar}>
+                {cancelling ? <><Loader2 size={16} className="spin" /> Cancelando...</> : 'Confirmar Cancelación'}
+              </button>
             </div>
           </div>
         </div>

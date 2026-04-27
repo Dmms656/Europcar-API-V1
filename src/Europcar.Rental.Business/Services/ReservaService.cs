@@ -247,6 +247,28 @@ public class ReservaService : IReservaService
             }
         }
 
+        // Anular pagos asociados a esta reserva
+        var pagos = await _context.Pagos
+            .Where(p => p.IdReserva == id && p.EstadoPago != "ANULADO" && p.EstadoPago != "REEMBOLSADO")
+            .ToListAsync();
+        foreach (var pago in pagos)
+        {
+            pago.EstadoPago = "ANULADO";
+            pago.ModificadoPorUsuario = usuario;
+            pago.FechaModificacionUtc = DateTimeOffset.UtcNow;
+        }
+
+        // Anular facturas asociadas a esta reserva
+        var facturas = await _context.Facturas
+            .Where(f => f.IdReserva == id && f.EstadoFactura != "ANULADA")
+            .ToListAsync();
+        foreach (var factura in facturas)
+        {
+            factura.EstadoFactura = "ANULADA";
+            factura.ModificadoPorUsuario = usuario;
+            factura.FechaModificacionUtc = DateTimeOffset.UtcNow;
+        }
+
         await _reservaDataService.UpdateEstadoAsync(id, "CANCELADA", usuario, motivo);
         await _unitOfWork.SaveChangesAsync();
 
