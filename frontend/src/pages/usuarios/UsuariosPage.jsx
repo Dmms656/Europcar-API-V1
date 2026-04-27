@@ -3,7 +3,7 @@ import { usuariosApi } from '../../api/usuariosApi';
 import { Users, Plus, Trash2, Shield, Search, X, Eye, EyeOff, Key, Loader2, RefreshCw, ToggleLeft, ToggleRight, Edit3 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const ROLES_DISPONIBLES = ['ADMIN', 'AGENTE_POS', 'CLIENTE'];
+const ROLES_DISPONIBLES = ['ADMIN', 'AGENTE_POS', 'CLIENTE_WEB'];
 
 export default function UsuariosPage() {
   const [usuarios, setUsuarios] = useState([]);
@@ -121,7 +121,7 @@ export default function UsuariosPage() {
     switch (role) {
       case 'ADMIN': return 'var(--color-danger)';
       case 'AGENTE_POS': return 'var(--color-info)';
-      case 'CLIENTE': return 'var(--color-success)';
+      case 'CLIENTE_WEB': return 'var(--color-success)';
       default: return 'var(--color-text-muted)';
     }
   };

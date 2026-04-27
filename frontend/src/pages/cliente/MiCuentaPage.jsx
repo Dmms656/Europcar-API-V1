@@ -100,7 +100,7 @@ export default function MiCuentaPage() {
           <h2>{user?.nombreCompleto || user?.username}</h2>
           <p className="cuenta-role">
             <ShieldCheck size={16} />
-            {user?.roles?.[0] || 'CLIENTE'}
+            {user?.roles?.[0] || 'CLIENTE_WEB'}
           </p>
           <p className="cuenta-email">{user?.correo || 'correo@ejemplo.com'}</p>
 

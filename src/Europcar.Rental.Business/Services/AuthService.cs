@@ -126,7 +126,7 @@ public class AuthService : IAuthService
             request.Username, request.Correo, hash, salt, idCliente);
 
         // Assign CLIENTE role
-        await _usuarioDataService.AssignRoleAsync(userId, "CLIENTE");
+        await _usuarioDataService.AssignRoleAsync(userId, "CLIENTE_WEB");
 
         return new { userId, username = request.Username, idCliente, message = "Usuario registrado exitosamente" };
     }
