@@ -17,11 +17,11 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration)
     {
         var connStr = configuration.GetConnectionString("RentalDb")
-            + ";Timeout=10;Command Timeout=10;Maximum Pool Size=10;Connection Idle Lifetime=30;Connection Pruning Interval=5;";
+            + ";Timeout=30;Command Timeout=0;Maximum Pool Size=20;Connection Idle Lifetime=300;";
 
         services.AddDbContext<RentalDbContext>(options =>
             options.UseNpgsql(connStr, npgsqlOptions =>
-                npgsqlOptions.EnableRetryOnFailure(2)));
+                npgsqlOptions.EnableRetryOnFailure(3)));
 
         return services;
     }
