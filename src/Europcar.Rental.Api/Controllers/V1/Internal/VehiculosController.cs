@@ -8,9 +8,14 @@ using Europcar.Rental.Business.Interfaces;
 
 namespace Europcar.Rental.Api.Controllers.V1.Internal;
 
+/// <summary>
+/// Gestión interna (administración) de la flota de vehículos.
+/// Se monta en /api/v1/admin/vehiculos para liberar la ruta pública /api/v1/vehiculos
+/// que el contrato de Booking utiliza para búsqueda paginada.
+/// </summary>
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/[controller]")]
+[Route("api/v{version:apiVersion}/admin/vehiculos")]
 [Authorize]
 public class VehiculosController : ControllerBase
 {

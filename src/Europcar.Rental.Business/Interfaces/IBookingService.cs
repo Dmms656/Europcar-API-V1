@@ -27,11 +27,11 @@ public interface IBookingService
     // Endpoint 1: Búsqueda paginada de vehículos disponibles
     Task<BookingResponse<BookingVehiculoListData>> BuscarVehiculosAsync(BookingBuscarVehiculosRequest request);
 
-    // Endpoint 2: Detalle completo de un vehículo
-    Task<BookingResponse<BookingVehiculoDetailData>> GetVehiculoDetalleAsync(int vehiculoId);
+    // Endpoint 2: Detalle completo de un vehículo (vehiculoId = CodigoInternoVehiculo)
+    Task<BookingResponse<BookingVehiculoDetailData>> GetVehiculoDetalleAsync(string vehiculoId);
 
     // Endpoint 3: Verificar disponibilidad en tiempo real
-    Task<BookingResponse<BookingDisponibilidadCheckData>> VerificarDisponibilidadAsync(int vehiculoId, BookingDisponibilidadRequest request);
+    Task<BookingResponse<BookingDisponibilidadCheckData>> VerificarDisponibilidadAsync(string vehiculoId, BookingDisponibilidadRequest request);
 
     // Endpoint 4: Listar localizaciones con paginación
     Task<BookingResponse<BookingLocalizacionListData>> GetLocalizacionesAsync(BookingLocalizacionesRequest request);
@@ -44,4 +44,16 @@ public interface IBookingService
 
     // Endpoint 7: Listar extras disponibles
     Task<BookingResponse<BookingExtraListData>> GetExtrasAsync();
+
+    // Endpoint 8: Crear reserva (público)
+    Task<BookingResponse<BookingCrearReservaData>> CrearReservaAsync(BookingCrearReservaRequest request);
+
+    // Endpoint 9: Detalle de reserva por código
+    Task<BookingResponse<BookingReservaDetailData>> GetReservaByCodigoAsync(string codigoReserva);
+
+    // Endpoint 10: Cancelar reserva (público)
+    Task<BookingResponse<BookingCancelarReservaData>> CancelarReservaAsync(string codigoReserva, BookingCancelarReservaRequest request, string usuario);
+
+    // Endpoint 11: Factura asociada a la reserva
+    Task<BookingResponse<BookingFacturaData>> GetFacturaPorReservaAsync(string codigoReserva);
 }

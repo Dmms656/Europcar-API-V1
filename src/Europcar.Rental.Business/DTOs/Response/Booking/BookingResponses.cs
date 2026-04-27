@@ -16,6 +16,13 @@ public class BookingResponse<T>
         Data = data
     };
 
+    public static BookingResponse<T> Created(T data, string mensaje = "Recurso creado exitosamente") => new()
+    {
+        Status = 201,
+        Mensaje = mensaje,
+        Data = data
+    };
+
     public static BookingResponse<T> Fail(int status, string mensaje) => new()
     {
         Status = status,

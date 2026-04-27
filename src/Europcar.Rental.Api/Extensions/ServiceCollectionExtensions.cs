@@ -39,6 +39,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPagoDataService, PagoDataService>();
         services.AddScoped<IMantenimientoDataService, MantenimientoDataService>();
         services.AddScoped<ILocalizacionDataService, LocalizacionDataService>();
+        services.AddScoped<ICiudadDataService, CiudadDataService>();
         services.AddScoped<ICatalogoDataService, CatalogoDataService>();
         services.AddScoped<IExtraDataService, ExtraDataService>();
         services.AddScoped<IBookingDataService, BookingDataService>();
@@ -54,6 +55,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPagoService, PagoService>();
         services.AddScoped<IMantenimientoService, MantenimientoService>();
         services.AddScoped<ICatalogoService, CatalogoService>();
+        services.AddScoped<ILocalizacionService, LocalizacionService>();
         services.AddScoped<IBookingService, BookingService>();
 
         return services;

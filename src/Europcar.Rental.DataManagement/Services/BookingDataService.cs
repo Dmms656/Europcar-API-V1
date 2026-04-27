@@ -71,4 +71,30 @@ public class BookingDataService : IBookingDataService
             NombreCiudad = l.Ciudad.NombreCiudad
         };
     }
+
+    public async Task<BookingFacturaModel?> GetFacturaByReservaCodigoAsync(string codigoReserva)
+    {
+        if (string.IsNullOrWhiteSpace(codigoReserva)) return null;
+
+        return await _context.Facturas
+            .Include(f => f.Cliente)
+            .Include(f => f.Reserva)
+            .Where(f => f.Reserva != null && f.Reserva.CodigoReserva == codigoReserva)
+            .OrderByDescending(f => f.FechaEmision)
+            .Select(f => new BookingFacturaModel
+            {
+                IdFactura = f.IdFactura,
+                NumeroFactura = f.NumeroFactura,
+                CodigoReserva = f.Reserva!.CodigoReserva,
+                EstadoFactura = f.EstadoFactura,
+                FechaEmision = f.FechaEmision,
+                Subtotal = f.Subtotal,
+                ValorIva = f.ValorIva,
+                Total = f.Total,
+                ClienteNombres = (f.Cliente.CliNombre1 + " " + (f.Cliente.CliNombre2 ?? "")).Trim(),
+                ClienteApellidos = (f.Cliente.CliApellido1 + " " + (f.Cliente.CliApellido2 ?? "")).Trim(),
+                ClienteIdentificacion = f.Cliente.NumeroIdentificacion
+            })
+            .FirstOrDefaultAsync();
+    }
 }

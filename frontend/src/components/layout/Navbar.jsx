@@ -16,7 +16,8 @@ export default function Navbar() {
 
   // Check if we are in a route that has a sidebar
   const isDashboardRoute = [
-    '/dashboard', '/clientes', '/vehiculos', '/reservas', '/contratos', '/pagos', '/mantenimientos', '/usuarios',
+    '/dashboard', '/clientes', '/vehiculos', '/reservas', '/contratos', '/pagos', '/mantenimientos',
+    '/localizaciones', '/usuarios',
     '/mi-cuenta', '/mis-reservas', '/mis-contratos', '/historial'
   ].some(path => location.pathname.startsWith(path));
 

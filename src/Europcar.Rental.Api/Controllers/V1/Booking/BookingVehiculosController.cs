@@ -8,11 +8,11 @@ namespace Europcar.Rental.Api.Controllers.V1.Booking;
 /// <summary>
 /// Endpoints públicos de vehículos para integración con Booking / OTA.
 /// Cumple el contrato de API externo (Endpoints 1, 2 y 3).
-/// No requiere [Authorize] ya que es una API pública para terceros.
+/// vehiculoId es un identificador alfanumérico (CodigoInternoVehiculo, p.ej. "veh-001").
 /// </summary>
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/booking/vehiculos")]
+[Route("api/v{version:apiVersion}/vehiculos")]
 public class BookingVehiculosController : ControllerBase
 {
     private readonly IBookingService _bookingService;
@@ -24,7 +24,7 @@ public class BookingVehiculosController : ControllerBase
 
     /// <summary>
     /// Endpoint 1: Búsqueda paginada de vehículos disponibles.
-    /// GET /api/v1/vehiculos?idLocalizacion=1&fechaRecogida=...&fechaDevolucion=...
+    /// GET /api/v1/vehiculos?idLocalizacion=1&amp;fechaRecogida=...&amp;fechaDevolucion=...
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> BuscarVehiculos([FromQuery] BookingBuscarVehiculosRequest request)
@@ -37,8 +37,8 @@ public class BookingVehiculosController : ControllerBase
     /// Endpoint 2: Detalle completo de un vehículo específico.
     /// GET /api/v1/vehiculos/{vehiculoId}
     /// </summary>
-    [HttpGet("{vehiculoId:int}")]
-    public async Task<IActionResult> GetDetalle(int vehiculoId)
+    [HttpGet("{vehiculoId}")]
+    public async Task<IActionResult> GetDetalle(string vehiculoId)
     {
         var result = await _bookingService.GetVehiculoDetalleAsync(vehiculoId);
         return Ok(result);
@@ -46,11 +46,11 @@ public class BookingVehiculosController : ControllerBase
 
     /// <summary>
     /// Endpoint 3: Verificar disponibilidad en tiempo real de un vehículo.
-    /// GET /api/v1/vehiculos/{vehiculoId}/disponibilidad?fechaRecogida=...&fechaDevolucion=...&idLocalizacion=...
+    /// GET /api/v1/vehiculos/{vehiculoId}/disponibilidad?fechaRecogida=...&amp;fechaDevolucion=...&amp;idLocalizacion=...
     /// </summary>
-    [HttpGet("{vehiculoId:int}/disponibilidad")]
+    [HttpGet("{vehiculoId}/disponibilidad")]
     public async Task<IActionResult> VerificarDisponibilidad(
-        int vehiculoId, [FromQuery] BookingDisponibilidadRequest request)
+        string vehiculoId, [FromQuery] BookingDisponibilidadRequest request)
     {
         var result = await _bookingService.VerificarDisponibilidadAsync(vehiculoId, request);
         return Ok(result);

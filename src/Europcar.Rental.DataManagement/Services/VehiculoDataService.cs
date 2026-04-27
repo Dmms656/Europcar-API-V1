@@ -53,6 +53,19 @@ public class VehiculoDataService : IVehiculoDataService
         return MapToModel(v);
     }
 
+    public async Task<VehiculoModel?> GetByCodigoInternoAsync(string codigoInterno)
+    {
+        if (string.IsNullOrWhiteSpace(codigoInterno)) return null;
+        var v = await _context.Vehiculos
+            .Include(v => v.Marca)
+            .Include(v => v.Categoria)
+            .Include(v => v.Localizacion)
+            .FirstOrDefaultAsync(v => v.CodigoInternoVehiculo == codigoInterno);
+
+        if (v == null) return null;
+        return MapToModel(v);
+    }
+
     public async Task<VehiculoModel?> GetByPlacaAsync(string placa)
     {
         var v = await _context.Vehiculos

@@ -10,9 +10,14 @@ using Europcar.Rental.DataManagement.Models;
 
 namespace Europcar.Rental.Api.Controllers.V1.Internal;
 
+/// <summary>
+/// Gestión interna de reservas (back-office).
+/// Se monta en /api/v1/admin/reservas para liberar la ruta pública /api/v1/reservas
+/// usada por el contrato Booking.
+/// </summary>
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/[controller]")]
+[Route("api/v{version:apiVersion}/admin/reservas")]
 public class ReservasController : ControllerBase
 {
     private readonly IReservaService _reservaService;

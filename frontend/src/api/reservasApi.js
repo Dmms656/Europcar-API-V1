@@ -1,10 +1,12 @@
 import api from './axiosClient';
 
+// API interna de reservas (back-office) montada en /api/v1/admin/Reservas.
+// La ruta pública /api/v1/reservas queda reservada para el contrato Booking.
 export const reservasApi = {
-  create: (data) => api.post('/Reservas', data),
-  getByCodigo: (codigo) => api.get(`/Reservas/${codigo}`),
-  getByCliente: (idCliente) => api.get(`/Reservas/cliente/${idCliente}`),
-  confirmar: (id, data) => api.put(`/Reservas/${id}/confirmar`, data || {}),
-  cancelar: (id, motivo) => api.put(`/Reservas/${id}/cancelar`, { motivo }),
-  guestClient: (data) => api.post('/Reservas/guest-client', data),
+  create: (data) => api.post('/admin/Reservas', data),
+  getByCodigo: (codigo) => api.get(`/admin/Reservas/${codigo}`),
+  getByCliente: (idCliente) => api.get(`/admin/Reservas/cliente/${idCliente}`),
+  confirmar: (id, data) => api.put(`/admin/Reservas/${id}/confirmar`, data || {}),
+  cancelar: (id, motivo) => api.put(`/admin/Reservas/${id}/cancelar`, { motivo }),
+  guestClient: (data) => api.post('/admin/Reservas/guest-client', data),
 };
