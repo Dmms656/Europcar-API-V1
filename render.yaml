@@ -15,3 +15,15 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+    envVars:
+      # Cloudinary - se inyectan durante "npm run build" y Vite las embebe en el bundle.
+      # El cloud_name es publico, queda en el blueprint.
+      - key: VITE_CLOUDINARY_CLOUD_NAME
+        value: dt4qaly0t
+      # El upload preset debe configurarse manualmente en el dashboard de Render
+      # (Environment > Add). sync:false evita que Render lo borre o lo lea de aqui.
+      - key: VITE_CLOUDINARY_UPLOAD_PRESET
+        sync: false
+      # URL de la API en produccion. Cambiala si tu backend vive en otro host.
+      - key: VITE_API_BASE_URL
+        sync: false
