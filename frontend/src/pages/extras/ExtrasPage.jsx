@@ -23,6 +23,21 @@ const initialForm = {
   valorFijo: '',
 };
 
+function normalizeExtra(raw) {
+  if (!raw) return null;
+  return {
+    idExtra: raw.idExtra ?? raw.id ?? null,
+    extraGuid: raw.extraGuid ?? raw.guid ?? null,
+    codigoExtra: raw.codigoExtra ?? raw.codigo ?? '',
+    nombreExtra: raw.nombreExtra ?? raw.nombre ?? '',
+    descripcionExtra: raw.descripcionExtra ?? raw.descripcion ?? '',
+    tipoExtra: raw.tipoExtra ?? raw.tipo ?? 'SERVICIO',
+    requiereStock: Boolean(raw.requiereStock ?? false),
+    valorFijo: Number(raw.valorFijo ?? 0),
+    estadoExtra: raw.estadoExtra ?? raw.estado ?? 'ACT',
+  };
+}
+
 export default function ExtrasPage() {
   const { hasAnyRole } = useAuthStore();
   const isAdmin = hasAnyRole('ADMIN');
@@ -43,7 +58,10 @@ export default function ExtrasPage() {
     setLoading(true);
     try {
       const res = await catalogosApi.getExtras();
-      setExtras(res.data?.data || []);
+      const normalized = (res.data?.data || [])
+        .map(normalizeExtra)
+        .filter(Boolean);
+      setExtras(normalized);
     } catch (e) {
       toast.error(e.response?.data?.message || 'Error al cargar extras');
     } finally {

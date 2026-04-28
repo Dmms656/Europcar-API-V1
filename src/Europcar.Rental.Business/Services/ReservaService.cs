@@ -147,27 +147,37 @@ public class ReservaService : IReservaService
             Extras = extrasModel
         };
 
-        var created = await _reservaDataService.CreateAsync(model);
-
-        // ── Asignar conductores ──
-        await AssignConductoresAsync(request, created.IdReserva, cliente);
-
-        // ── Reservar stock de extras que lo requieran ──
-        foreach (var item in request.Extras)
+        await using var tx = await _context.Database.BeginTransactionAsync();
+        try
         {
-            var extra = await _extraDataService.GetByIdAsync(item.IdExtra);
-            if (extra != null && extra.RequiereStock)
+            var created = await _reservaDataService.CreateAsync(model);
+
+            // ── Asignar conductores ──
+            await AssignConductoresAsync(request, created.IdReserva, cliente);
+
+            // ── Reservar stock de extras que lo requieran ──
+            foreach (var item in request.Extras)
             {
-                await _extraDataService.ReservarStockAsync(
-                    request.IdLocalizacionRecogida, item.IdExtra, item.Cantidad);
+                var extra = await _extraDataService.GetByIdAsync(item.IdExtra);
+                if (extra != null && extra.RequiereStock)
+                {
+                    await _extraDataService.ReservarStockAsync(
+                        request.IdLocalizacionRecogida, item.IdExtra, item.Cantidad);
+                }
             }
+
+            await _unitOfWork.SaveChangesAsync();
+            await tx.CommitAsync();
+
+            // Recargar con todos los includes para devolver respuesta completa
+            var result = await _reservaDataService.GetByIdAsync(created.IdReserva);
+            return MapToResponse(result!);
         }
-
-        await _unitOfWork.SaveChangesAsync();
-
-        // Recargar con todos los includes para devolver respuesta completa
-        var result = await _reservaDataService.GetByIdAsync(created.IdReserva);
-        return MapToResponse(result!);
+        catch
+        {
+            await tx.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task<ReservaResponse> ConfirmarAsync(int id, string usuario, decimal? monto = null, string? referenciaExterna = null)
