@@ -8,4 +8,7 @@ public class CatalogoModel
     public string Nombre { get; set; } = string.Empty;
     public string? Descripcion { get; set; }
     public string Estado { get; set; } = "ACT";
+    public string? Tipo { get; set; }
+    public bool RequiereStock { get; set; }
+    public decimal? ValorFijo { get; set; }
 }

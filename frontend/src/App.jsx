@@ -32,6 +32,7 @@ import PagosPage from './pages/pagos/PagosPage';
 import MantenimientosPage from './pages/mantenimientos/MantenimientosPage';
 import UsuariosPage from './pages/usuarios/UsuariosPage';
 import LocalizacionesPage from './pages/localizaciones/LocalizacionesPage';
+import ExtrasPage from './pages/extras/ExtrasPage';
 
 // Client portal pages
 import MiCuentaPage from './pages/cliente/MiCuentaPage';
@@ -131,6 +132,7 @@ export default function App() {
               <Route path="/pagos" element={<PagosPage />} />
               <Route path="/mantenimientos" element={<MantenimientosPage />} />
               <Route path="/localizaciones" element={<LocalizacionesPage />} />
+              <Route path="/extras" element={<ExtrasPage />} />
               <Route path="/usuarios" element={<UsuariosPage />} />
             </Route>
 

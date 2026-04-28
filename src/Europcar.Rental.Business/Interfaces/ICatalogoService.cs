@@ -6,6 +6,7 @@ using Europcar.Rental.Business.DTOs.Request.Contratos;
 using Europcar.Rental.Business.DTOs.Request.Pagos;
 using Europcar.Rental.Business.DTOs.Request.Mantenimientos;
 using Europcar.Rental.Business.DTOs.Request.Booking;
+using Europcar.Rental.Business.DTOs.Request.Catalogos;
 using Europcar.Rental.Business.DTOs.Response.Auth;
 using Europcar.Rental.Business.DTOs.Response.Clientes;
 using Europcar.Rental.Business.DTOs.Response.Vehiculos;
@@ -24,5 +25,10 @@ public interface ICatalogoService
     Task<LocalizacionResponse> GetLocalizacionByIdAsync(int id);
     Task<IEnumerable<CatalogoResponse>> GetCategoriasAsync();
     Task<IEnumerable<CatalogoResponse>> GetMarcasAsync();
-    Task<IEnumerable<CatalogoResponse>> GetExtrasAsync();
+    Task<IEnumerable<ExtraResponse>> GetExtrasAsync();
+    Task<ExtraResponse> GetExtraByIdAsync(int id);
+    Task<ExtraResponse> CreateExtraAsync(CrearExtraRequest request, string usuario);
+    Task<ExtraResponse> UpdateExtraAsync(int id, ActualizarExtraRequest request, string usuario);
+    Task CambiarEstadoExtraAsync(int id, CambiarEstadoExtraRequest request, string usuario);
+    Task DeleteExtraAsync(int id, string usuario);
 }

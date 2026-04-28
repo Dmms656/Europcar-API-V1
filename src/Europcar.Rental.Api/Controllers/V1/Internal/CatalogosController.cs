@@ -1,8 +1,10 @@
 using Asp.Versioning;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Europcar.Rental.Api.Models.Common;
 using Europcar.Rental.Business.Interfaces;
+using Europcar.Rental.Business.DTOs.Request.Catalogos;
 
 namespace Europcar.Rental.Api.Controllers.V1.Internal;
 
@@ -67,5 +69,64 @@ public class CatalogosController : ControllerBase
     {
         var result = await _catalogoService.GetExtrasAsync();
         return Ok(ApiResponse<object>.Ok(result));
+    }
+
+    /// <summary>
+    /// Obtener un extra por ID.
+    /// </summary>
+    [HttpGet("extras/{id:int}")]
+    public async Task<IActionResult> GetExtraById(int id)
+    {
+        var result = await _catalogoService.GetExtraByIdAsync(id);
+        return Ok(ApiResponse<object>.Ok(result));
+    }
+
+    /// <summary>
+    /// Crear un nuevo extra.
+    /// </summary>
+    [HttpPost("extras")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> CreateExtra([FromBody] CrearExtraRequest request)
+    {
+        var usuario = User.FindFirstValue(ClaimTypes.Name) ?? "API";
+        var result = await _catalogoService.CreateExtraAsync(request, usuario);
+        return CreatedAtAction(nameof(GetExtraById), new { id = result.IdExtra },
+            ApiResponse<object>.Ok(result, "Extra creado exitosamente"));
+    }
+
+    /// <summary>
+    /// Actualizar un extra existente.
+    /// </summary>
+    [HttpPut("extras/{id:int}")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> UpdateExtra(int id, [FromBody] ActualizarExtraRequest request)
+    {
+        var usuario = User.FindFirstValue(ClaimTypes.Name) ?? "API";
+        var result = await _catalogoService.UpdateExtraAsync(id, request, usuario);
+        return Ok(ApiResponse<object>.Ok(result, "Extra actualizado exitosamente"));
+    }
+
+    /// <summary>
+    /// Activar/Inhabilitar un extra.
+    /// </summary>
+    [HttpPut("extras/{id:int}/estado")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> CambiarEstadoExtra(int id, [FromBody] CambiarEstadoExtraRequest request)
+    {
+        var usuario = User.FindFirstValue(ClaimTypes.Name) ?? "API";
+        await _catalogoService.CambiarEstadoExtraAsync(id, request, usuario);
+        return Ok(ApiResponse<object>.Ok(new { id, estado = request.Estado }, "Estado actualizado"));
+    }
+
+    /// <summary>
+    /// Eliminar (soft delete) un extra.
+    /// </summary>
+    [HttpDelete("extras/{id:int}")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> DeleteExtra(int id)
+    {
+        var usuario = User.FindFirstValue(ClaimTypes.Name) ?? "API";
+        await _catalogoService.DeleteExtraAsync(id, usuario);
+        return Ok(ApiResponse<object>.Ok(new { id }, "Extra eliminado exitosamente"));
     }
 }

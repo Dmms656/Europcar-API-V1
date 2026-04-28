@@ -38,3 +38,17 @@ public class CatalogoResponse
     public string? Descripcion { get; set; }
     public string Estado { get; set; } = string.Empty;
 }
+
+public class ExtraResponse
+{
+    public int IdExtra { get; set; }
+    public Guid ExtraGuid { get; set; }
+    public string CodigoExtra { get; set; } = string.Empty;
+    public string NombreExtra { get; set; } = string.Empty;
+    public string? DescripcionExtra { get; set; }
+    public string TipoExtra { get; set; } = "SERVICIO";
+    public bool RequiereStock { get; set; }
+    public decimal ValorFijo { get; set; }
+    public string EstadoExtra { get; set; } = "ACT";
+    public bool Activo => EstadoExtra == "ACT";
+}
