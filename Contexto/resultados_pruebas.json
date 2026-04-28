@@ -1,0 +1,569 @@
+[
+  {
+    "id": "TC-AUTH-001",
+    "status": "Pasada",
+    "http_status": 200,
+    "duration_ms": 337,
+    "comentario": "Login devuelve JWT y datos del usuario admin.dev. token presente.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-AUTH-002",
+    "status": "Pasada",
+    "http_status": 401,
+    "duration_ms": 94,
+    "comentario": "Credenciales invalidas rechazadas. {\"success\": false, \"message\": \"Credenciales inválidas\", \"statusCode\": 401, \"traceId\": \"0HNL5F27UQF58:00000005\", \"detail\": \"UnauthorizedException: Credenciales inválidas\", \"timestamp\": \"2026-04-28T23:01:53.1056798Z\"}",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-AUTH-003",
+    "status": "Fallida",
+    "http_status": 200,
+    "duration_ms": 279,
+    "comentario": "Hallazgo de seguridad: tras 5 intentos fallidos consecutivos la API permite el siguiente login exitoso. El bloqueo automatico (BloqueadoHastaUtc / IntentosFallidos) no se aplica. Severidad alta. Recomendacion: incrementar contador y aplicar ventana de bloqueo en AuthService.LoginAsync.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-AUTH-004",
+    "status": "Pasada",
+    "http_status": 200,
+    "duration_ms": 634,
+    "comentario": "Cliente y usuario CLIENTE_WEB creados. cedula=1977417314",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-AUTH-005",
+    "status": "Pasada",
+    "http_status": 200,
+    "duration_ms": 92,
+    "comentario": "cedula-exists detecta correctamente la cedula registrada 1977417314.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-AUTH-006",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "No automatizado: requiere esperar la expiracion configurada o manipular el JWT/clock.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-AUTH-007",
+    "status": "Pasada",
+    "http_status": 401,
+    "duration_ms": 2,
+    "comentario": "Acceso a endpoint admin sin token responde 401.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-AUTH-008",
+    "status": "Pasada",
+    "http_status": 403,
+    "duration_ms": 1,
+    "comentario": "CLIENTE_WEB rechazado en endpoint admin con 403.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-CAT-001",
+    "status": "Pasada",
+    "http_status": 200,
+    "duration_ms": 545,
+    "comentario": "Busqueda OK. body={\"status\": 200, \"mensaje\": \"Operación exitosa\", \"data\": {\"vehiculos\": [{\"id\": \"VEH-20260428225647\", \"marca\": \"Toyota\", \"modelo\": \"TestModel\", \"marcaModelo\": \"Toyota TestModel\", \"anio\": 2024, \"imagenUrl\": null, \"transmision\": \"AUTOMATICA\", \"",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-CAT-002",
+    "status": "Pasada",
+    "http_status": 200,
+    "duration_ms": 204,
+    "comentario": "Detalle de vehiculo VEH-0002 obtenido.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-CAT-003",
+    "status": "Pasada",
+    "http_status": 200,
+    "duration_ms": 187,
+    "comentario": "Endpoint de disponibilidad responde. {\"status\": 200, \"mensaje\": \"Operación exitosa\", \"data\": {\"vehiculoId\": \"VEH-0002\", \"disponibilidad\": {\"fechaInicio\": \"2027-05-13T15:15:00\", \"fechaFin\": \"2027-05-15T15:15:00\", \"disponible\": false}}}",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-CAT-004",
+    "status": "Pasada",
+    "http_status": 200,
+    "duration_ms": 91,
+    "comentario": "Listado publico de localizaciones OK.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-CAT-005",
+    "status": "Pasada",
+    "http_status": "200/200",
+    "duration_ms": 182,
+    "comentario": "Categorias y extras devueltos correctamente.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-RES-001",
+    "status": "Fallida",
+    "http_status": "",
+    "duration_ms": 273,
+    "comentario": "No se pudo crear reserva tras varios intentos. ",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-RES-002",
+    "status": "Pasada",
+    "http_status": 400,
+    "duration_ms": 2,
+    "comentario": "Validacion de fechas invertidas OK. {\"success\": false, \"message\": \"La fecha de devolución debe ser posterior a la de recogida\", \"statusCode\": 400, \"traceId\": \"0HNL5F27UQF58:0000002B\", \"detail\": \"BusinessException: La fecha de devolución debe ser posterior a la de recogida\", \"",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-RES-003",
+    "status": "Bloqueada",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Faltan datos previos.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-RES-004",
+    "status": "Bloqueada",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Sin reserva creada previamente.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-RES-005",
+    "status": "Bloqueada",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Sin reserva.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-RES-006",
+    "status": "Bloqueada",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Sin reserva o sin cliente autenticado.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-RES-007",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "No automatizado: la API no permite crear reservas con fecha de retiro pasada por validaciones de negocio.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-RES-008",
+    "status": "Pasada",
+    "http_status": 403,
+    "duration_ms": 2,
+    "comentario": "Acceso a reservas ajenas rechazado.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-CON-001",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "No automatizado en este entorno: requiere reserva CONFIRMADA con fecha del dia y disponibilidad fisica del vehiculo.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-CON-002",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "No automatizado: requiere conductor con licencia vencida y check-out activo.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-CON-003",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "No automatizado: requiere contrato ABIERTO previo (paso CU-06).",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-CON-004",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "No automatizado: depende de TC-CON-001 ejecutado.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-CON-005",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "No automatizado: depende de un contrato existente y paso de check-out.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-PAG-001",
+    "status": "Bloqueada",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Sin reserva.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-PAG-002",
+    "status": "Bloqueada",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Sin reserva.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-FAC-001",
+    "status": "Pasada",
+    "http_status": 400,
+    "duration_ms": 92,
+    "comentario": "Cliente seed sin idCliente vinculado: API responde 400 segun contrato. Comportamiento esperado para cuenta sin asociacion.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-VEH-001",
+    "status": "Fallida",
+    "http_status": 500,
+    "duration_ms": 277,
+    "comentario": "Hallazgo (defect): VehiculoService.CreateAsync lanza NullReferenceException en MapToFullResponse (linea 174). Tras INSERT, GetByIdAsync(created.IdVehiculo) devuelve null y el mapeador no valida el caso. Severidad critica. Recomendacion: validar el resultado o eliminar el query filter para el ID recien creado.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-VEH-002",
+    "status": "Bloqueada",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "TC-VEH-001 no creo vehiculo.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-VEH-003",
+    "status": "Bloqueada",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Sin vehiculo creado.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-VEH-004",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "No automatizado: requiere preparar reservas activas sobre el vehiculo y luego intentar DELETE.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-VEH-005",
+    "status": "Bloqueada",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Sin vehiculo o sin sesion ADMIN.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-MAN-001",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Requiere un vehiculo DISPONIBLE estable durante la prueba; el endpoint depende ademas de claves foraneas para taller, no se ejercita aqui.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-MAN-002",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Depende de TC-MAN-001 ejecutado y un mantenimiento ABIERTO.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-MAN-003",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Requiere vehiculo en estado ALQUILADO controlado.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-LOC-001",
+    "status": "Pasada",
+    "http_status": 201,
+    "duration_ms": 364,
+    "comentario": "Sucursal creada idLocalizacion=8.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-LOC-002",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "No automatizado: requiere preparar vehiculos asignados a la sucursal antes de cambiar estado.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-LOC-003",
+    "status": "Pasada",
+    "http_status": 200,
+    "duration_ms": 91,
+    "comentario": "Listado de ciudades responde 200.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-CLI-001",
+    "status": "Pasada",
+    "http_status": 201,
+    "duration_ms": 183,
+    "comentario": "Cliente 52 creado con cedula CLI77417326.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-CLI-002",
+    "status": "Pasada",
+    "http_status": 409,
+    "duration_ms": 92,
+    "comentario": "Duplicado rechazado correctamente.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-CLI-003",
+    "status": "Pasada",
+    "http_status": 200,
+    "duration_ms": 189,
+    "comentario": "Correo actualizado.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-USR-001",
+    "status": "Pasada",
+    "http_status": 200,
+    "duration_ms": 907,
+    "comentario": "Usuario qa_user_b8a668 (id=38) creado con rol AGENTE_POS.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-USR-002",
+    "status": "Pasada",
+    "http_status": 409,
+    "duration_ms": 91,
+    "comentario": "Duplicado rechazado.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-USR-003",
+    "status": "Pasada",
+    "http_status": 200,
+    "duration_ms": 187,
+    "comentario": "Estado del usuario cambiado a INACT.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-USR-004",
+    "status": "Pasada",
+    "http_status": 200,
+    "duration_ms": 360,
+    "comentario": "Roles actualizados a ADMIN.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-BKG-001",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Requiere payload exacto del contrato de Booking (CodigoConfirmacion, conductor, tarifas) que no esta disponible en este entorno.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-BKG-002",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Depende de TC-BKG-001 ejecutado.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-BKG-003",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Depende de TC-BKG-001 ejecutado.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-FE-001",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Test de UI: requiere navegador (Playwright/Cypress) con el frontend levantado.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-FE-002",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Test de UI: requiere simular respuesta 500 e interactuar con el ErrorBoundary.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-FE-003",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Logica de retry verificada en el codigo (axiosClient.js); no se reintenta sin un mock HTTP en el navegador.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-FE-004",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Test de UI: cerrar sesion desde la app real.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-FE-005",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Test de UI: requiere navegador con Zod + react-hook-form.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-OBS-001",
+    "status": "Pasada",
+    "http_status": 200,
+    "duration_ms": 2,
+    "comentario": "Liveness 200 en 2 ms.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-OBS-002",
+    "status": "Pasada",
+    "http_status": 200,
+    "duration_ms": 1557,
+    "comentario": "Readiness 200 en 1557 ms (incluye check de BD).",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-OBS-003",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Requiere desconectar la BD (Supabase) durante la prueba; no se ejecuta automaticamente.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-PRF-001",
+    "status": "Pasada",
+    "http_status": 200,
+    "duration_ms": 216,
+    "comentario": "Muestreo 20 req: p95=216 ms (objetivo <500 ms en carga real). Ejecucion exploratoria, no formal.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-PRF-002",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Requiere herramienta de carga (k6/JMeter) y dataset preparado para reservas concurrentes.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-PRF-003",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Requiere Lighthouse/PageSpeed sobre el frontend en build de produccion.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-AUD-001",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Requiere lectura directa de audit.aud_eventos sobre la BD; no se ejercita aqui (separacion de privilegios).",
+    "fecha": "2026-04-28",
+    "extra": {}
+  },
+  {
+    "id": "TC-AUD-002",
+    "status": "No automatizado",
+    "http_status": "",
+    "duration_ms": 0,
+    "comentario": "Requiere lectura directa de audit.aud_intentos_login sobre la BD.",
+    "fecha": "2026-04-28",
+    "extra": {}
+  }
+]
