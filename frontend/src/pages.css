@@ -304,16 +304,20 @@
   .catalog-search {
     flex-direction: column;
     align-items: stretch;
-    gap: 10px;
+    gap: 6px;
+    padding: 8px 10px;
   }
   .catalog-search__input {
     width: 100%;
     min-width: 0;
-    padding: 10px 0;
+    padding: 6px 0;
+    font-size: 0.9rem;
   }
   .catalog-search__filter-btn {
     width: 100%;
     justify-content: center;
+    padding: 8px 10px;
+    font-size: 0.8rem;
   }
 }
 

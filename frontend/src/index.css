@@ -692,6 +692,8 @@ input, select, textarea { font-family: inherit; }
   display: flex; gap: var(--spacing-sm); background: var(--color-surface);
   border: 1px solid var(--color-border-light); border-radius: var(--radius-lg);
   padding: var(--spacing-sm); flex-wrap: nowrap; align-items: center;
+  width: min(1180px, 100%);
+  margin: 0 auto;
 }
 .hero-search__field--datetime { flex: 1.25; min-width: 180px; }
 .hero-search__field--datetime .datetime-picker__preview { display: none; }
