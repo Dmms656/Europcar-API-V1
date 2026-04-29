@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-export function useClientPagination(items, defaultPageSize = 10) {
+export function useClientPagination(items, defaultPageSize = 10, resetKey = null) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
 
@@ -9,7 +9,7 @@ export function useClientPagination(items, defaultPageSize = 10) {
 
   useEffect(() => {
     setPage(1);
-  }, [pageSize, items]);
+  }, [pageSize, totalItems, resetKey]);
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);

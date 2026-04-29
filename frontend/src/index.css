@@ -808,6 +808,36 @@ input, select, textarea { font-family: inherit; }
 .module-page__toolbar { display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-lg); flex-wrap: wrap; }
 .module-loading { display: flex; align-items: center; justify-content: center; gap: var(--spacing-sm); padding: var(--spacing-2xl); color: var(--color-text-muted); }
 
+.pagination-controls {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+.pagination-controls__summary {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  text-align: center;
+}
+.pagination-controls__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pagination-controls__label {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+.pagination-controls__counter {
+  min-width: 90px;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
 .search-box {
   display: flex; align-items: center; gap: var(--spacing-sm); flex: 1; max-width: 400px;
   padding: 0 var(--spacing-md); background: var(--color-surface); border: 1px solid var(--color-border);

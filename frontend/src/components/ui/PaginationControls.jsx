@@ -11,12 +11,12 @@ export default function PaginationControls({
   if (totalItems <= 0) return null;
 
   return (
-    <div className="module-page__toolbar" style={{ marginTop: 12 }}>
-      <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
+    <div className="pagination-controls">
+      <div className="pagination-controls__summary">
         Mostrando {startItem}-{endItem} de {totalItems}
       </div>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <label style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
+      <div className="pagination-controls__actions">
+        <label className="pagination-controls__label">
           Por página:
         </label>
         <select
@@ -37,7 +37,7 @@ export default function PaginationControls({
         >
           Anterior
         </button>
-        <span style={{ minWidth: 90, textAlign: 'center', fontSize: '0.9rem' }}>
+        <span className="pagination-controls__counter">
           {page} / {totalPages}
         </span>
         <button
