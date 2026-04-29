@@ -22,6 +22,8 @@ export default function Navbar() {
   ].some(path => location.pathname.startsWith(path));
 
   const handleLogout = () => {
+    const confirmed = window.confirm('¿Seguro que deseas cerrar sesión?');
+    if (!confirmed) return;
     logout();
     navigate('/');
     setMenuOpen(false);

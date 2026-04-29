@@ -81,7 +81,6 @@ static async Task SeedDatabaseAsync(WebApplication app)
         await SeedUserIfMissingAsync(db, "admin.dev", "admin@europcar.dev", "ADMIN", logger);
         await SeedUserIfMissingAsync(db, "agente.pos", "agente@europcar.dev", "AGENTE_POS", logger);
         await SeedUserIfMissingAsync(db, "cliente.web", "cliente@europcar.dev", "CLIENTE_WEB", logger);
-        await ApplyDatabaseHotfixesAsync(db, logger);
     }
     catch (Exception ex)
     {
@@ -169,72 +168,6 @@ static bool LooksLikeBase64(string? value)
     if (string.IsNullOrWhiteSpace(value)) return false;
     Span<byte> buffer = new byte[value.Length];
     return Convert.TryFromBase64String(value, buffer, out _);
-}
-
-static async Task ApplyDatabaseHotfixesAsync(RentalDbContext db, ILogger logger)
-{
-    // Hotfix: cancelar/finalizar una reserva no debe volver a validar disponibilidad del vehículo.
-    // Sin este bypass, el trigger de validación puede bloquear cancelaciones legítimas.
-    const string sql = """
-CREATE OR REPLACE FUNCTION rental.fn_validar_reserva()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-AS $$
-DECLARE
-    v_estado_vehiculo VARCHAR(20);
-    v_fecha_nacimiento DATE;
-BEGIN
-    -- En cambios de estado no operativos (cancelar/finalizar/no_show),
-    -- no revalidar disponibilidad ni solapamientos.
-    IF TG_OP = 'UPDATE'
-       AND NEW.estado_reserva IN ('CANCELADA', 'FINALIZADA', 'NO_SHOW')
-       AND NEW.id_vehiculo = OLD.id_vehiculo
-       AND NEW.fecha_hora_recogida = OLD.fecha_hora_recogida
-       AND NEW.fecha_hora_devolucion = OLD.fecha_hora_devolucion THEN
-        NEW.total := COALESCE(NEW.subtotal, 0)
-                   + COALESCE(NEW.valor_impuestos, 0)
-                   + COALESCE(NEW.valor_extras, 0)
-                   + COALESCE(NEW.cargo_one_way, 0);
-        RETURN NEW;
-    END IF;
-
-    IF rental.fn_reservas_solapadas(
-        NEW.id_vehiculo,
-        NEW.fecha_hora_recogida,
-        NEW.fecha_hora_devolucion,
-        COALESCE(NEW.id_reserva, NULL)
-    ) THEN
-        RAISE EXCEPTION 'El vehículo % ya tiene una reserva activa en el rango solicitado', NEW.id_vehiculo;
-    END IF;
-
-    SELECT estado_operativo INTO v_estado_vehiculo
-    FROM rental.vehiculos
-    WHERE id_vehiculo = NEW.id_vehiculo;
-
-    IF v_estado_vehiculo IN ('MANTENIMIENTO', 'TALLER', 'ALQUILADO', 'FUERA_SERVICIO') THEN
-        RAISE EXCEPTION 'El vehículo % no está disponible. Estado operativo actual: %', NEW.id_vehiculo, v_estado_vehiculo;
-    END IF;
-
-    SELECT fecha_nacimiento INTO v_fecha_nacimiento
-    FROM rental.clientes
-    WHERE id_cliente = NEW.id_cliente;
-
-    IF age(NEW.fecha_hora_recogida::date, v_fecha_nacimiento) < INTERVAL '21 years' THEN
-        RAISE EXCEPTION 'El cliente % no cumple la edad mínima de 21 años para alquilar', NEW.id_cliente;
-    END IF;
-
-    NEW.total := COALESCE(NEW.subtotal, 0)
-               + COALESCE(NEW.valor_impuestos, 0)
-               + COALESCE(NEW.valor_extras, 0)
-               + COALESCE(NEW.cargo_one_way, 0);
-
-    RETURN NEW;
-END;
-$$;
-""";
-
-    await db.Database.ExecuteSqlRawAsync(sql);
-    logger.LogInformation("Hotfix BD aplicado: fn_validar_reserva ajustada para cancelaciones.");
 }
 
 static Task WriteHealthResponseAsync(HttpContext context, HealthReport report)

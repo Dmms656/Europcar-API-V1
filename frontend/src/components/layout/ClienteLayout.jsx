@@ -20,6 +20,8 @@ export default function ClienteLayout() {
   const navigate = useNavigate();
 
   const handleLogout = () => {
+    const confirmed = window.confirm('¿Seguro que deseas cerrar sesión?');
+    if (!confirmed) return;
     logout();
     navigate('/');
   };
