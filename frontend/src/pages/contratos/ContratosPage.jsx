@@ -134,7 +134,7 @@ export default function ContratosPage() {
                   <td>{c.idContrato}</td>
                   <td><code>{c.codigoReserva || c.reservaCodigo || '-'}</code></td>
                   <td>{c.nombreCliente || c.cliente || '-'}</td>
-                  <td>{c.vehiculo || c.descripcionVehiculo || '-'}</td>
+                  <td>{c.placaVehiculo || c.vehiculo || c.descripcionVehiculo || '-'}</td>
                   <td>{c.fechaHoraSalida ? new Date(c.fechaHoraSalida).toLocaleDateString() : '-'}</td>
                   <td>{c.fechaHoraPrevistaDevolucion ? new Date(c.fechaHoraPrevistaDevolucion).toLocaleDateString() : '-'}</td>
                   <td><span className={`status-badge status-badge--${c.estadoContrato === 'CERRADO' ? 'success' : c.estadoContrato === 'ABIERTO' ? 'warning' : 'danger'}`}>{c.estadoContrato}</span></td>
