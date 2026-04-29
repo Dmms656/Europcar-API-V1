@@ -823,7 +823,20 @@ input, select, textarea { font-family: inherit; }
 .data-table tbody tr:hover { background: var(--color-surface-hover); }
 .data-table tbody tr:last-child td { border-bottom: none; }
 .data-table code { font-size: 0.75rem; color: var(--color-primary-light); background: var(--color-primary-ghost); padding: 2px 6px; border-radius: var(--radius-sm); }
-.table-actions { display: flex; gap: 4px; }
+/* Importante: el TD debe seguir siendo table-cell para no romper la línea separadora. */
+.data-table td.table-actions {
+  display: table-cell;
+  white-space: nowrap;
+}
+/* Caso A: páginas que renderizan botones directo dentro del TD */
+.data-table td.table-actions > .icon-btn + .icon-btn {
+  margin-left: 4px;
+}
+/* Caso B: páginas que renderizan <div class="table-actions"> dentro del TD */
+.data-table td .table-actions {
+  display: flex;
+  gap: 4px;
+}
 .table-empty { text-align: center; padding: var(--spacing-xl); color: var(--color-text-muted); }
 
 /* Status Badges */
