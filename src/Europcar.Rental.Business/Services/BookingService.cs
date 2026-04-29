@@ -348,95 +348,109 @@ public class BookingService : IBookingService
     // =====================================================
     public async Task<BookingResponse<BookingCrearReservaData>> CrearReservaAsync(BookingCrearReservaRequest request)
     {
-        if (request == null) throw new BusinessException("El cuerpo de la solicitud es requerido");
-        if (request.Cliente == null) throw new BusinessException("El cliente es requerido");
-        if (request.ConductorPrincipal == null) throw new BusinessException("El conductor principal es requerido");
-        if (request.FechaFin <= request.FechaInicio)
-            throw new BusinessException("La fecha de fin debe ser posterior a la fecha de inicio");
-
-        // 1) Resolver el vehículo por identificador público y obtener su ID interno
-        var vehiculo = await ResolverVehiculoAsync(request.IdVehiculo);
-
-        // 2) Obtener o crear el cliente por número de identificación
-        var cliente = await ObtenerOCrearClienteAsync(request.Cliente);
-
-        // 3) Crear/asociar conductores (principal y secundario opcional)
-        var conductorPrincipal = await ObtenerOCrearConductorAsync(request.ConductorPrincipal, cliente);
-        ConductorModel? conductorSecundario = null;
-        if (request.ConductorSecundario != null && !string.IsNullOrWhiteSpace(request.ConductorSecundario.NumeroIdentificacion))
+        try
         {
-            conductorSecundario = await ObtenerOCrearConductorAsync(request.ConductorSecundario, cliente);
-        }
+            if (request == null) throw new BusinessException("El cuerpo de la solicitud es requerido");
+            if (request.Cliente == null) throw new BusinessException("El cliente es requerido");
+            if (request.ConductorPrincipal == null) throw new BusinessException("El conductor principal es requerido");
+            if (request.FechaFin <= request.FechaInicio)
+                throw new BusinessException("La fecha de fin debe ser posterior a la fecha de inicio");
 
-        // 4) Construir el CrearReservaRequest interno reutilizando la lógica existente
-        var horaIni = request.HoraInicio ?? new TimeOnly(9, 0);
-        var horaFin = request.HoraFin ?? new TimeOnly(9, 0);
-        var fechaRecogida = new DateTimeOffset(request.FechaInicio.ToDateTime(horaIni), TimeSpan.Zero);
-        var fechaDevolucion = new DateTimeOffset(request.FechaFin.ToDateTime(horaFin), TimeSpan.Zero);
+            // 1) Resolver el vehículo por identificador público y obtener su ID interno
+            var vehiculo = await ResolverVehiculoAsync(request.IdVehiculo);
 
-        var conductoresInternos = new List<ReservaConductorItemRequest>
-        {
-            new() { IdConductor = conductorPrincipal.IdConductor, EsPrincipal = true }
-        };
-        if (conductorSecundario != null)
-        {
-            conductoresInternos.Add(new ReservaConductorItemRequest
+            // 2) Obtener o crear el cliente por número de identificación
+            var cliente = await ObtenerOCrearClienteAsync(request.Cliente);
+
+            // 3) Crear/asociar conductores (principal y secundario opcional)
+            var conductorPrincipal = await ObtenerOCrearConductorAsync(request.ConductorPrincipal, cliente);
+            ConductorModel? conductorSecundario = null;
+            if (request.ConductorSecundario != null && !string.IsNullOrWhiteSpace(request.ConductorSecundario.NumeroIdentificacion))
             {
-                IdConductor = conductorSecundario.IdConductor,
-                EsPrincipal = false
-            });
-        }
-
-        var canalReserva = string.IsNullOrWhiteSpace(request.OrigenCanalReserva)
-            ? "BOOKING"
-            : request.OrigenCanalReserva.Trim().ToUpperInvariant();
-        var extrasRequest = request.Extras ?? new List<BookingReservaExtraItem>();
-
-        var crearInterno = new CrearReservaRequest
-        {
-            IdCliente = cliente.IdCliente,
-            IdVehiculo = vehiculo.IdVehiculo,
-            IdLocalizacionRecogida = request.IdLocalizacionRecogida,
-            IdLocalizacionDevolucion = request.IdLocalizacionEntrega,
-            CanalReserva = canalReserva,
-            FechaHoraRecogida = fechaRecogida,
-            FechaHoraDevolucion = fechaDevolucion,
-            Conductores = conductoresInternos,
-            Extras = extrasRequest.Select(e => new ReservaExtraItemRequest
-            {
-                IdExtra = e.IdExtra,
-                Cantidad = e.Cantidad
-            }).ToList()
-        };
-
-        var creada = await _reservaService.CreateAsync(crearInterno);
-
-        var dias = Math.Max(1, (int)Math.Ceiling((fechaDevolucion - fechaRecogida).TotalDays));
-        var data = new BookingCrearReservaData
-        {
-            CodigoReserva = creada.CodigoReserva,
-            EstadoReserva = creada.EstadoReserva,
-            FechaReservaUtc = DateTimeOffset.UtcNow,
-            Vehiculo = new BookingVehiculoCorto
-            {
-                Id = vehiculo.CodigoInterno,
-                MarcaModelo = $"{vehiculo.Marca} {vehiculo.Modelo}".Trim()
-            },
-            FechaInicio = request.FechaInicio,
-            FechaFin = request.FechaFin,
-            CantidadDias = dias,
-            Subtotal = creada.Subtotal,
-            Iva = creada.ValorImpuestos,
-            Total = creada.Total,
-            _links = new Dictionary<string, LinkDto>
-            {
-                ["self"] = new() { Href = $"/api/v1/reservas/{creada.CodigoReserva}" },
-                ["factura"] = new() { Href = $"/api/v1/reservas/{creada.CodigoReserva}/factura" },
-                ["cancelar"] = new() { Href = $"/api/v1/reservas/{creada.CodigoReserva}/cancelar" }
+                conductorSecundario = await ObtenerOCrearConductorAsync(request.ConductorSecundario, cliente);
             }
-        };
 
-        return BookingResponse<BookingCrearReservaData>.Created(data, "Reserva creada exitosamente");
+            // 4) Construir el CrearReservaRequest interno reutilizando la lógica existente
+            var horaIni = request.HoraInicio ?? new TimeOnly(9, 0);
+            var horaFin = request.HoraFin ?? new TimeOnly(9, 0);
+            var fechaRecogida = new DateTimeOffset(request.FechaInicio.ToDateTime(horaIni), TimeSpan.Zero);
+            var fechaDevolucion = new DateTimeOffset(request.FechaFin.ToDateTime(horaFin), TimeSpan.Zero);
+
+            var conductoresInternos = new List<ReservaConductorItemRequest>
+            {
+                new() { IdConductor = conductorPrincipal.IdConductor, EsPrincipal = true }
+            };
+            if (conductorSecundario != null)
+            {
+                conductoresInternos.Add(new ReservaConductorItemRequest
+                {
+                    IdConductor = conductorSecundario.IdConductor,
+                    EsPrincipal = false
+                });
+            }
+
+            var canalReserva = string.IsNullOrWhiteSpace(request.OrigenCanalReserva)
+                ? "BOOKING"
+                : request.OrigenCanalReserva.Trim().ToUpperInvariant();
+            var extrasRequest = request.Extras ?? new List<BookingReservaExtraItem>();
+
+            var crearInterno = new CrearReservaRequest
+            {
+                IdCliente = cliente.IdCliente,
+                IdVehiculo = vehiculo.IdVehiculo,
+                IdLocalizacionRecogida = request.IdLocalizacionRecogida,
+                IdLocalizacionDevolucion = request.IdLocalizacionEntrega,
+                CanalReserva = canalReserva,
+                FechaHoraRecogida = fechaRecogida,
+                FechaHoraDevolucion = fechaDevolucion,
+                Conductores = conductoresInternos,
+                Extras = extrasRequest.Select(e => new ReservaExtraItemRequest
+                {
+                    IdExtra = e.IdExtra,
+                    Cantidad = e.Cantidad
+                }).ToList()
+            };
+
+            var creada = await _reservaService.CreateAsync(crearInterno);
+
+            var dias = Math.Max(1, (int)Math.Ceiling((fechaDevolucion - fechaRecogida).TotalDays));
+            var data = new BookingCrearReservaData
+            {
+                CodigoReserva = creada.CodigoReserva,
+                EstadoReserva = creada.EstadoReserva,
+                FechaReservaUtc = DateTimeOffset.UtcNow,
+                Vehiculo = new BookingVehiculoCorto
+                {
+                    Id = vehiculo.CodigoInterno,
+                    MarcaModelo = $"{vehiculo.Marca} {vehiculo.Modelo}".Trim()
+                },
+                FechaInicio = request.FechaInicio,
+                FechaFin = request.FechaFin,
+                CantidadDias = dias,
+                Subtotal = creada.Subtotal,
+                Iva = creada.ValorImpuestos,
+                Total = creada.Total,
+                _links = new Dictionary<string, LinkDto>
+                {
+                    ["self"] = new() { Href = $"/api/v1/reservas/{creada.CodigoReserva}" },
+                    ["factura"] = new() { Href = $"/api/v1/reservas/{creada.CodigoReserva}/factura" },
+                    ["cancelar"] = new() { Href = $"/api/v1/reservas/{creada.CodigoReserva}/cancelar" }
+                }
+            };
+
+            return BookingResponse<BookingCrearReservaData>.Created(data, "Reserva creada exitosamente");
+        }
+        catch (BusinessException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.InnerException != null
+                ? $"{ex.GetType().Name}: {ex.Message} | Inner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}"
+                : $"{ex.GetType().Name}: {ex.Message}";
+            throw new BusinessException($"Error al crear reserva (booking). {detail}");
+        }
     }
 
     // =====================================================
