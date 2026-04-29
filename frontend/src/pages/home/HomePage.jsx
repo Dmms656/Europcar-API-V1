@@ -5,6 +5,7 @@ import {
   Car, MapPin, Search, Shield, LogIn, ShoppingBag
 } from 'lucide-react';
 import DateTimePicker from '../../components/ui/DateTimePicker';
+import { useAuthStore } from '../../store/useAuthStore';
 
 const getPayload = (res) => res?.data?.data ?? res?.data?.Data ?? {};
 const normalizeCiudad = (c) => ({
@@ -21,6 +22,7 @@ const normalizeLocalizacion = (l) => ({
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const { isAuthenticated, userType } = useAuthStore();
   const [localizaciones, setLocalizaciones] = useState([]);
   const [ciudades, setCiudades] = useState([]);
   const [categorias, setCategorias] = useState([]);
@@ -89,6 +91,10 @@ export default function HomePage() {
     if (searchForm.fechaDevolucion) params.set('fechaDevolucion', searchForm.fechaDevolucion);
     navigate(`/catalogo?${params.toString()}`);
   };
+
+  const accountCtaPath = isAuthenticated
+    ? (userType === 'admin' ? '/dashboard' : '/mi-cuenta')
+    : '/login';
 
   return (
     <div className="home">
@@ -181,7 +187,7 @@ export default function HomePage() {
             <Link to="/catalogo" className="btn btn--primary btn--lg hero__cta">
               <ShoppingBag size={20} /> Ver Catálogo Completo
             </Link>
-            <Link to="/login" className="btn btn--outline btn--lg hero__cta">
+            <Link to={accountCtaPath} className="btn btn--outline btn--lg hero__cta">
               <LogIn size={20} /> Acceder a tu Cuenta
             </Link>
           </div>
