@@ -288,6 +288,24 @@ public class BookingService : IBookingService
             new BookingLocalizacionDetailData { Localizacion = dto });
     }
 
+    public async Task<BookingResponse<BookingCiudadListData>> GetCiudadesAsync()
+    {
+        var ciudades = (await _catalogoDataService.GetCiudadesAsync())
+            .Select(c => new BookingCiudadResponse
+            {
+                IdCiudad = c.IdCiudad,
+                IdPais = c.IdPais,
+                NombreCiudad = c.NombreCiudad,
+                NombrePais = c.NombrePais ?? string.Empty
+            })
+            .OrderBy(c => c.NombrePais)
+            .ThenBy(c => c.NombreCiudad)
+            .ToList();
+
+        return BookingResponse<BookingCiudadListData>.Ok(
+            new BookingCiudadListData { Ciudades = ciudades });
+    }
+
     // =====================================================
     // Endpoint 6: Listar categorías
     // =====================================================

@@ -39,6 +39,9 @@ public interface IBookingService
     // Endpoint 5: Detalle de una localización
     Task<BookingResponse<BookingLocalizacionDetailData>> GetLocalizacionDetalleAsync(int localizacionId);
 
+    // Endpoint complementario: Listar ciudades para filtros públicos
+    Task<BookingResponse<BookingCiudadListData>> GetCiudadesAsync();
+
     // Endpoint 6: Listar categorías
     Task<BookingResponse<BookingCategoriaListData>> GetCategoriasAsync();
 

@@ -44,6 +44,17 @@ public class BookingCatalogosController : ControllerBase
     }
 
     /// <summary>
+    /// Endpoint complementario: Listar ciudades (incluye país) para filtros públicos.
+    /// GET /api/v1/ciudades
+    /// </summary>
+    [HttpGet("ciudades")]
+    public async Task<IActionResult> GetCiudades()
+    {
+        var result = await _bookingService.GetCiudadesAsync();
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Endpoint 6: Listar categorías de vehículos.
     /// GET /api/v1/categorias
     /// </summary>

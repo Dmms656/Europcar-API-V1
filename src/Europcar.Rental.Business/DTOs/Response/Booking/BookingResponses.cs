@@ -164,6 +164,19 @@ public class BookingCiudadDto
     public string Nombre { get; set; } = string.Empty;
 }
 
+public class BookingCiudadListData
+{
+    public List<BookingCiudadResponse> Ciudades { get; set; } = new();
+}
+
+public class BookingCiudadResponse
+{
+    public int IdCiudad { get; set; }
+    public int IdPais { get; set; }
+    public string NombreCiudad { get; set; } = string.Empty;
+    public string NombrePais { get; set; } = string.Empty;
+}
+
 // =====================================================
 // Endpoint 6 — Categorías
 // =====================================================

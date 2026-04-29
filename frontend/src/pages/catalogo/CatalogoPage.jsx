@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { vehiculosApi } from '../../api/vehiculosApi';
 import { bookingApi } from '../../api/bookingApi';
+import { catalogosApi } from '../../api/catalogosApi';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
   Car, Search, Users, Fuel, Settings2, MapPin,
@@ -13,9 +14,13 @@ const isValidImageUrl = (url) => url && (url.startsWith('http://') || url.starts
 export default function CatalogoPage() {
   const [vehiculos, setVehiculos] = useState([]);
   const [categorias, setCategorias] = useState([]);
+  const [ciudades, setCiudades] = useState([]);
+  const [localizaciones, setLocalizaciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filtros, setFiltros] = useState({
+    pais: '',
+    ciudad: '',
     categoria: '',
     combustible: '',
     transmision: '',
@@ -33,6 +38,18 @@ export default function CatalogoPage() {
     if (!raw) return;
     const decoded = decodeURIComponent(raw.trim());
     setFiltros((prev) => ({ ...prev, categoria: decoded }));
+  }, [searchParams]);
+
+  /** ?pais=... y ?ciudad=... desde HomePage */
+  useEffect(() => {
+    const pais = searchParams.get('pais') || '';
+    const ciudad = searchParams.get('ciudad') || '';
+    if (!pais && !ciudad) return;
+    setFiltros((prev) => ({
+      ...prev,
+      pais: pais || prev.pais,
+      ciudad: ciudad || prev.ciudad,
+    }));
   }, [searchParams]);
 
   /** ?idCategoria=... — resolver al nombre cuando el listado ya cargó */
@@ -54,15 +71,23 @@ export default function CatalogoPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [vehRes, catRes] = await Promise.allSettled([
+      const [vehRes, catRes, ciuRes, locRes] = await Promise.allSettled([
         vehiculosApi.getDisponibles(),
         bookingApi.getCategorias(),
+        catalogosApi.getCiudades(),
+        catalogosApi.getLocalizaciones(),
       ]);
       if (vehRes.status === 'fulfilled') {
         setVehiculos(vehRes.value.data?.data || []);
       }
       if (catRes.status === 'fulfilled') {
         setCategorias(catRes.value.data?.data?.categorias || []);
+      }
+      if (ciuRes.status === 'fulfilled') {
+        setCiudades(ciuRes.value.data?.data || []);
+      }
+      if (locRes.status === 'fulfilled') {
+        setLocalizaciones(locRes.value.data?.data || []);
       }
     } catch (e) {
       console.error('Error loading catalog:', e);
@@ -71,13 +96,49 @@ export default function CatalogoPage() {
     }
   };
 
+  const ciudadesFiltradasPorPais = useMemo(() => {
+    if (!filtros.pais) return ciudades;
+    return ciudades.filter((c) => String(c.idPais) === String(filtros.pais));
+  }, [ciudades, filtros.pais]);
+
+  const paisesOptions = useMemo(() => {
+    const map = new Map();
+    ciudades.forEach((c) => {
+      const idPais = String(c.idPais ?? '');
+      if (!idPais) return;
+      if (!map.has(idPais)) {
+        map.set(idPais, c.nombrePais || `País ${idPais}`);
+      }
+    });
+    return Array.from(map.entries())
+      .map(([id, nombre]) => ({ id, nombre }))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [ciudades]);
+
   const filteredVehiculos = useMemo(() => {
+    const ciudadById = new Map(
+      ciudades.map((c) => [String(c.idCiudad), c]),
+    );
+    const locationByNombre = new Map(
+      localizaciones.map((l) => [
+        (l.nombreLocalizacion || '').toString().trim().toLowerCase(),
+        l,
+      ]),
+    );
+
     return vehiculos.filter((v) => {
       const search = searchTerm.toLowerCase();
       const matchSearch = !search ||
         (v.marca || '').toLowerCase().includes(search) ||
         (v.modelo || v.modeloVehiculo || '').toLowerCase().includes(search) ||
         (v.categoria || '').toLowerCase().includes(search);
+
+      const localizacionNombre = (v.localizacion || '').toString().trim().toLowerCase();
+      const localizacion = locationByNombre.get(localizacionNombre);
+      const ciudad = ciudadById.get(String(localizacion?.idCiudad ?? ''));
+
+      const matchPais = !filtros.pais || String(ciudad?.idPais ?? '') === String(filtros.pais);
+      const matchCiudad = !filtros.ciudad || String(localizacion?.idCiudad ?? '') === String(filtros.ciudad);
 
       const catFilter = (filtros.categoria || '').trim().toLowerCase();
       const matchCategoria =
@@ -97,16 +158,31 @@ export default function CatalogoPage() {
       const matchPrecioMin = !filtros.precioMin || precio >= Number(filtros.precioMin);
       const matchPrecioMax = !filtros.precioMax || precio <= Number(filtros.precioMax);
 
-      return matchSearch && matchCategoria && matchCombustible && matchTransmision && matchPrecioMin && matchPrecioMax;
+      return matchSearch
+        && matchPais
+        && matchCiudad
+        && matchCategoria
+        && matchCombustible
+        && matchTransmision
+        && matchPrecioMin
+        && matchPrecioMax;
     });
-  }, [vehiculos, searchTerm, filtros]);
+  }, [vehiculos, searchTerm, filtros, localizaciones, ciudades]);
 
   const handleReservar = (vehiculo) => {
     navigate(`/reservar/${vehiculo.idVehiculo}`);
   };
 
   const clearFilters = () => {
-    setFiltros({ categoria: '', combustible: '', transmision: '', precioMin: '', precioMax: '' });
+    setFiltros({
+      pais: '',
+      ciudad: '',
+      categoria: '',
+      combustible: '',
+      transmision: '',
+      precioMin: '',
+      precioMax: '',
+    });
     setSearchTerm('');
     const next = new URLSearchParams(searchParams);
     next.delete('categoria');
@@ -155,6 +231,37 @@ export default function CatalogoPage() {
       {showFilters && (
         <div className="catalog-filters">
           <div className="catalog-filters__inner">
+            <div className="catalog-filters__group">
+              <label className="form-label">País</label>
+              <select
+                className="form-input"
+                value={filtros.pais}
+                onChange={(e) => {
+                  const pais = e.target.value;
+                  setFiltros({ ...filtros, pais, ciudad: '' });
+                }}
+              >
+                <option value="">Todos</option>
+                {paisesOptions.map((p) => (
+                  <option key={p.id} value={p.id}>{p.nombre}</option>
+                ))}
+              </select>
+            </div>
+            <div className="catalog-filters__group">
+              <label className="form-label">Ciudad</label>
+              <select
+                className="form-input"
+                value={filtros.ciudad}
+                onChange={(e) => setFiltros({ ...filtros, ciudad: e.target.value })}
+              >
+                <option value="">Todas</option>
+                {ciudadesFiltradasPorPais.map((c) => (
+                  <option key={c.idCiudad} value={c.idCiudad}>
+                    {c.nombreCiudad}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="catalog-filters__group">
               <label className="form-label">Categoría</label>
               <select

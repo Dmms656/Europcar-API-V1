@@ -9,9 +9,12 @@ import DateTimePicker from '../../components/ui/DateTimePicker';
 export default function HomePage() {
   const navigate = useNavigate();
   const [localizaciones, setLocalizaciones] = useState([]);
+  const [ciudades, setCiudades] = useState([]);
   const [categorias, setCategorias] = useState([]);
 
   const [searchForm, setSearchForm] = useState({
+    idPais: '',
+    idCiudad: '',
     idLocalizacion: '',
     fechaRecogida: '',
     fechaDevolucion: '',
@@ -21,20 +24,41 @@ export default function HomePage() {
 
   const loadData = async () => {
     try {
-      const [locRes, catRes] = await Promise.allSettled([
+      const [locRes, catRes, ciuRes] = await Promise.allSettled([
         bookingApi.getLocalizaciones({}),
         bookingApi.getCategorias(),
+        bookingApi.getCiudades(),
       ]);
       if (locRes.status === 'fulfilled') setLocalizaciones(locRes.value.data?.data?.localizaciones || []);
       if (catRes.status === 'fulfilled') setCategorias(catRes.value.data?.data?.categorias || []);
+      if (ciuRes.status === 'fulfilled') setCiudades(ciuRes.value.data?.data?.ciudades || []);
     } catch (e) {
       console.error('Error loading homepage data:', e);
     }
   };
 
+  const paises = Array.from(
+    ciudades.reduce((acc, c) => {
+      acc.set(String(c.idPais), c.nombrePais);
+      return acc;
+    }, new Map()),
+  ).map(([idPais, nombrePais]) => ({ idPais, nombrePais }));
+
+  const ciudadesFiltradas = searchForm.idPais
+    ? ciudades.filter((c) => String(c.idPais) === String(searchForm.idPais))
+    : ciudades;
+
+  const localizacionesFiltradas = localizaciones.filter((loc) => {
+    if (!searchForm.idCiudad) return true;
+    const ciudadId = loc.ciudad?.id || loc.idCiudad;
+    return String(ciudadId) === String(searchForm.idCiudad);
+  });
+
   const handleSearch = (e) => {
     e.preventDefault();
     const params = new URLSearchParams();
+    if (searchForm.idPais) params.set('pais', searchForm.idPais);
+    if (searchForm.idCiudad) params.set('ciudad', searchForm.idCiudad);
     if (searchForm.idLocalizacion) params.set('localizacion', searchForm.idLocalizacion);
     if (searchForm.fechaRecogida) params.set('fechaRecogida', searchForm.fechaRecogida);
     if (searchForm.fechaDevolucion) params.set('fechaDevolucion', searchForm.fechaDevolucion);
@@ -62,12 +86,42 @@ export default function HomePage() {
             <div className="hero-search__field">
               <MapPin size={18} className="hero-search__icon" />
               <select
+                value={searchForm.idPais}
+                onChange={(e) => setSearchForm({
+                  ...searchForm, idPais: e.target.value, idCiudad: '', idLocalizacion: '',
+                })}
+                className="hero-search__select"
+              >
+                <option value="">Todos los países</option>
+                {paises.map((p) => (
+                  <option key={p.idPais} value={p.idPais}>{p.nombrePais}</option>
+                ))}
+              </select>
+            </div>
+            <div className="hero-search__field">
+              <MapPin size={18} className="hero-search__icon" />
+              <select
+                value={searchForm.idCiudad}
+                onChange={(e) => setSearchForm({ ...searchForm, idCiudad: e.target.value, idLocalizacion: '' })}
+                className="hero-search__select"
+              >
+                <option value="">Todas las ciudades</option>
+                {ciudadesFiltradas.map((c) => (
+                  <option key={c.idCiudad} value={c.idCiudad}>
+                    {c.nombreCiudad}{c.nombrePais ? ` · ${c.nombrePais}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="hero-search__field">
+              <MapPin size={18} className="hero-search__icon" />
+              <select
                 value={searchForm.idLocalizacion}
                 onChange={(e) => setSearchForm({ ...searchForm, idLocalizacion: e.target.value })}
                 className="hero-search__select"
               >
                 <option value="">Todas las sucursales</option>
-                {localizaciones.map((loc) => (
+                {localizacionesFiltradas.map((loc) => (
                   <option key={loc.idLocalizacion || loc.id} value={loc.idLocalizacion || loc.id}>
                     {loc.nombreLocalizacion || loc.nombre}
                   </option>

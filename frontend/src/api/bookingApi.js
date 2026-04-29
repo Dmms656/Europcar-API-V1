@@ -11,6 +11,7 @@ export const bookingApi = {
   // Catálogos (endpoints 4, 5, 6, 7)
   getLocalizaciones: (params) => api.get('/localizaciones', { params }),
   getLocalizacionById: (id) => api.get(`/localizaciones/${id}`),
+  getCiudades: () => api.get('/ciudades'),
   getCategorias: () => api.get('/categorias'),
   getExtras: () => api.get('/extras'),
 
