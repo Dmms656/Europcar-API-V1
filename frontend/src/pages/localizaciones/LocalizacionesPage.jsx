@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { localizacionesApi } from '../../api/localizacionesApi';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useClientPagination } from '../../hooks/useClientPagination';
+import PaginationControls from '../../components/ui/PaginationControls';
 
 const ESTADO_FILTERS = [
   { id: 'todas', label: 'Todas' },
@@ -74,6 +76,7 @@ export default function LocalizacionesPage() {
       );
     });
   }, [localizaciones, estadoFilter, search]);
+  const pagination = useClientPagination(filtered, 10);
 
   const stats = useMemo(() => {
     const total = localizaciones.length;
@@ -236,6 +239,7 @@ export default function LocalizacionesPage() {
           <Loader2 size={24} className="spin" /> Cargando localizaciones...
         </div>
       ) : (
+        <>
         <div className="data-table-wrapper">
           <table className="data-table">
             <thead>
@@ -250,7 +254,7 @@ export default function LocalizacionesPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((l) => (
+              {pagination.paginatedItems.map((l) => (
                 <tr key={l.idLocalizacion}>
                   <td><code>{l.codigoLocalizacion}</code></td>
                   <td>
@@ -320,6 +324,17 @@ export default function LocalizacionesPage() {
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          pageSize={pagination.pageSize}
+          onPageChange={pagination.setPage}
+          onPageSizeChange={pagination.setPageSize}
+          totalItems={pagination.totalItems}
+          startItem={pagination.startItem}
+          endItem={pagination.endItem}
+        />
+        </>
       )}
 
       {showModal && (

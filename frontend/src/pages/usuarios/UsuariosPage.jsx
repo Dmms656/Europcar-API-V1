@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { usuariosApi } from '../../api/usuariosApi';
 import { Users, Plus, Trash2, Shield, Search, X, Eye, EyeOff, Key, Loader2, RefreshCw, ToggleLeft, ToggleRight, Edit3 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useClientPagination } from '../../hooks/useClientPagination';
+import PaginationControls from '../../components/ui/PaginationControls';
 
 const ROLES_DISPONIBLES = ['ADMIN', 'AGENTE_POS', 'CLIENTE_WEB'];
 
@@ -37,6 +39,7 @@ export default function UsuariosPage() {
     u.correo?.toLowerCase().includes(search.toLowerCase()) ||
     u.roles?.some(r => r.toLowerCase().includes(search.toLowerCase()))
   );
+  const pagination = useClientPagination(filtered, 10);
 
   const openCreate = () => {
     setForm({ username: '', correo: '', password: '', roles: [] });
@@ -154,6 +157,7 @@ export default function UsuariosPage() {
       {loading ? (
         <div className="module-loading"><Loader2 size={24} className="spin" /> Cargando usuarios...</div>
       ) : (
+        <>
         <div className="data-table-wrapper">
           <table className="data-table">
             <thead>
@@ -167,7 +171,7 @@ export default function UsuariosPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((u) => (
+              {pagination.paginatedItems.map((u) => (
                 <tr key={u.idUsuario}>
                   <td>{u.idUsuario}</td>
                   <td>
@@ -211,6 +215,17 @@ export default function UsuariosPage() {
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          pageSize={pagination.pageSize}
+          onPageChange={pagination.setPage}
+          onPageSizeChange={pagination.setPageSize}
+          totalItems={pagination.totalItems}
+          startItem={pagination.startItem}
+          endItem={pagination.endItem}
+        />
+        </>
       )}
 
       {/* Modal Crear Usuario */}

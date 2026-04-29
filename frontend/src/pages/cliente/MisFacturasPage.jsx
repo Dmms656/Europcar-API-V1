@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { FileText, Search, Loader2, Inbox } from 'lucide-react';
 import { toast } from 'sonner';
 import { facturasApi } from '../../api/facturasApi';
+import { useClientPagination } from '../../hooks/useClientPagination';
+import PaginationControls from '../../components/ui/PaginationControls';
 
 const estadoClass = (estado) => {
   if (estado === 'PAGADA') return 'status-badge--success';
@@ -36,6 +38,7 @@ export default function MisFacturasPage() {
     const text = `${f.numeroFactura || ''} ${f.codigoReserva || ''} ${f.numeroContrato || ''} ${f.estadoFactura || ''}`.toLowerCase();
     return text.includes(search.toLowerCase());
   });
+  const pagination = useClientPagination(filtered, 10);
 
   return (
     <div className="module-page mis-facturas-page">
@@ -65,6 +68,7 @@ export default function MisFacturasPage() {
           <p style={{ marginTop: '1rem', fontSize: '1.05rem' }}>No tienes facturas para mostrar.</p>
         </div>
       ) : (
+        <>
         <div className="data-table-wrapper">
           <table className="data-table">
             <thead>
@@ -80,7 +84,7 @@ export default function MisFacturasPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((f) => (
+              {pagination.paginatedItems.map((f) => (
                 <tr key={f.idFactura}>
                   <td><code>{f.numeroFactura}</code></td>
                   <td>{f.fechaEmision ? new Date(f.fechaEmision).toLocaleDateString('es-EC') : '-'}</td>
@@ -99,6 +103,17 @@ export default function MisFacturasPage() {
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          pageSize={pagination.pageSize}
+          onPageChange={pagination.setPage}
+          onPageSizeChange={pagination.setPageSize}
+          totalItems={pagination.totalItems}
+          startItem={pagination.startItem}
+          endItem={pagination.endItem}
+        />
+        </>
       )}
     </div>
   );

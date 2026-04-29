@@ -5,6 +5,8 @@ import { reservasApi } from '../../api/reservasApi';
 import { useAuthStore } from '../../store/useAuthStore';
 import { toast } from 'sonner';
 import { isReservaActiva, isReservaCancelable, isReservaBloqueada } from '../../utils/reservas';
+import { useClientPagination } from '../../hooks/useClientPagination';
+import PaginationControls from '../../components/ui/PaginationControls';
 
 const estadoColors = {
   PENDIENTE: 'var(--color-warning)',
@@ -23,6 +25,7 @@ export default function MisReservasPage() {
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelMotivo, setCancelMotivo] = useState('');
   const [cancelling, setCancelling] = useState(false);
+  const pagination = useClientPagination(reservas, 10);
 
   useEffect(() => {
     loadReservas();
@@ -107,7 +110,7 @@ export default function MisReservasPage() {
         </div>
       ) : (
         <div className="reservas-list">
-          {reservas.map((r) => (
+          {pagination.paginatedItems.map((r) => (
             <div key={r.idReserva || r.id} className="reserva-item">
               <div className="reserva-item__icon">
                 <Car size={24} />
@@ -149,6 +152,18 @@ export default function MisReservasPage() {
             </div>
           ))}
         </div>
+      )}
+      {!loading && reservas.length > 0 && (
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          pageSize={pagination.pageSize}
+          onPageChange={pagination.setPage}
+          onPageSizeChange={pagination.setPageSize}
+          totalItems={pagination.totalItems}
+          startItem={pagination.startItem}
+          endItem={pagination.endItem}
+        />
       )}
 
       {/* Detail Modal */}

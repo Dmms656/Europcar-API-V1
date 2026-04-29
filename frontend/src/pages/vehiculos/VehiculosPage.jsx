@@ -4,6 +4,8 @@ import { catalogosApi } from '../../api/catalogosApi';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Search, X, Loader2, Car } from 'lucide-react';
 import ImageUploader from '../../components/ui/ImageUploader';
+import { useClientPagination } from '../../hooks/useClientPagination';
+import PaginationControls from '../../components/ui/PaginationControls';
 
 const INITIAL_FORM = {
   placaVehiculo: '', idMarca: '', idCategoria: '', modeloVehiculo: '', anioFabricacion: 2024,
@@ -106,6 +108,7 @@ export default function VehiculosPage() {
     const text = `${v.placa} ${v.marca} ${v.modelo} ${v.codigoInterno}`.toLowerCase();
     return text.includes(search.toLowerCase());
   });
+  const pagination = useClientPagination(filtered, 10);
 
   return (
     <div className="module-page">
@@ -121,6 +124,7 @@ export default function VehiculosPage() {
       {loading ? (
         <div className="module-loading"><Loader2 size={24} className="spin" /> Cargando...</div>
       ) : (
+        <>
         <div className="data-table-wrapper">
           <table className="data-table">
             <thead><tr>
@@ -128,7 +132,7 @@ export default function VehiculosPage() {
               <th>Categoría</th><th>Precio/Día</th><th>Estado</th><th>Localización</th><th>Acciones</th>
             </tr></thead>
             <tbody>
-              {filtered.map((v) => (
+              {pagination.paginatedItems.map((v) => (
                 <tr key={v.idVehiculo}>
                   <td><code>{v.codigoInterno}</code></td>
                   <td><strong>{v.placa}</strong></td>
@@ -163,6 +167,17 @@ export default function VehiculosPage() {
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          pageSize={pagination.pageSize}
+          onPageChange={pagination.setPage}
+          onPageSizeChange={pagination.setPageSize}
+          totalItems={pagination.totalItems}
+          startItem={pagination.startItem}
+          endItem={pagination.endItem}
+        />
+        </>
       )}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>

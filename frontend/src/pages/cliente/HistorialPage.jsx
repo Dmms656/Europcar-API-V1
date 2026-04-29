@@ -6,6 +6,8 @@ import {
 import { reservasApi } from '../../api/reservasApi';
 import { useAuthStore } from '../../store/useAuthStore';
 import { isReservaHistorica } from '../../utils/reservas';
+import { useClientPagination } from '../../hooks/useClientPagination';
+import PaginationControls from '../../components/ui/PaginationControls';
 
 const estadoColors = {
   PENDIENTE: 'var(--color-warning)',
@@ -25,6 +27,7 @@ export default function HistorialPage() {
   const [reservas, setReservas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
+  const pagination = useClientPagination(reservas, 10);
 
   useEffect(() => { loadReservas(); }, []);
 
@@ -86,7 +89,7 @@ export default function HistorialPage() {
         </div>
       ) : (
         <div className="reservas-list">
-          {reservas.map((r) => (
+          {pagination.paginatedItems.map((r) => (
             <div key={r.idReserva || r.id} className="reserva-item" style={{ opacity: 0.92 }}>
               <div className="reserva-item__icon">
                 <Car size={24} />
@@ -124,6 +127,18 @@ export default function HistorialPage() {
             </div>
           ))}
         </div>
+      )}
+      {!loading && reservas.length > 0 && (
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          pageSize={pagination.pageSize}
+          onPageChange={pagination.setPage}
+          onPageSizeChange={pagination.setPageSize}
+          totalItems={pagination.totalItems}
+          startItem={pagination.startItem}
+          endItem={pagination.endItem}
+        />
       )}
 
       {selected && (

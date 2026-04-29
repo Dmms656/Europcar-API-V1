@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { mantenimientosApi } from '../../api/mantenimientosApi';
 import { toast } from 'sonner';
 import { Wrench, Search, Plus, X, Loader2, CheckCircle, RefreshCw } from 'lucide-react';
+import { useClientPagination } from '../../hooks/useClientPagination';
+import PaginationControls from '../../components/ui/PaginationControls';
 
 export default function MantenimientosPage() {
   const [mantenimientos, setMantenimientos] = useState([]);
@@ -48,6 +50,7 @@ export default function MantenimientosPage() {
     const text = `${m.codigoMantenimiento || ''} ${m.placaVehiculo || ''} ${m.tipoMantenimiento || ''} ${m.estadoMantenimiento || ''}`.toLowerCase();
     return text.includes(search.toLowerCase());
   });
+  const pagination = useClientPagination(filtered, 10);
 
   return (
     <div className="module-page">
@@ -69,11 +72,12 @@ export default function MantenimientosPage() {
       {loading ? (
         <div className="module-loading"><Loader2 size={24} className="spin" /> Cargando mantenimientos...</div>
       ) : (
+        <>
         <div className="data-table-wrapper">
           <table className="data-table">
             <thead><tr><th>Código</th><th>Vehículo</th><th>Tipo</th><th>Descripción</th><th>Costo</th><th>Inicio</th><th>Fin</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody>
-              {filtered.map(m => (
+              {pagination.paginatedItems.map(m => (
                 <tr key={m.idMantenimiento}>
                   <td><code>{m.codigoMantenimiento}</code></td>
                   <td><strong>{m.placaVehiculo || `#${m.idVehiculo || '-'}`}</strong></td>
@@ -96,6 +100,17 @@ export default function MantenimientosPage() {
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          pageSize={pagination.pageSize}
+          onPageChange={pagination.setPage}
+          onPageSizeChange={pagination.setPageSize}
+          totalItems={pagination.totalItems}
+          startItem={pagination.startItem}
+          endItem={pagination.endItem}
+        />
+        </>
       )}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>

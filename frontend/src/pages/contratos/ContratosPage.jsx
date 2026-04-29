@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { contratosApi } from '../../api/contratosApi';
 import { toast } from 'sonner';
 import { Search, Loader2, FileText, ArrowRightCircle, ArrowLeftCircle, X, Plus } from 'lucide-react';
+import { useClientPagination } from '../../hooks/useClientPagination';
+import PaginationControls from '../../components/ui/PaginationControls';
 
 export default function ContratosPage() {
   const [contratos, setContratos] = useState([]);
@@ -13,6 +15,7 @@ export default function ContratosPage() {
   const [crearForm, setCrearForm] = useState({ idReserva: '' });
   const [checkoutForm, setCheckoutForm] = useState({ idContrato: '', kilometrajeSalida: '', nivelCombustibleSalida: '', observacionesSalida: '' });
   const [checkinForm, setCheckinForm] = useState({ idContrato: '', kilometrajeEntrada: '', nivelCombustibleEntrada: '', observacionesEntrada: '', cargosAdicionales: 0 });
+  const pagination = useClientPagination(contratos, 10);
 
   useEffect(() => { loadContratos(); }, []);
 
@@ -63,11 +66,12 @@ export default function ContratosPage() {
       {loading ? (
         <div className="module-loading"><Loader2 size={24} className="spin" /> Cargando...</div>
       ) : (
+        <>
         <div className="data-table-wrapper">
           <table className="data-table">
             <thead><tr><th>ID</th><th>Código Reserva</th><th>Cliente</th><th>Vehículo</th><th>Inicio</th><th>Fin</th><th>Estado</th></tr></thead>
             <tbody>
-              {contratos.map(c => (
+              {pagination.paginatedItems.map(c => (
                 <tr key={c.idContrato}>
                   <td>{c.idContrato}</td>
                   <td><code>{c.codigoReserva || c.reservaCodigo || '-'}</code></td>
@@ -82,6 +86,17 @@ export default function ContratosPage() {
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          pageSize={pagination.pageSize}
+          onPageChange={pagination.setPage}
+          onPageSizeChange={pagination.setPageSize}
+          totalItems={pagination.totalItems}
+          startItem={pagination.startItem}
+          endItem={pagination.endItem}
+        />
+        </>
       )}
       {/* Crear Contrato Modal */}
       {showCrear && (

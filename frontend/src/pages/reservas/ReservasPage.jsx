@@ -5,6 +5,8 @@ import { clientesApi } from '../../api/clientesApi';
 import { catalogosApi } from '../../api/catalogosApi';
 import { toast } from 'sonner';
 import { Plus, Search, CheckCircle, XCircle, Loader2, CalendarCheck, X, RefreshCw } from 'lucide-react';
+import { useClientPagination } from '../../hooks/useClientPagination';
+import PaginationControls from '../../components/ui/PaginationControls';
 
 export default function ReservasPage() {
   const [reservas, setReservas] = useState([]);
@@ -20,6 +22,7 @@ export default function ReservasPage() {
     idCliente: '', idVehiculo: '', idLocalizacionRecogida: '', idLocalizacionDevolucion: '',
     canalReserva: 'WEB', fechaHoraRecogida: '', fechaHoraDevolucion: '', extras: [],
   });
+  const pagination = useClientPagination(reservas, 10);
 
   useEffect(() => { loadAll(); }, []);
 
@@ -36,21 +39,24 @@ export default function ReservasPage() {
       setLocalizaciones(lRes.data?.data || []);
       setExtras(eRes.data?.data || []);
 
-      // Auto-load reservas for all clients
+      // Auto-load reservas for all clients (sin límite artificial de 20)
+      const responses = await Promise.allSettled(
+        clientesList.map((c) => reservasApi.getByCliente(c.idCliente))
+      );
+
       const allReservas = [];
       const seenIds = new Set();
-      for (const c of clientesList.slice(0, 20)) { // limit to avoid too many requests
-        try {
-          const res = await reservasApi.getByCliente(c.idCliente);
-          const data = res.data?.data || [];
-          data.forEach(r => {
-            if (!seenIds.has(r.idReserva)) {
-              seenIds.add(r.idReserva);
-              allReservas.push(r);
-            }
-          });
-        } catch (_) { /* skip */ }
-      }
+      responses.forEach((result) => {
+        if (result.status !== 'fulfilled') return;
+        const data = result.value?.data?.data || [];
+        data.forEach((r) => {
+          if (!seenIds.has(r.idReserva)) {
+            seenIds.add(r.idReserva);
+            allReservas.push(r);
+          }
+        });
+      });
+
       setReservas(allReservas);
     } catch (e) { toast.error('Error al cargar datos'); }
     finally { setLoading(false); }
@@ -135,13 +141,14 @@ export default function ReservasPage() {
       ) : reservas.length === 0 ? (
         <div className="module-loading">No se encontraron reservas.</div>
       ) : (
+        <>
         <div className="data-table-wrapper">
           <table className="data-table">
             <thead><tr>
               <th>Código</th><th>Cliente</th><th>Vehículo</th><th>Recogida</th><th>Devolución</th><th>Total</th><th>Estado</th><th>Acciones</th>
             </tr></thead>
             <tbody>
-              {reservas.map((r) => (
+              {pagination.paginatedItems.map((r) => (
                 <tr key={r.idReserva || r.codigoReserva}>
                   <td><code>{r.codigoReserva}</code></td>
                   <td>{r.nombreCliente || r.cliente}</td>
@@ -159,6 +166,17 @@ export default function ReservasPage() {
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          pageSize={pagination.pageSize}
+          onPageChange={pagination.setPage}
+          onPageSizeChange={pagination.setPageSize}
+          totalItems={pagination.totalItems}
+          startItem={pagination.startItem}
+          endItem={pagination.endItem}
+        />
+        </>
       )}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>

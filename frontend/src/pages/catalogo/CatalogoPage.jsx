@@ -7,6 +7,7 @@ import {
   Car, Search, Users, Fuel, Settings2, MapPin,
   SlidersHorizontal, X, Star, ShieldCheck, Zap, ArrowRight, LogIn, Home
 } from 'lucide-react';
+import PaginationControls from '../../components/ui/PaginationControls';
 
 const isValidImageUrl = (url) => url && (url.startsWith('http://') || url.startsWith('https://'));
 const getPayload = (res) => res?.data?.data ?? res?.data?.Data ?? {};
@@ -40,6 +41,8 @@ export default function CatalogoPage() {
     precioMax: '',
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [vehiculosPorPagina, setVehiculosPorPagina] = useState(10);
   const { isAuthenticated, userType } = useAuthStore();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -185,6 +188,22 @@ export default function CatalogoPage() {
         && matchPrecioMax;
     });
   }, [vehiculos, searchTerm, filtros, localizaciones, ciudades]);
+
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [searchTerm, filtros]);
+
+  const totalPaginas = Math.max(1, Math.ceil(filteredVehiculos.length / vehiculosPorPagina));
+  const vehiculosPaginados = useMemo(() => {
+    const start = (paginaActual - 1) * vehiculosPorPagina;
+    return filteredVehiculos.slice(start, start + vehiculosPorPagina);
+  }, [filteredVehiculos, paginaActual, vehiculosPorPagina]);
+
+  useEffect(() => {
+    if (paginaActual > totalPaginas) {
+      setPaginaActual(totalPaginas);
+    }
+  }, [paginaActual, totalPaginas]);
 
   const handleReservar = (vehiculo) => {
     navigate(`/reservar/${vehiculo.idVehiculo}`);
@@ -344,7 +363,10 @@ export default function CatalogoPage() {
       {/* Results */}
       <div className="catalog-content">
         <div className="catalog-results-header">
-          <h2>{filteredVehiculos.length} vehículos disponibles</h2>
+          <h2>
+            {filteredVehiculos.length} vehículos disponibles
+            {filteredVehiculos.length > 0 && ` · Página ${paginaActual} de ${totalPaginas}`}
+          </h2>
         </div>
 
         {loading ? (
@@ -361,7 +383,7 @@ export default function CatalogoPage() {
           </div>
         ) : (
           <div className="catalog-grid">
-            {filteredVehiculos.map((v) => (
+            {vehiculosPaginados.map((v) => (
               <div key={v.idVehiculo || v.vehiculoGuid} className="catalog-card">
                 <div className="catalog-card__image">
                   {isValidImageUrl(v.imagenUrl) ? (
@@ -440,6 +462,18 @@ export default function CatalogoPage() {
               </div>
             ))}
           </div>
+        )}
+        {!loading && filteredVehiculos.length > 0 && (
+          <PaginationControls
+            page={paginaActual}
+            totalPages={totalPaginas}
+            pageSize={vehiculosPorPagina}
+            onPageChange={setPaginaActual}
+            onPageSizeChange={setVehiculosPorPagina}
+            totalItems={filteredVehiculos.length}
+            startItem={filteredVehiculos.length === 0 ? 0 : (paginaActual - 1) * vehiculosPorPagina + 1}
+            endItem={Math.min(paginaActual * vehiculosPorPagina, filteredVehiculos.length)}
+          />
         )}
       </div>
     </div>

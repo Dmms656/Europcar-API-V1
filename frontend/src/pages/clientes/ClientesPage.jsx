@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { clientesApi } from '../../api/clientesApi';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Search, X, Loader2, Users } from 'lucide-react';
+import { useClientPagination } from '../../hooks/useClientPagination';
+import PaginationControls from '../../components/ui/PaginationControls';
 
 const INITIAL_FORM = {
   tipoIdentificacion: 'CED', numeroIdentificacion: '', nombre1: '', nombre2: '',
@@ -83,6 +85,7 @@ export default function ClientesPage() {
     const text = `${c.nombreCompleto} ${c.numeroIdentificacion} ${c.correo}`.toLowerCase();
     return text.includes(search.toLowerCase());
   });
+  const pagination = useClientPagination(filtered, 10);
 
   return (
     <div className="module-page">
@@ -107,6 +110,7 @@ export default function ClientesPage() {
       {loading ? (
         <div className="module-loading"><Loader2 size={24} className="spin" /> Cargando...</div>
       ) : (
+        <>
         <div className="data-table-wrapper">
           <table className="data-table">
             <thead>
@@ -116,7 +120,7 @@ export default function ClientesPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((c) => (
+              {pagination.paginatedItems.map((c) => (
                 <tr key={c.idCliente}>
                   <td>{c.idCliente}</td>
                   <td><span className="badge badge--outline">{c.tipoIdentificacion}</span> {c.numeroIdentificacion}</td>
@@ -134,6 +138,17 @@ export default function ClientesPage() {
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          pageSize={pagination.pageSize}
+          onPageChange={pagination.setPage}
+          onPageSizeChange={pagination.setPageSize}
+          totalItems={pagination.totalItems}
+          startItem={pagination.startItem}
+          endItem={pagination.endItem}
+        />
+        </>
       )}
 
       {/* Modal */}

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { pagosApi } from '../../api/pagosApi';
 import { toast } from 'sonner';
 import { CreditCard, Search, Plus, X, Loader2, RefreshCw } from 'lucide-react';
+import { useClientPagination } from '../../hooks/useClientPagination';
+import PaginationControls from '../../components/ui/PaginationControls';
 
 export default function PagosPage() {
   const [pagos, setPagos] = useState([]);
@@ -39,6 +41,7 @@ export default function PagosPage() {
     const text = `${p.codigoPago || ''} ${p.codigoReserva || ''} ${p.nombreCliente || ''} ${p.metodoPago || ''}`.toLowerCase();
     return text.includes(search.toLowerCase());
   });
+  const pagination = useClientPagination(filtered, 10);
 
   return (
     <div className="module-page">
@@ -60,11 +63,12 @@ export default function PagosPage() {
       {loading ? (
         <div className="module-loading"><Loader2 size={24} className="spin" /> Cargando pagos...</div>
       ) : (
+        <>
         <div className="data-table-wrapper">
           <table className="data-table">
             <thead><tr><th>Código</th><th>Reserva</th><th>Cliente</th><th>Monto</th><th>Método</th><th>Referencia</th><th>Fecha</th><th>Estado</th></tr></thead>
             <tbody>
-              {filtered.map(p => (
+              {pagination.paginatedItems.map(p => (
                 <tr key={p.idPago}>
                   <td><code>{p.codigoPago}</code></td>
                   <td><code>{p.codigoReserva || '-'}</code></td>
@@ -80,6 +84,17 @@ export default function PagosPage() {
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          pageSize={pagination.pageSize}
+          onPageChange={pagination.setPage}
+          onPageSizeChange={pagination.setPageSize}
+          totalItems={pagination.totalItems}
+          startItem={pagination.startItem}
+          endItem={pagination.endItem}
+        />
+        </>
       )}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>

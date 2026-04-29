@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { FileText, Clock, Car, DollarSign, Eye, X, Hash, MapPin, User, Calendar, Loader2, Inbox } from 'lucide-react';
 import { contratosApi } from '../../api/contratosApi';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useClientPagination } from '../../hooks/useClientPagination';
+import PaginationControls from '../../components/ui/PaginationControls';
 
 const estadoColors = {
   ABIERTO: 'var(--color-info)',
@@ -14,6 +16,7 @@ export default function MisContratosPage() {
   const [contratos, setContratos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
+  const pagination = useClientPagination(contratos, 10);
 
   useEffect(() => {
     loadContratos();
@@ -55,7 +58,7 @@ export default function MisContratosPage() {
         </div>
       ) : (
         <div className="contratos-list">
-          {contratos.map((c) => (
+          {pagination.paginatedItems.map((c) => (
             <div key={c.idContrato || c.id} className="contrato-item">
               <div className="contrato-item__icon">
                 <FileText size={24} />
@@ -81,6 +84,18 @@ export default function MisContratosPage() {
             </div>
           ))}
         </div>
+      )}
+      {!loading && contratos.length > 0 && (
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          pageSize={pagination.pageSize}
+          onPageChange={pagination.setPage}
+          onPageSizeChange={pagination.setPageSize}
+          totalItems={pagination.totalItems}
+          startItem={pagination.startItem}
+          endItem={pagination.endItem}
+        />
       )}
 
       {/* Detail Modal */}

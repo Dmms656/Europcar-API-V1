@@ -5,6 +5,8 @@ import {
 } from 'lucide-react';
 import { catalogosApi } from '../../api/catalogosApi';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useClientPagination } from '../../hooks/useClientPagination';
+import PaginationControls from '../../components/ui/PaginationControls';
 
 const initialPaisForm = { codigoIso2: '', nombrePais: '' };
 const initialCiudadForm = { idPais: '', nombreCiudad: '' };
@@ -55,6 +57,8 @@ export default function UbicacionesPage() {
     const activos = ciudades.filter((c) => c.estadoCiudad === 'ACT').length;
     return { total, activos, inactivos: total - activos };
   }, [ciudades]);
+  const paisPagination = useClientPagination(paises, 10);
+  const ciudadPagination = useClientPagination(ciudades, 10);
 
   const openPaisCreate = () => {
     if (!isAdmin) return;
@@ -209,7 +213,7 @@ export default function UbicacionesPage() {
             <table className="data-table">
               <thead><tr><th>Código</th><th>Nombre</th><th>Estado</th><th>Acciones</th></tr></thead>
               <tbody>
-                {paises.map((p) => (
+                {paisPagination.paginatedItems.map((p) => (
                   <tr key={p.id}>
                     <td><code>{p.codigo}</code></td>
                     <td>{p.nombre}</td>
@@ -227,6 +231,16 @@ export default function UbicacionesPage() {
                 ))}
               </tbody>
             </table>
+            <PaginationControls
+              page={paisPagination.page}
+              totalPages={paisPagination.totalPages}
+              pageSize={paisPagination.pageSize}
+              onPageChange={paisPagination.setPage}
+              onPageSizeChange={paisPagination.setPageSize}
+              totalItems={paisPagination.totalItems}
+              startItem={paisPagination.startItem}
+              endItem={paisPagination.endItem}
+            />
           </div>
 
           <div className="data-table-wrapper">
@@ -234,7 +248,7 @@ export default function UbicacionesPage() {
             <table className="data-table">
               <thead><tr><th>Ciudad</th><th>País</th><th>Estado</th><th>Acciones</th></tr></thead>
               <tbody>
-                {ciudades.map((c) => (
+                {ciudadPagination.paginatedItems.map((c) => (
                   <tr key={c.idCiudad}>
                     <td>{c.nombreCiudad}</td>
                     <td>{c.nombrePais || `ID ${c.idPais}`}</td>
@@ -252,6 +266,16 @@ export default function UbicacionesPage() {
                 ))}
               </tbody>
             </table>
+            <PaginationControls
+              page={ciudadPagination.page}
+              totalPages={ciudadPagination.totalPages}
+              pageSize={ciudadPagination.pageSize}
+              onPageChange={ciudadPagination.setPage}
+              onPageSizeChange={ciudadPagination.setPageSize}
+              totalItems={ciudadPagination.totalItems}
+              startItem={ciudadPagination.startItem}
+              endItem={ciudadPagination.endItem}
+            />
           </div>
         </div>
       )}

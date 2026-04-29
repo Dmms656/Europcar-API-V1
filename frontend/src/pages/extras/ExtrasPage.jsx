@@ -5,6 +5,8 @@ import {
 } from 'lucide-react';
 import { catalogosApi } from '../../api/catalogosApi';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useClientPagination } from '../../hooks/useClientPagination';
+import PaginationControls from '../../components/ui/PaginationControls';
 
 const ESTADO_FILTERS = [
   { id: 'todas', label: 'Todas' },
@@ -83,6 +85,7 @@ export default function ExtrasPage() {
       );
     });
   }, [extras, estadoFilter, search]);
+  const pagination = useClientPagination(filtered, 10);
 
   const stats = useMemo(() => {
     const total = extras.length;
@@ -233,6 +236,7 @@ export default function ExtrasPage() {
           <Loader2 size={24} className="spin" /> Cargando extras...
         </div>
       ) : (
+        <>
         <div className="data-table-wrapper">
           <table className="data-table">
             <thead>
@@ -247,7 +251,7 @@ export default function ExtrasPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((e) => (
+              {pagination.paginatedItems.map((e) => (
                 <tr key={e.idExtra}>
                   <td><code>{e.codigoExtra}</code></td>
                   <td>
@@ -304,6 +308,17 @@ export default function ExtrasPage() {
             </tbody>
           </table>
         </div>
+        <PaginationControls
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          pageSize={pagination.pageSize}
+          onPageChange={pagination.setPage}
+          onPageSizeChange={pagination.setPageSize}
+          totalItems={pagination.totalItems}
+          startItem={pagination.startItem}
+          endItem={pagination.endItem}
+        />
+        </>
       )}
 
       {showModal && (
