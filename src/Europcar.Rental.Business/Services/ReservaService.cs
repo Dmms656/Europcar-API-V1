@@ -148,37 +148,45 @@ public class ReservaService : IReservaService
             Extras = extrasModel
         };
 
-        await using var tx = await _context.Database.BeginTransactionAsync();
-        try
+        var strategy = _context.Database.CreateExecutionStrategy();
+        ReservaResponse? response = null;
+
+        await strategy.ExecuteAsync(async () =>
         {
-            var created = await _reservaDataService.CreateAsync(model);
-
-            // ── Asignar conductores ──
-            await AssignConductoresAsync(request, created.IdReserva, cliente);
-
-            // ── Reservar stock de extras que lo requieran ──
-            foreach (var item in request.Extras)
+            await using var tx = await _context.Database.BeginTransactionAsync();
+            try
             {
-                var extra = await _extraDataService.GetByIdAsync(item.IdExtra);
-                if (extra != null && extra.RequiereStock)
+                var created = await _reservaDataService.CreateAsync(model);
+
+                // ── Asignar conductores ──
+                await AssignConductoresAsync(request, created.IdReserva, cliente);
+
+                // ── Reservar stock de extras que lo requieran ──
+                foreach (var item in request.Extras)
                 {
-                    await _extraDataService.ReservarStockAsync(
-                        request.IdLocalizacionRecogida, item.IdExtra, item.Cantidad);
+                    var extra = await _extraDataService.GetByIdAsync(item.IdExtra);
+                    if (extra != null && extra.RequiereStock)
+                    {
+                        await _extraDataService.ReservarStockAsync(
+                            request.IdLocalizacionRecogida, item.IdExtra, item.Cantidad);
+                    }
                 }
+
+                await _unitOfWork.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                // Recargar con todos los includes para devolver respuesta completa
+                var result = await _reservaDataService.GetByIdAsync(created.IdReserva);
+                response = MapToResponse(result!);
             }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
+            }
+        });
 
-            await _unitOfWork.SaveChangesAsync();
-            await tx.CommitAsync();
-
-            // Recargar con todos los includes para devolver respuesta completa
-            var result = await _reservaDataService.GetByIdAsync(created.IdReserva);
-            return MapToResponse(result!);
-        }
-        catch
-        {
-            await tx.RollbackAsync();
-            throw;
-        }
+        return response!;
     }
 
     public async Task<ReservaResponse> ConfirmarAsync(int id, string usuario, decimal? monto = null, string? referenciaExterna = null)
@@ -191,51 +199,55 @@ public class ReservaService : IReservaService
 
         var montoFinal = monto ?? reserva.Total;
         var codigoPago = $"PAG-{Guid.NewGuid().ToString("N")[..10].ToUpper()}";
-        await using var tx = await _context.Database.BeginTransactionAsync();
-
-        try
+        var strategy = _context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
         {
-            // 1. INSERT pago via raw SQL (no change tracker)
-            await _context.Database.ExecuteSqlInterpolatedAsync($@"
-                INSERT INTO rental.pagos 
-                (pago_guid, codigo_pago, id_reserva, id_cliente, tipo_pago, metodo_pago, estado_pago, 
-                 referencia_externa, monto, moneda, fecha_pago_utc, observaciones_pago, creado_por_usuario, origen_registro)
-                VALUES ({Guid.NewGuid()}, {codigoPago}, {id}, {reserva.IdCliente}, 'COBRO', 'TARJETA', 'APROBADO',
-                        {referenciaExterna ?? "WEB"}, {montoFinal}, 'USD', CURRENT_TIMESTAMP, 
-                        {"Pago automático - Confirmación reserva"}, {usuario}, 'API')");
+            await using var tx = await _context.Database.BeginTransactionAsync();
 
-            // 2. INSERT factura via raw SQL
-            var subtotal = Math.Round(montoFinal / (1 + IvaRate), 2);
-            var valorIva = montoFinal - subtotal;
-            var numFactura = $"FAC-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpper()}";
+            try
+            {
+                // 1. INSERT pago via raw SQL (no change tracker)
+                await _context.Database.ExecuteSqlInterpolatedAsync($@"
+                    INSERT INTO rental.pagos 
+                    (pago_guid, codigo_pago, id_reserva, id_cliente, tipo_pago, metodo_pago, estado_pago, 
+                     referencia_externa, monto, moneda, fecha_pago_utc, observaciones_pago, creado_por_usuario, origen_registro)
+                    VALUES ({Guid.NewGuid()}, {codigoPago}, {id}, {reserva.IdCliente}, 'COBRO', 'TARJETA', 'APROBADO',
+                            {referenciaExterna ?? "WEB"}, {montoFinal}, 'USD', CURRENT_TIMESTAMP, 
+                            {"Pago automático - Confirmación reserva"}, {usuario}, 'API')");
 
-            await _context.Database.ExecuteSqlInterpolatedAsync($@"
-                INSERT INTO rental.facturas
-                (factura_guid, numero_factura, id_cliente, id_reserva, fecha_emision,
-                 subtotal, valor_iva, total, estado_factura, servicio_origen, origen_canal_factura,
-                 observaciones_factura, creado_por_usuario, fecha_registro_utc)
-                VALUES ({Guid.NewGuid()}, {numFactura}, {reserva.IdCliente}, {id},
-                        CURRENT_TIMESTAMP, {subtotal}, {valorIva}, {montoFinal}, 'EMITIDA', 'RESERVA_WEB', 'WEB',
-                        {"Factura automática - Pago " + codigoPago}, {usuario}, CURRENT_TIMESTAMP)");
+                // 2. INSERT factura via raw SQL
+                var subtotal = Math.Round(montoFinal / (1 + IvaRate), 2);
+                var valorIva = montoFinal - subtotal;
+                var numFactura = $"FAC-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpper()}";
 
-            // 3. UPDATE reserva status via raw SQL
-            var updated = await _context.Database.ExecuteSqlInterpolatedAsync($@"
-                UPDATE rental.reservas 
-                SET estado_reserva = 'CONFIRMADA', 
-                    modificado_por_usuario = {usuario}, 
-                    fecha_modificacion_utc = CURRENT_TIMESTAMP
-                WHERE id_reserva = {id}");
+                await _context.Database.ExecuteSqlInterpolatedAsync($@"
+                    INSERT INTO rental.facturas
+                    (factura_guid, numero_factura, id_cliente, id_reserva, fecha_emision,
+                     subtotal, valor_iva, total, estado_factura, servicio_origen, origen_canal_factura,
+                     observaciones_factura, creado_por_usuario, fecha_registro_utc)
+                    VALUES ({Guid.NewGuid()}, {numFactura}, {reserva.IdCliente}, {id},
+                            CURRENT_TIMESTAMP, {subtotal}, {valorIva}, {montoFinal}, 'EMITIDA', 'RESERVA_WEB', 'WEB',
+                            {"Factura automática - Pago " + codigoPago}, {usuario}, CURRENT_TIMESTAMP)");
 
-            if (updated == 0)
-                throw new BusinessException($"No se pudo confirmar la reserva {id}.");
+                // 3. UPDATE reserva status via raw SQL
+                var updated = await _context.Database.ExecuteSqlInterpolatedAsync($@"
+                    UPDATE rental.reservas 
+                    SET estado_reserva = 'CONFIRMADA', 
+                        modificado_por_usuario = {usuario}, 
+                        fecha_modificacion_utc = CURRENT_TIMESTAMP
+                    WHERE id_reserva = {id}");
 
-            await tx.CommitAsync();
-        }
-        catch
-        {
-            await tx.RollbackAsync();
-            throw;
-        }
+                if (updated == 0)
+                    throw new BusinessException($"No se pudo confirmar la reserva {id}.");
+
+                await tx.CommitAsync();
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
+            }
+        });
 
         // Return updated data (reuse existing reserva model, just change estado)
         reserva.EstadoReserva = "CONFIRMADA";
