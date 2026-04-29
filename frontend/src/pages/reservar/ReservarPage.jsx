@@ -612,10 +612,20 @@ export default function ReservarPage() {
         codigoConfirmacionFinal = reservaData?.codigoConfirmacion || codigoReservaFinal;
 
         if (idReservaFinal) {
-          await reservasApi.confirmar(idReservaFinal, {
-            monto: totalFinal,
-            referenciaExterna: `SIM-${lastFour}-${Date.now().toString(36).toUpperCase()}`,
-          });
+          try {
+            await reservasApi.confirmar(idReservaFinal, {
+              monto: totalFinal,
+              referenciaExterna: `SIM-${lastFour}-${Date.now().toString(36).toUpperCase()}`,
+            });
+          } catch (confirmErr) {
+            const confirmData = confirmErr?.response?.data || {};
+            const confirmMsg =
+              confirmData.message ||
+              confirmData.mensaje ||
+              confirmData.Mensaje ||
+              'La reserva fue creada, pero no se pudo confirmar automáticamente.';
+            toast.warning(confirmMsg);
+          }
         }
       }
 
@@ -633,7 +643,13 @@ export default function ReservarPage() {
       toast.success('¡Reserva creada exitosamente!');
       toast.success('¡Pago simulado exitosamente!');
     } catch (err) {
-      const message = err?.response?.data?.message || err?.response?.data?.Mensaje || 'No se pudo generar la reserva.';
+      const errorData = err?.response?.data || {};
+      const message =
+        errorData.message ||
+        errorData.mensaje ||
+        errorData.Mensaje ||
+        errorData.detail ||
+        'No se pudo generar la reserva.';
       toast.error(message);
     } finally {
       setProcessing(false);
