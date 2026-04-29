@@ -101,27 +101,26 @@ public class PagoService : IPagoService
 
         var codigoPago = $"PAG-{Guid.NewGuid().ToString("N")[..10].ToUpper()}";
         var pagoGuid = Guid.NewGuid();
-
-        // ===== ALL via raw SQL — bypasses EF change tracker completely =====
-
-        // 1. INSERT pago
-        var idPago = await _context.Database.ExecuteSqlInterpolatedAsync($@"
-            INSERT INTO rental.pagos 
-            (pago_guid, codigo_pago, id_reserva, id_contrato, id_cliente, tipo_pago, metodo_pago, estado_pago, 
-             referencia_externa, monto, moneda, fecha_pago_utc, observaciones_pago, creado_por_usuario, origen_registro)
-            VALUES ({pagoGuid}, {codigoPago}, {request.IdReserva}, {request.IdContrato}, {request.IdCliente}, 
-                    {request.TipoPago}, {request.MetodoPago}, 'APROBADO',
-                    {request.ReferenciaExterna}, {request.Monto}, 'USD', CURRENT_TIMESTAMP, {request.Observaciones}, 
-                    {usuario}, 'API')");
-
-        // 2. INSERT factura
-        var ivaRate = 0.15m;
-        var subtotal = Math.Round(request.Monto / (1 + ivaRate), 2);
-        var valorIva = request.Monto - subtotal;
-        var numFactura = $"FAC-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpper()}";
+        await using var tx = await _context.Database.BeginTransactionAsync();
 
         try
         {
+            // 1. INSERT pago
+            await _context.Database.ExecuteSqlInterpolatedAsync($@"
+                INSERT INTO rental.pagos 
+                (pago_guid, codigo_pago, id_reserva, id_contrato, id_cliente, tipo_pago, metodo_pago, estado_pago, 
+                 referencia_externa, monto, moneda, fecha_pago_utc, observaciones_pago, creado_por_usuario, origen_registro)
+                VALUES ({pagoGuid}, {codigoPago}, {request.IdReserva}, {request.IdContrato}, {request.IdCliente}, 
+                        {request.TipoPago}, {request.MetodoPago}, 'APROBADO',
+                        {request.ReferenciaExterna}, {request.Monto}, 'USD', CURRENT_TIMESTAMP, {request.Observaciones}, 
+                        {usuario}, 'API')");
+
+            var ivaRate = 0.15m;
+            var subtotal = Math.Round(request.Monto / (1 + ivaRate), 2);
+            var valorIva = request.Monto - subtotal;
+            var numFactura = $"FAC-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpper()}";
+
+            // 2. INSERT factura
             await _context.Database.ExecuteSqlInterpolatedAsync($@"
                 INSERT INTO rental.facturas
                 (factura_guid, numero_factura, id_cliente, id_reserva, id_contrato, fecha_emision,
@@ -130,33 +129,38 @@ public class PagoService : IPagoService
                 VALUES ({Guid.NewGuid()}, {numFactura}, {request.IdCliente}, {request.IdReserva}, {request.IdContrato},
                         CURRENT_TIMESTAMP, {subtotal}, {valorIva}, {request.Monto}, 'EMITIDA', 'RESERVA_WEB', 'WEB',
                         {"Factura automática - Pago " + codigoPago}, {usuario}, CURRENT_TIMESTAMP)");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[WARN] Error generando factura: {ex.Message}");
-        }
 
-        // 3. UPDATE reserva estado
-        if (request.IdReserva.HasValue)
-        {
-            try
+            // 3. UPDATE reserva estado
+            if (request.IdReserva.HasValue)
             {
-                await _context.Database.ExecuteSqlInterpolatedAsync($@"
+                var updated = await _context.Database.ExecuteSqlInterpolatedAsync($@"
                     UPDATE rental.reservas 
                     SET estado_reserva = 'CONFIRMADA', 
                         modificado_por_usuario = {usuario}, 
                         fecha_modificacion_utc = CURRENT_TIMESTAMP
                     WHERE id_reserva = {request.IdReserva.Value}");
+
+                if (updated == 0)
+                    throw new BusinessException($"No se pudo confirmar la reserva {request.IdReserva.Value}.");
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[WARN] Error confirmando reserva: {ex.Message}");
-            }
+
+            await tx.CommitAsync();
         }
+        catch
+        {
+            await tx.RollbackAsync();
+            throw;
+        }
+
+        var idPago = await _context.Pagos
+            .AsNoTracking()
+            .Where(p => p.PagoGuid == pagoGuid)
+            .Select(p => p.IdPago)
+            .FirstOrDefaultAsync();
 
         return new PagoResponse
         {
-            IdPago = 0,
+            IdPago = idPago,
             PagoGuid = pagoGuid,
             CodigoPago = codigoPago,
             TipoPago = request.TipoPago,

@@ -31,7 +31,9 @@ public class ConductorDataService : IConductorDataService
         var entity = new ConductorEntity
         {
             ConductorGuid = Guid.NewGuid(),
-            CodigoConductor = $"CON-{Guid.NewGuid().ToString("N")[..8].ToUpper()}",
+            CodigoConductor = string.IsNullOrWhiteSpace(model.CodigoConductor)
+                ? $"CON-{Guid.NewGuid().ToString("N")[..8].ToUpper()}"
+                : model.CodigoConductor.Trim().ToUpperInvariant(),
             IdCliente = model.IdCliente,
             TipoIdentificacion = model.TipoIdentificacion,
             NumeroIdentificacion = model.NumeroIdentificacion,

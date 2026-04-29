@@ -10,6 +10,7 @@ public class LocalizacionDataService : ILocalizacionDataService
 {
     private readonly RentalDbContext _context;
     public LocalizacionDataService(RentalDbContext context) => _context = context;
+    private static string SafeTrim(string? value) => value?.Trim() ?? string.Empty;
 
     public async Task<IEnumerable<LocalizacionModel>> GetAllAsync(bool soloActivas = true)
     {
@@ -47,13 +48,13 @@ public class LocalizacionDataService : ILocalizacionDataService
         var entity = new LocalizacionEntity
         {
             LocalizacionGuid = Guid.NewGuid(),
-            CodigoLocalizacion = model.CodigoLocalizacion.Trim().ToUpper(),
-            NombreLocalizacion = model.NombreLocalizacion.Trim(),
+            CodigoLocalizacion = SafeTrim(model.CodigoLocalizacion).ToUpperInvariant(),
+            NombreLocalizacion = SafeTrim(model.NombreLocalizacion),
             IdCiudad = model.IdCiudad,
-            DireccionLocalizacion = model.DireccionLocalizacion.Trim(),
-            TelefonoContacto = model.TelefonoContacto.Trim(),
-            CorreoContacto = model.CorreoContacto.Trim().ToLower(),
-            HorarioAtencion = model.HorarioAtencion.Trim(),
+            DireccionLocalizacion = SafeTrim(model.DireccionLocalizacion),
+            TelefonoContacto = SafeTrim(model.TelefonoContacto),
+            CorreoContacto = SafeTrim(model.CorreoContacto).ToLowerInvariant(),
+            HorarioAtencion = SafeTrim(model.HorarioAtencion),
             ZonaHoraria = string.IsNullOrWhiteSpace(model.ZonaHoraria) ? "America/Guayaquil" : model.ZonaHoraria,
             Latitud = model.Latitud,
             Longitud = model.Longitud,
@@ -77,12 +78,12 @@ public class LocalizacionDataService : ILocalizacionDataService
         var entity = await _context.Localizaciones.FindAsync(model.IdLocalizacion)
             ?? throw new InvalidOperationException($"Localización {model.IdLocalizacion} no encontrada");
 
-        entity.NombreLocalizacion = model.NombreLocalizacion.Trim();
+        entity.NombreLocalizacion = SafeTrim(model.NombreLocalizacion);
         entity.IdCiudad = model.IdCiudad;
-        entity.DireccionLocalizacion = model.DireccionLocalizacion.Trim();
-        entity.TelefonoContacto = model.TelefonoContacto.Trim();
-        entity.CorreoContacto = model.CorreoContacto.Trim().ToLower();
-        entity.HorarioAtencion = model.HorarioAtencion.Trim();
+        entity.DireccionLocalizacion = SafeTrim(model.DireccionLocalizacion);
+        entity.TelefonoContacto = SafeTrim(model.TelefonoContacto);
+        entity.CorreoContacto = SafeTrim(model.CorreoContacto).ToLowerInvariant();
+        entity.HorarioAtencion = SafeTrim(model.HorarioAtencion);
         entity.ZonaHoraria = string.IsNullOrWhiteSpace(model.ZonaHoraria) ? entity.ZonaHoraria : model.ZonaHoraria;
         entity.Latitud = model.Latitud;
         entity.Longitud = model.Longitud;

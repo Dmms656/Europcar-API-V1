@@ -95,7 +95,6 @@ public class PagoConfiguration : IEntityTypeConfiguration<PagoEntity>
         // BaseEntity fields NOT in the DB table — ignore them
         builder.Ignore(e => e.EsEliminado);
         builder.Ignore(e => e.ModificadoDesdeIp);
-        builder.Ignore(e => e.FechaRegistroUtc);
         // Navigation
         builder.HasOne(e => e.Reserva).WithMany().HasForeignKey(e => e.IdReserva);
         builder.HasOne(e => e.Contrato).WithMany(c => c.Pagos).HasForeignKey(e => e.IdContrato);

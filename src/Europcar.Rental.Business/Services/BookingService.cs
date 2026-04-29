@@ -389,9 +389,12 @@ public class BookingService : IBookingService
                 });
             }
 
-            var canalReserva = string.IsNullOrWhiteSpace(request.OrigenCanalReserva)
+            var canalReservaRaw = string.IsNullOrWhiteSpace(request.OrigenCanalReserva)
                 ? "BOOKING"
                 : request.OrigenCanalReserva.Trim().ToUpperInvariant();
+            var canalReserva = canalReservaRaw.Length > 20
+                ? canalReservaRaw[..20]
+                : canalReservaRaw;
             var extrasRequest = request.Extras ?? new List<BookingReservaExtraItem>();
 
             var crearInterno = new CrearReservaRequest
