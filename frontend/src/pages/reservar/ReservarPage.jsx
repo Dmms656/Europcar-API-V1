@@ -359,8 +359,8 @@ export default function ReservarPage() {
     if (!apellido) errs.apellido = 'Apellido requerido';
     else if (!NAME_REGEX.test(apellido)) errs.apellido = 'Apellido inválido (solo letras y espacios, 2-50)';
 
-    if (!licencia) errs.licencia = 'Número de licencia requerido';
-    else if (!LICENCIA_REGEX.test(licencia)) errs.licencia = 'Licencia inválida (5-20 caracteres alfanuméricos)';
+    if (!licencia) errs.licencia = 'Número de identificación requerido';
+    else if (!LICENCIA_REGEX.test(licencia)) errs.licencia = 'Identificación inválida (5-20 caracteres alfanuméricos)';
 
     if (!draft.edad) errs.edad = 'Edad requerida';
     else if (!Number.isInteger(edadNum) || edadNum < 18 || edadNum > 85) errs.edad = 'Edad debe estar entre 18 y 85 años';
@@ -963,7 +963,7 @@ export default function ReservarPage() {
                         <span className="extra-card__price">{c.esPrincipal ? 'Principal' : 'Adicional'}</span>
                       </div>
                       <div className="extra-card__meta" style={{ fontSize: '0.85rem', opacity: 0.8 }}>
-                        {c.licencia && <p>Licencia: {c.licencia}</p>}
+                        {c.licencia && <p>Identificación: {c.licencia}</p>}
                         {c.telefono && <p>Tel: {c.telefono}</p>}
                         {c.esCliente && <p style={{ color: 'var(--accent)', fontWeight: 600 }}>👤 Titular de la cuenta</p>}
                       </div>
@@ -1029,8 +1029,8 @@ export default function ReservarPage() {
                     </div>
                     <div className="pago-form__row" style={{ gap: '1rem', flexWrap: 'wrap' }}>
                       <div className={`form-group ${newConductorErrors.licencia ? 'form-group--error' : ''}`} style={{ flex: 1, minWidth: '150px' }}>
-                        <label className="form-label">No. Licencia *</label>
-                        <input className="form-input" placeholder="Licencia de conducir"
+                        <label className="form-label">Identificación *</label>
+                        <input className="form-input" placeholder="Identificación del conductor"
                           value={newConductor.licencia}
                           maxLength={20}
                           onChange={(e) => {

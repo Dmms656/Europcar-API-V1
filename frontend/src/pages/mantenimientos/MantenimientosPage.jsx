@@ -182,6 +182,16 @@ export default function MantenimientosPage() {
                     <option value="PREVENTIVO">Preventivo</option><option value="CORRECTIVO">Correctivo</option><option value="PREDICTIVO">Predictivo</option>
                   </select></div>
               </div>
+              {editing && (
+                <div className="form-group">
+                  <label className="form-label">Vehículo seleccionado</label>
+                  <input
+                    className="form-input"
+                    disabled
+                    value={`#${form.idVehiculo} - ${editing.placaVehiculo || 'Placa no disponible'}`}
+                  />
+                </div>
+              )}
               <div className="form-row">
                 <div className="form-group"><label className="form-label">Kilometraje</label>
                   <input type="number" className="form-input" value={form.kilometrajeMantenimiento} onChange={e => setForm({...form, kilometrajeMantenimiento: e.target.value})} /></div>

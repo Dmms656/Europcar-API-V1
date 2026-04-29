@@ -36,7 +36,16 @@ public class ReservaExtraItemRequest
 /// </summary>
 public class ReservaConductorItemRequest
 {
-    public int IdConductor { get; set; }
+    public int? IdConductor { get; set; }
+    public bool UsarClienteTitular { get; set; } = false;
+    public string? TipoIdentificacion { get; set; }
+    public string? NumeroIdentificacion { get; set; }
+    public string? Nombre1 { get; set; }
+    public string? Apellido1 { get; set; }
+    public string? NumeroLicencia { get; set; }
+    public short? EdadConductor { get; set; }
+    public string? Telefono { get; set; }
+    public string? Correo { get; set; }
     public bool EsPrincipal { get; set; } = false;
 }
 

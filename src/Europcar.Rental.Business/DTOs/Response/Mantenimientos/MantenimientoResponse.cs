@@ -5,6 +5,7 @@ public class MantenimientoResponse
     public int IdMantenimiento { get; set; }
     public Guid MantenimientoGuid { get; set; }
     public string CodigoMantenimiento { get; set; } = string.Empty;
+    public int IdVehiculo { get; set; }
     public string TipoMantenimiento { get; set; } = string.Empty;
     public DateTimeOffset FechaInicioUtc { get; set; }
     public DateTimeOffset? FechaFinUtc { get; set; }

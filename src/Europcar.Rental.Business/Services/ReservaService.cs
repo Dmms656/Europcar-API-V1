@@ -61,6 +61,8 @@ public class ReservaService : IReservaService
         if (request.FechaHoraRecogida <= DateTimeOffset.UtcNow)
             throw new BusinessException("La fecha de recogida debe ser futura");
 
+        await EnsureMismoPaisLocalizacionesAsync(request.IdLocalizacionRecogida, request.IdLocalizacionDevolucion);
+
         // Validar existencia del cliente
         var cliente = await _clienteDataService.GetByIdAsync(request.IdCliente)
             ?? throw new NotFoundException($"Cliente con ID {request.IdCliente} no encontrado");
@@ -200,6 +202,8 @@ public class ReservaService : IReservaService
             throw new BusinessException("La fecha de devolución debe ser posterior a la de recogida");
         if (request.FechaHoraRecogida <= DateTimeOffset.UtcNow)
             throw new BusinessException("La fecha de recogida debe ser futura");
+
+        await EnsureMismoPaisLocalizacionesAsync(request.IdLocalizacionRecogida, request.IdLocalizacionDevolucion);
 
         var solapamiento = await _context.Reservas.AnyAsync(r =>
             r.IdReserva != id
@@ -358,6 +362,10 @@ public class ReservaService : IReservaService
         CodigoConfirmacion = r.CodigoConfirmacion,
         EstadoReserva = r.EstadoReserva,
         IdCliente = r.IdCliente,
+        IdVehiculo = r.IdVehiculo,
+        IdLocalizacionRecogida = r.IdLocalizacionRecogida,
+        IdLocalizacionDevolucion = r.IdLocalizacionDevolucion,
+        CanalReserva = r.CanalReserva,
         FechaHoraRecogida = r.FechaHoraRecogida,
         FechaHoraDevolucion = r.FechaHoraDevolucion,
         Subtotal = r.Subtotal,
@@ -436,11 +444,81 @@ public class ReservaService : IReservaService
 
         foreach (var item in conductoresToAssign)
         {
-            var conductor = await _conductorDataService.GetByIdAsync(item.IdConductor)
-                ?? throw new NotFoundException($"Conductor con ID {item.IdConductor} no encontrado");
+            ConductorModel conductor;
+            if (item.UsarClienteTitular)
+            {
+                conductor = await ObtenerOCrearConductorClienteAsync(cliente);
+            }
+            else if (item.IdConductor.HasValue)
+            {
+                conductor = await _conductorDataService.GetByIdAsync(item.IdConductor.Value)
+                    ?? throw new NotFoundException($"Conductor con ID {item.IdConductor.Value} no encontrado");
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(item.NumeroIdentificacion) || string.IsNullOrWhiteSpace(item.Nombre1) ||
+                    string.IsNullOrWhiteSpace(item.Apellido1) || string.IsNullOrWhiteSpace(item.NumeroLicencia))
+                    throw new BusinessException("Para crear conductor adicional se requiere identificación, nombre, apellido y licencia.");
 
-            await _reservaDataService.AddConductorAsync(idReserva, item.IdConductor, item.EsPrincipal,
+                conductor = await _conductorDataService.CreateAsync(new ConductorModel
+                {
+                    CodigoConductor = $"CON-{Guid.NewGuid().ToString("N")[..8].ToUpper()}",
+                    IdCliente = cliente.IdCliente,
+                    TipoIdentificacion = string.IsNullOrWhiteSpace(item.TipoIdentificacion) ? cliente.TipoIdentificacion : item.TipoIdentificacion.Trim().ToUpperInvariant(),
+                    NumeroIdentificacion = item.NumeroIdentificacion!.Trim(),
+                    Nombre1 = item.Nombre1!.Trim(),
+                    Apellido1 = item.Apellido1!.Trim(),
+                    NumeroLicencia = item.NumeroLicencia!.Trim().ToUpperInvariant(),
+                    FechaVencimientoLicencia = DateOnly.FromDateTime(DateTime.Today.AddYears(2)),
+                    EdadConductor = item.EdadConductor is > 0 ? item.EdadConductor.Value : (short)25,
+                    Telefono = string.IsNullOrWhiteSpace(item.Telefono) ? cliente.Telefono : item.Telefono.Trim(),
+                    Correo = string.IsNullOrWhiteSpace(item.Correo) ? cliente.Correo : item.Correo.Trim()
+                });
+            }
+
+            await _reservaDataService.AddConductorAsync(idReserva, conductor.IdConductor, item.EsPrincipal,
                 conductor.EsConductorJoven == true ? 15.00m : 0m);
         }
+    }
+
+    private async Task<ConductorModel> ObtenerOCrearConductorClienteAsync(ClienteModel cliente)
+    {
+        var clientConductores = await _conductorDataService.GetByClienteIdAsync(cliente.IdCliente);
+        var existing = clientConductores.FirstOrDefault();
+        if (existing != null) return existing;
+
+        var age = (short)(DateTime.Today.Year - cliente.FechaNacimiento.Year);
+        return await _conductorDataService.CreateAsync(new ConductorModel
+        {
+            IdCliente = cliente.IdCliente,
+            TipoIdentificacion = cliente.TipoIdentificacion,
+            NumeroIdentificacion = cliente.NumeroIdentificacion,
+            Nombre1 = cliente.Nombre1,
+            Nombre2 = cliente.Nombre2,
+            Apellido1 = cliente.Apellido1,
+            Apellido2 = cliente.Apellido2,
+            NumeroLicencia = "PENDIENTE",
+            FechaVencimientoLicencia = DateOnly.FromDateTime(DateTime.Today.AddYears(2)),
+            EdadConductor = age,
+            Telefono = cliente.Telefono,
+            Correo = cliente.Correo
+        });
+    }
+
+    private async Task EnsureMismoPaisLocalizacionesAsync(int idLocalizacionRecogida, int idLocalizacionDevolucion)
+    {
+        var localizaciones = await _context.Localizaciones
+            .Include(l => l.Ciudad)
+            .Where(l => l.IdLocalizacion == idLocalizacionRecogida || l.IdLocalizacion == idLocalizacionDevolucion)
+            .Select(l => new { l.IdLocalizacion, l.Ciudad.IdPais })
+            .ToListAsync();
+
+        var recogida = localizaciones.FirstOrDefault(l => l.IdLocalizacion == idLocalizacionRecogida)
+            ?? throw new NotFoundException($"Localización de recogida {idLocalizacionRecogida} no encontrada");
+        var devolucion = localizaciones.FirstOrDefault(l => l.IdLocalizacion == idLocalizacionDevolucion)
+            ?? throw new NotFoundException($"Localización de devolución {idLocalizacionDevolucion} no encontrada");
+
+        if (recogida.IdPais != devolucion.IdPais)
+            throw new BusinessException("La recogida y devolución deben ser dentro del mismo país.");
     }
 }

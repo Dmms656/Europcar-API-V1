@@ -202,7 +202,20 @@ export default function PagosPage() {
               </div>
               <div className="form-row">
                 <div className="form-group"><label className="form-label">ID Cliente</label>
-                  <input type="number" className="form-input" required value={form.idCliente} onChange={e => setForm({...form, idCliente: e.target.value})} /></div>
+                  <input
+                    type="number"
+                    className="form-input"
+                    required
+                    value={form.idCliente}
+                    disabled={!!editingPago}
+                    onChange={e => setForm({...form, idCliente: e.target.value})}
+                  />
+                  {editingPago && (
+                    <small style={{ color: 'var(--color-text-secondary)' }}>
+                      Cliente: #{form.idCliente} - {editingPago.nombreCliente || 'Sin nombre'}
+                    </small>
+                  )}
+                </div>
                 <div className="form-group"><label className="form-label">Monto ($)</label>
                   <input type="number" step="0.01" className="form-input" required value={form.monto} onChange={e => setForm({...form, monto: e.target.value})} /></div>
               </div>

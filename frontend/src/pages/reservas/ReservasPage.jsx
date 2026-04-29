@@ -8,11 +8,33 @@ import { Plus, Search, CheckCircle, XCircle, Loader2, CalendarCheck, X, RefreshC
 import { useClientPagination } from '../../hooks/useClientPagination';
 import PaginationControls from '../../components/ui/PaginationControls';
 
+const EXTRA_CONDUCTOR_ADICIONAL_CODE = 'COND-ADIC';
+
+function normalizeExtra(raw) {
+  if (!raw) return null;
+  return {
+    idExtra: raw.idExtra ?? raw.id ?? null,
+    nombreExtra: raw.nombreExtra ?? raw.nombre ?? '',
+    descripcionExtra: raw.descripcionExtra ?? raw.descripcion ?? '',
+    codigoExtra: raw.codigoExtra ?? raw.codigo ?? '',
+    tipoExtra: raw.tipoExtra ?? raw.tipo ?? 'SERVICIO',
+    requiereStock: Boolean(raw.requiereStock ?? false),
+    valorFijo: Number(raw.valorFijo ?? raw.valor ?? 0),
+    estadoExtra: raw.estadoExtra ?? raw.estado ?? 'ACT',
+  };
+}
+
+function isConductorExtra(extra) {
+  const code = String(extra?.codigoExtra || '').toUpperCase();
+  return code === EXTRA_CONDUCTOR_ADICIONAL_CODE;
+}
+
 export default function ReservasPage() {
   const [reservas, setReservas] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [vehiculos, setVehiculos] = useState([]);
   const [localizaciones, setLocalizaciones] = useState([]);
+  const [ciudades, setCiudades] = useState([]);
   const [extras, setExtras] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -23,6 +45,11 @@ export default function ReservasPage() {
     idCliente: '', idVehiculo: '', idLocalizacionRecogida: '', idLocalizacionDevolucion: '',
     canalReserva: 'WEB', fechaHoraRecogida: '', fechaHoraDevolucion: '', extras: [],
   });
+  const [conductores, setConductores] = useState([]);
+  const conductorExtra = extras.find((e) => isConductorExtra(e));
+  const conductoresAdicionalesValidos = conductores.filter(
+    (c) => c.numeroIdentificacion && c.nombre1 && c.apellido1 && c.numeroLicencia
+  ).length;
   const pagination = useClientPagination(reservas, 10);
 
   useEffect(() => { loadAll(); }, []);
@@ -30,15 +57,18 @@ export default function ReservasPage() {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [cRes, vRes, lRes, eRes] = await Promise.all([
-        clientesApi.getAll(), vehiculosApi.getDisponibles({}),
+      const [cRes, vRes, lRes, eRes, ciRes] = await Promise.all([
+        clientesApi.getAll(), vehiculosApi.getAll(),
         catalogosApi.getLocalizaciones(), catalogosApi.getExtras(),
+        catalogosApi.getCiudades(),
       ]);
       const clientesList = cRes.data?.data || [];
       setClientes(clientesList);
       setVehiculos(vRes.data?.data || []);
       setLocalizaciones(lRes.data?.data || []);
-      setExtras(eRes.data?.data || []);
+      const rawExtras = eRes.data?.data || [];
+      setExtras(Array.isArray(rawExtras) ? rawExtras.map(normalizeExtra).filter(Boolean) : []);
+      setCiudades(ciRes.data?.data || []);
 
       // Auto-load reservas for all clients (sin límite artificial de 20)
       const responses = await Promise.allSettled(
@@ -62,6 +92,42 @@ export default function ReservasPage() {
     } catch (e) { toast.error('Error al cargar datos'); }
     finally { setLoading(false); }
   };
+
+  // Replicar el comportamiento del flujo de cliente:
+  // - El extra COND-ADIC se agrega automáticamente cuando hay conductores adicionales.
+  // - Su cantidad queda bloqueada en: cantidad de conductores adicionales.
+  // - Si no hay conductores adicionales, se elimina.
+  useEffect(() => {
+    if (editingReserva) return; // para no pisar la lógica de edición (y porque openEdit no carga conductores/extras)
+    if (!conductorExtra?.idExtra) return;
+
+    const condId = String(conductorExtra.idExtra);
+    const desiredQty = conductoresAdicionalesValidos;
+
+    setForm((prev) => {
+      const otherExtras = prev.extras.filter((ex) => String(ex.idExtra) !== condId);
+      const already = prev.extras.find((ex) => String(ex.idExtra) === condId);
+
+      if (desiredQty <= 0) {
+        if (!already) return prev;
+        return { ...prev, extras: otherExtras };
+      }
+
+      const nextQty = desiredQty;
+      if (already && Number(already.cantidad) === nextQty) return prev;
+
+      return {
+        ...prev,
+        extras: [
+          ...otherExtras,
+          {
+            idExtra: conductorExtra.idExtra,
+            cantidad: nextQty,
+          },
+        ],
+      };
+    });
+  }, [conductoresAdicionalesValidos, conductorExtra?.idExtra, editingReserva]);
 
   const buscarReserva = async () => {
     if (!search.trim()) return;
@@ -91,24 +157,51 @@ export default function ReservasPage() {
     e.preventDefault();
     setSaving(true);
     try {
+      const idPaisRecogida = getPaisByLocalizacion(form.idLocalizacionRecogida);
+      const idPaisDevolucion = getPaisByLocalizacion(form.idLocalizacionDevolucion);
+      if (idPaisRecogida && idPaisDevolucion && idPaisRecogida !== idPaisDevolucion) {
+        throw new Error('La recogida y devolución deben ser dentro del mismo país.');
+      }
+
       const payload = {
         ...form, idCliente: Number(form.idCliente), idVehiculo: Number(form.idVehiculo),
         idLocalizacionRecogida: Number(form.idLocalizacionRecogida),
         idLocalizacionDevolucion: Number(form.idLocalizacionDevolucion),
         extras: form.extras.filter(ex => ex.idExtra && ex.cantidad > 0).map(ex => ({ idExtra: Number(ex.idExtra), cantidad: Number(ex.cantidad) })),
+        conductores: [
+          { usarClienteTitular: true, esPrincipal: true },
+          ...conductores
+            .filter(c => c.numeroIdentificacion && c.nombre1 && c.apellido1 && c.numeroLicencia)
+            .map(c => ({
+              usarClienteTitular: false,
+              esPrincipal: false,
+              tipoIdentificacion: c.tipoIdentificacion || 'CED',
+              numeroIdentificacion: c.numeroIdentificacion.trim(),
+              nombre1: c.nombre1.trim(),
+              apellido1: c.apellido1.trim(),
+              numeroLicencia: c.numeroLicencia.trim().toUpperCase(),
+              edadConductor: Number(c.edadConductor || 25),
+              telefono: c.telefono?.trim() || '',
+              correo: c.correo?.trim() || '',
+            })),
+        ],
       };
       const res = await reservasApi.create(payload);
       toast.success(`Reserva creada: ${res.data?.data?.codigoReserva || 'OK'}`);
       setShowModal(false);
+      setConductores([]);
       loadAll();
     } catch (e) { toast.error(e.response?.data?.message || 'Error al crear reserva'); }
     finally { setSaving(false); }
   };
 
   const openEdit = (r) => {
+    if (r.estadoReserva !== 'PENDIENTE') {
+      toast.info('Solo las reservas pendientes pueden editarse.');
+      return;
+    }
     setEditingReserva(r);
     setForm({
-      ...form,
       idCliente: String(r.idCliente || ''),
       idVehiculo: String(r.idVehiculo || ''),
       idLocalizacionRecogida: String(r.idLocalizacionRecogida || ''),
@@ -126,6 +219,12 @@ export default function ReservasPage() {
     e.preventDefault();
     setSaving(true);
     try {
+      const idPaisRecogida = getPaisByLocalizacion(form.idLocalizacionRecogida);
+      const idPaisDevolucion = getPaisByLocalizacion(form.idLocalizacionDevolucion);
+      if (idPaisRecogida && idPaisDevolucion && idPaisRecogida !== idPaisDevolucion) {
+        throw new Error('La recogida y devolución deben ser dentro del mismo país.');
+      }
+
       const payload = {
         idVehiculo: Number(form.idVehiculo),
         idLocalizacionRecogida: Number(form.idLocalizacionRecogida),
@@ -156,6 +255,24 @@ export default function ReservasPage() {
 
   const addExtra = () => setForm({ ...form, extras: [...form.extras, { idExtra: '', cantidad: 1 }] });
   const removeExtra = (i) => setForm({ ...form, extras: form.extras.filter((_, idx) => idx !== i) });
+  const addConductor = () => setConductores((prev) => [...prev, {
+    tipoIdentificacion: 'CED',
+    numeroIdentificacion: '',
+    nombre1: '',
+    apellido1: '',
+    numeroLicencia: '',
+    edadConductor: '25',
+    telefono: '',
+    correo: '',
+  }]);
+  const removeConductor = (i) => setConductores((prev) => prev.filter((_, idx) => idx !== i));
+
+  const getPaisByLocalizacion = (idLocalizacion) => {
+    const loc = localizaciones.find((l) => Number(l.idLocalizacion || l.id) === Number(idLocalizacion));
+    if (!loc) return null;
+    const ciudad = ciudades.find((c) => Number(c.idCiudad) === Number(loc.idCiudad));
+    return ciudad?.idPais ?? null;
+  };
 
   return (
     <div className="module-page">
@@ -163,7 +280,26 @@ export default function ReservasPage() {
         <div><h1><CalendarCheck size={24} /> Reservas</h1><p>{reservas.length} reservas encontradas</p></div>
         <div className="module-page__actions">
           <button className="btn btn--outline btn--sm" onClick={loadAll}><RefreshCw size={16} /> Recargar</button>
-          <button className="btn btn--primary" onClick={() => setShowModal(true)}><Plus size={16} /> Nueva Reserva</button>
+          <button
+            className="btn btn--primary"
+            onClick={() => {
+              setEditingReserva(null);
+              setConductores([]);
+              setForm({
+                idCliente: '',
+                idVehiculo: '',
+                idLocalizacionRecogida: '',
+                idLocalizacionDevolucion: '',
+                canalReserva: 'WEB',
+                fechaHoraRecogida: '',
+                fechaHoraDevolucion: '',
+                extras: [],
+              });
+              setShowModal(true);
+            }}
+          >
+            <Plus size={16} /> Nueva Reserva
+          </button>
         </div>
       </div>
       <div className="module-page__toolbar">
@@ -197,7 +333,7 @@ export default function ReservasPage() {
                   <td><strong>${Number(r.totalReserva || r.total || 0).toFixed(2)}</strong></td>
                   <td><span className={`status-badge status-badge--${r.estadoReserva === 'CONFIRMADA' ? 'success' : r.estadoReserva === 'PENDIENTE' ? 'warning' : 'danger'}`}>{r.estadoReserva}</span></td>
                   <td className="table-actions">
-                    {(r.estadoReserva === 'PENDIENTE' || r.estadoReserva === 'CONFIRMADA') && (
+                    {r.estadoReserva === 'PENDIENTE' && (
                       <button className="icon-btn" onClick={() => openEdit(r)} title="Editar">
                         <Pencil size={15} />
                       </button>
@@ -229,7 +365,7 @@ export default function ReservasPage() {
             <form onSubmit={handleSave} className="modal__body">
               <div className="form-row">
                 <div className="form-group"><label className="form-label">Cliente</label>
-                  <select className="form-input" required value={form.idCliente} onChange={(e) => setForm({...form, idCliente: e.target.value})}>
+                  <select className="form-input" required disabled={!!editingReserva} value={form.idCliente} onChange={(e) => setForm({...form, idCliente: e.target.value})}>
                     <option value="">Seleccionar cliente</option>
                     {clientes.map(c => <option key={c.idCliente} value={c.idCliente}>{c.nombreCompleto} - {c.numeroIdentificacion}</option>)}
                   </select></div>
@@ -259,18 +395,86 @@ export default function ReservasPage() {
               </div>
               <div className="form-group">
                 <label className="form-label">Extras</label>
-                {form.extras.map((ex, i) => (
-                  <div key={i} className="form-row" style={{marginBottom:'0.5rem'}}>
-                    <select className="form-input" value={ex.idExtra} onChange={(e) => { const n = [...form.extras]; n[i].idExtra = e.target.value; setForm({...form, extras: n}); }}>
+                {form.extras.map((ex, i) => {
+                  const condId = conductorExtra?.idExtra;
+                  const isCondAdicRow = condId != null && String(ex.idExtra) === String(condId);
+
+                  return (
+                    <div key={i} className="form-row" style={{ marginBottom: '0.5rem' }}>
+                    <select
+                      className="form-input"
+                      value={ex.idExtra}
+                      disabled={isCondAdicRow}
+                      onChange={(e) => {
+                        if (isCondAdicRow) return;
+                        const n = [...form.extras];
+                        n[i].idExtra = e.target.value;
+                        setForm({ ...form, extras: n });
+                      }}
+                    >
                       <option value="">Seleccionar extra</option>
-                      {extras.map(ext => <option key={ext.idExtra || ext.id} value={ext.idExtra || ext.id}>{ext.nombreExtra || ext.nombre} (${Number(ext.precioDiario || ext.precio || 0).toFixed(2)}/día)</option>)}
+                      {extras.map((ext) => {
+                        const isCond = isConductorExtra(ext);
+                        const lockOption = isCond && conductoresAdicionalesValidos === 0;
+                        return (
+                          <option key={ext.idExtra ?? ext.id} value={ext.idExtra} disabled={lockOption}>
+                            {ext.nombreExtra || ext.nombre}
+                            {' '}
+                            (${Number(ext.valorFijo || 0).toFixed(2)}/día)
+                            {lockOption ? ' (requiere conductor adicional)' : ''}
+                          </option>
+                        );
+                      })}
                     </select>
-                    <input type="number" min="1" className="form-input" style={{maxWidth:80}} value={ex.cantidad} onChange={(e) => { const n = [...form.extras]; n[i].cantidad = Number(e.target.value); setForm({...form, extras: n}); }} />
-                    <button type="button" className="icon-btn icon-btn--danger" onClick={() => removeExtra(i)}><X size={14} /></button>
+                    <input
+                      type="number"
+                      min="1"
+                      className="form-input"
+                      style={{ maxWidth: 80 }}
+                      value={isCondAdicRow ? conductoresAdicionalesValidos : ex.cantidad}
+                      disabled={isCondAdicRow}
+                      onChange={(e) => {
+                        const n = [...form.extras];
+                        n[i].cantidad = Number(e.target.value);
+                        setForm({ ...form, extras: n });
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="icon-btn icon-btn--danger"
+                      disabled={isCondAdicRow}
+                      onClick={() => removeExtra(i)}
+                      title={isCondAdicRow ? 'Este extra se maneja automáticamente' : 'Eliminar extra'}
+                    >
+                      <X size={14} />
+                    </button>
                   </div>
-                ))}
+                  );
+                })}
                 <button type="button" className="btn btn--ghost btn--sm" onClick={addExtra}><Plus size={14} /> Agregar extra</button>
               </div>
+              {!editingReserva && (
+                <div className="form-group">
+                  <label className="form-label">Conductores adicionales</label>
+                  {conductores.map((c, i) => (
+                    <div key={i} className="form-row" style={{ marginBottom: '0.5rem' }}>
+                      <select className="form-input" value={c.tipoIdentificacion} onChange={(e) => { const n = [...conductores]; n[i].tipoIdentificacion = e.target.value; setConductores(n); }} style={{ maxWidth: 120 }}>
+                        <option value="CED">CED</option>
+                        <option value="PAS">PAS</option>
+                      </select>
+                      <input className="form-input" placeholder="Identificación" value={c.numeroIdentificacion} onChange={(e) => { const n = [...conductores]; n[i].numeroIdentificacion = e.target.value; setConductores(n); }} />
+                      <input className="form-input" placeholder="Nombre" value={c.nombre1} onChange={(e) => { const n = [...conductores]; n[i].nombre1 = e.target.value; setConductores(n); }} />
+                      <input className="form-input" placeholder="Apellido" value={c.apellido1} onChange={(e) => { const n = [...conductores]; n[i].apellido1 = e.target.value; setConductores(n); }} />
+                      <input className="form-input" placeholder="Identificación" value={c.numeroLicencia} onChange={(e) => { const n = [...conductores]; n[i].numeroLicencia = e.target.value; setConductores(n); }} />
+                      <input className="form-input" type="number" min="18" placeholder="Edad" value={c.edadConductor} onChange={(e) => { const n = [...conductores]; n[i].edadConductor = e.target.value; setConductores(n); }} style={{ maxWidth: 90 }} />
+                      <button type="button" className="icon-btn icon-btn--danger" onClick={() => removeConductor(i)}><X size={14} /></button>
+                    </div>
+                  ))}
+                  <button type="button" className="btn btn--ghost btn--sm" onClick={addConductor}>
+                    <Plus size={14} /> Agregar conductor adicional
+                  </button>
+                </div>
+              )}
               <div className="modal__footer">
                 <button type="button" className="btn btn--ghost" onClick={() => { setShowModal(false); setEditingReserva(null); }}>Cancelar</button>
                 <button type="submit" className="btn btn--primary" disabled={saving}>

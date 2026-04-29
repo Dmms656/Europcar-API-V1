@@ -119,6 +119,7 @@ public class MantenimientoService : IMantenimientoService
         IdMantenimiento = m.IdMantenimiento,
         MantenimientoGuid = m.MantenimientoGuid,
         CodigoMantenimiento = m.CodigoMantenimiento,
+        IdVehiculo = m.IdVehiculo,
         TipoMantenimiento = m.TipoMantenimiento,
         FechaInicioUtc = m.FechaInicioUtc,
         FechaFinUtc = m.FechaFinUtc,

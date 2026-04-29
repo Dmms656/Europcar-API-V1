@@ -8,6 +8,10 @@ public class ReservaResponse
     public string CodigoConfirmacion { get; set; } = string.Empty;
     public string EstadoReserva { get; set; } = string.Empty;
     public int IdCliente { get; set; }
+    public int IdVehiculo { get; set; }
+    public int IdLocalizacionRecogida { get; set; }
+    public int IdLocalizacionDevolucion { get; set; }
+    public string CanalReserva { get; set; } = "API";
     public DateTimeOffset FechaHoraRecogida { get; set; }
     public DateTimeOffset FechaHoraDevolucion { get; set; }
     public decimal Subtotal { get; set; }
