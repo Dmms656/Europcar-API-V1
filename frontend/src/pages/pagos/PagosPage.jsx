@@ -15,7 +15,7 @@ export default function PagosPage() {
   const [form, setForm] = useState({
     reservaRef: '',
     idContrato: '',
-    idCliente: '',
+    clienteRef: '',
     tipoPago: 'COBRO',
     metodoPago: 'TARJETA',
     estadoPago: 'APROBADO',
@@ -40,7 +40,7 @@ export default function PagosPage() {
     setForm({
       reservaRef: '',
       idContrato: '',
-      idCliente: '',
+      clienteRef: '',
       tipoPago: 'COBRO',
       metodoPago: 'TARJETA',
       estadoPago: 'APROBADO',
@@ -60,7 +60,7 @@ export default function PagosPage() {
     setForm({
       reservaRef: p.codigoReserva || (p.idReserva ? String(p.idReserva) : ''),
       idContrato: p.idContrato ? String(p.idContrato) : '',
-      idCliente: p.idCliente ? String(p.idCliente) : '',
+      clienteRef: p.idCliente ? String(p.idCliente) : '',
       tipoPago: p.tipoPago || 'COBRO',
       metodoPago: p.metodoPago || 'TARJETA',
       estadoPago: p.estadoPago || 'APROBADO',
@@ -73,9 +73,9 @@ export default function PagosPage() {
 
   const buildPayload = () => {
     const reservaRef = form.reservaRef.trim();
+    const clienteRef = form.clienteRef.trim();
     const payload = {
       idContrato: form.idContrato ? Number(form.idContrato) : null,
-      idCliente: Number(form.idCliente),
       tipoPago: form.tipoPago,
       metodoPago: form.metodoPago,
       estadoPago: form.estadoPago,
@@ -92,6 +92,14 @@ export default function PagosPage() {
       payload.codigoReserva = reservaRef || null;
     }
 
+    if (/^\d+$/.test(clienteRef)) {
+      payload.idCliente = Number(clienteRef);
+      payload.codigoCliente = null;
+    } else {
+      payload.idCliente = null;
+      payload.codigoCliente = clienteRef ? clienteRef.toUpperCase() : null;
+    }
+
     return payload;
   };
 
@@ -103,8 +111,8 @@ export default function PagosPage() {
       if (!payload.idReserva && !payload.codigoReserva && !payload.idContrato) {
         throw new Error('Debes indicar reserva (ID o código) o contrato.');
       }
-      if (!payload.idCliente) {
-        throw new Error('El ID de cliente es requerido.');
+      if (!payload.idCliente && !payload.codigoCliente) {
+        throw new Error('Debes indicar el cliente (ID o código).');
       }
       if (!(payload.monto > 0)) {
         throw new Error('El monto debe ser mayor a cero.');
@@ -201,19 +209,23 @@ export default function PagosPage() {
                   <input type="number" className="form-input" value={form.idContrato} onChange={e => setForm({...form, idContrato: e.target.value})} /></div>
               </div>
               <div className="form-row">
-                <div className="form-group"><label className="form-label">ID Cliente</label>
+                <div className="form-group">
+                  <label className="form-label">Cliente (ID o Código)</label>
                   <input
-                    type="number"
+                    type="text"
                     className="form-input"
                     required
-                    value={form.idCliente}
+                    value={form.clienteRef}
                     disabled={!!editingPago}
-                    onChange={e => setForm({...form, idCliente: e.target.value})}
+                    placeholder="Ej: 5 o CLI-20240801120000"
+                    onChange={e => setForm({ ...form, clienteRef: e.target.value })}
                   />
-                  {editingPago && (
+                  {editingPago ? (
                     <small style={{ color: 'var(--color-text-secondary)' }}>
-                      Cliente: #{form.idCliente} - {editingPago.nombreCliente || 'Sin nombre'}
+                      Cliente: #{form.clienteRef} - {editingPago.nombreCliente || 'Sin nombre'}
                     </small>
+                  ) : (
+                    <small className="form-help">Acepta el ID numérico o el código del cliente.</small>
                   )}
                 </div>
                 <div className="form-group"><label className="form-label">Monto ($)</label>

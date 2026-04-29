@@ -103,6 +103,10 @@ public class PagoService : IPagoService
     public async Task<PagoResponse> CreateAsync(CrearPagoRequest request, string usuario)
     {
         request.IdReserva = await ResolveReservaIdAsync(request.IdReserva, request.CodigoReserva);
+        request.IdCliente = await ResolveClienteIdAsync(request.IdCliente, request.CodigoCliente);
+
+        if (request.IdCliente is null or <= 0)
+            throw new BusinessException("Debe especificar idCliente o codigoCliente.");
 
         if (request.IdReserva == null && request.IdContrato == null)
             throw new BusinessException("Todo pago debe referenciar una reserva o un contrato");
@@ -119,12 +123,13 @@ public class PagoService : IPagoService
 
             try
             {
+                var idClienteValue = request.IdCliente!.Value;
                 // 1. INSERT pago
                 await _context.Database.ExecuteSqlInterpolatedAsync($@"
                     INSERT INTO rental.pagos 
                     (pago_guid, codigo_pago, id_reserva, id_contrato, id_cliente, tipo_pago, metodo_pago, estado_pago, 
                      referencia_externa, monto, moneda, fecha_pago_utc, observaciones_pago, creado_por_usuario, origen_registro)
-                    VALUES ({pagoGuid}, {codigoPago}, {request.IdReserva}, {request.IdContrato}, {request.IdCliente}, 
+                    VALUES ({pagoGuid}, {codigoPago}, {request.IdReserva}, {request.IdContrato}, {idClienteValue}, 
                             {request.TipoPago}, {request.MetodoPago}, 'APROBADO',
                             {request.ReferenciaExterna}, {request.Monto}, 'USD', CURRENT_TIMESTAMP, {request.Observaciones}, 
                             {usuario}, 'API')");
@@ -140,7 +145,7 @@ public class PagoService : IPagoService
                     (factura_guid, numero_factura, id_cliente, id_reserva, id_contrato, fecha_emision,
                      subtotal, valor_iva, total, estado_factura, servicio_origen, origen_canal_factura,
                      observaciones_factura, creado_por_usuario, fecha_registro_utc)
-                    VALUES ({Guid.NewGuid()}, {numFactura}, {request.IdCliente}, {request.IdReserva}, {request.IdContrato},
+                    VALUES ({Guid.NewGuid()}, {numFactura}, {idClienteValue}, {request.IdReserva}, {request.IdContrato},
                             CURRENT_TIMESTAMP, {subtotal}, {valorIva}, {request.Monto}, 'EMITIDA', 'RESERVA_WEB', 'WEB',
                             {"Factura automática - Pago " + codigoPago}, {usuario}, CURRENT_TIMESTAMP)");
 
@@ -180,7 +185,7 @@ public class PagoService : IPagoService
             CodigoPago = codigoPago,
             IdReserva = request.IdReserva,
             IdContrato = request.IdContrato,
-            IdCliente = request.IdCliente,
+            IdCliente = request.IdCliente!.Value,
             TipoPago = request.TipoPago,
             MetodoPago = request.MetodoPago,
             EstadoPago = "APROBADO",
@@ -195,6 +200,10 @@ public class PagoService : IPagoService
     public async Task<PagoResponse> UpdateAsync(int idPago, ActualizarPagoRequest request, string usuario)
     {
         request.IdReserva = await ResolveReservaIdAsync(request.IdReserva, request.CodigoReserva);
+        request.IdCliente = await ResolveClienteIdAsync(request.IdCliente, request.CodigoCliente);
+
+        if (request.IdCliente is null or <= 0)
+            throw new BusinessException("Debe especificar idCliente o codigoCliente.");
 
         if (request.IdReserva == null && request.IdContrato == null)
             throw new BusinessException("Todo pago debe referenciar una reserva o un contrato");
@@ -206,7 +215,7 @@ public class PagoService : IPagoService
 
         pago.IdReserva = request.IdReserva;
         pago.IdContrato = request.IdContrato;
-        pago.IdCliente = request.IdCliente;
+        pago.IdCliente = request.IdCliente!.Value;
         pago.TipoPago = request.TipoPago.Trim().ToUpperInvariant();
         pago.MetodoPago = request.MetodoPago.Trim().ToUpperInvariant();
         pago.EstadoPago = request.EstadoPago.Trim().ToUpperInvariant();
@@ -243,5 +252,30 @@ public class PagoService : IPagoService
         }
 
         return idReserva;
+    }
+
+    private async Task<int?> ResolveClienteIdAsync(int? idCliente, string? codigoCliente)
+    {
+        var hasId = idCliente.HasValue && idCliente.Value > 0;
+        var hasCodigo = !string.IsNullOrWhiteSpace(codigoCliente);
+
+        if (hasId && hasCodigo)
+            throw new BusinessException("Envía idCliente o codigoCliente, pero no ambos.");
+
+        if (hasCodigo)
+        {
+            var normalized = codigoCliente!.Trim().ToUpperInvariant();
+            var resolved = await _context.Clientes
+                .Where(c => c.CodigoCliente == normalized)
+                .Select(c => (int?)c.IdCliente)
+                .FirstOrDefaultAsync();
+
+            if (!resolved.HasValue)
+                throw new NotFoundException($"No existe cliente con código {normalized}");
+
+            return resolved.Value;
+        }
+
+        return idCliente;
     }
 }

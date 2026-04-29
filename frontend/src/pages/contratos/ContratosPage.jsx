@@ -13,7 +13,7 @@ export default function ContratosPage() {
   const [showCrear, setShowCrear] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [crearForm, setCrearForm] = useState({ idReserva: '' });
+  const [crearForm, setCrearForm] = useState({ reservaRef: '' });
   const [checkoutForm, setCheckoutForm] = useState({ idContrato: '', kilometrajeSalida: '', nivelCombustibleSalida: '', observacionesSalida: '' });
   const [checkinForm, setCheckinForm] = useState({ idContrato: '', kilometrajeEntrada: '', nivelCombustibleEntrada: '', observacionesEntrada: '', cargosAdicionales: 0 });
   const [editForm, setEditForm] = useState({
@@ -33,9 +33,20 @@ export default function ContratosPage() {
   const crearContrato = async (e) => {
     e.preventDefault(); setSaving(true);
     try {
-      await contratosApi.create({ idReserva: Number(crearForm.idReserva) });
-      toast.success('Contrato creado'); setShowCrear(false); loadContratos();
-    } catch (e) { toast.error(e.response?.data?.message || 'Error'); }
+      const ref = (crearForm.reservaRef || '').trim();
+      if (!ref) throw new Error('Ingresa el ID o el código de la reserva.');
+
+      const isNumeric = /^\d+$/.test(ref);
+      const payload = isNumeric
+        ? { idReserva: Number(ref) }
+        : { codigoReserva: ref.toUpperCase() };
+
+      await contratosApi.create(payload);
+      toast.success('Contrato creado');
+      setShowCrear(false);
+      setCrearForm({ reservaRef: '' });
+      loadContratos();
+    } catch (e) { toast.error(e.response?.data?.message || e.message || 'Error'); }
     finally { setSaving(false); }
   };
 
@@ -146,8 +157,18 @@ export default function ContratosPage() {
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal__header"><h2>Crear Contrato</h2><button className="icon-btn" onClick={() => setShowCrear(false)}><X size={18} /></button></div>
             <form onSubmit={crearContrato} className="modal__body">
-              <div className="form-group"><label className="form-label">ID de Reserva (confirmada)</label>
-                <input type="number" className="form-input" required value={crearForm.idReserva} onChange={e => setCrearForm({...crearForm, idReserva: e.target.value})} placeholder="Ej: 1" /></div>
+              <div className="form-group">
+                <label className="form-label">ID o Código de Reserva (confirmada)</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  required
+                  value={crearForm.reservaRef}
+                  onChange={e => setCrearForm({ ...crearForm, reservaRef: e.target.value })}
+                  placeholder="Ej: 1 o RES-0002"
+                />
+                <small className="form-help">Acepta el ID numérico o el código de reserva (ej: RES-0002).</small>
+              </div>
               <div className="modal__footer">
                 <button type="button" className="btn btn--ghost" onClick={() => setShowCrear(false)}>Cancelar</button>
                 <button type="submit" className="btn btn--primary" disabled={saving}>{saving ? 'Creando...' : 'Crear'}</button>

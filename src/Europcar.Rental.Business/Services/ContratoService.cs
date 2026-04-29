@@ -56,18 +56,22 @@ public class ContratoService : IContratoService
 
     public async Task<ContratoResponse> CrearDesdeReservaAsync(CrearContratoRequest request, string usuario)
     {
-        var reserva = await _reservaDataService.GetByIdAsync(request.IdReserva)
-            ?? throw new NotFoundException($"Reserva con ID {request.IdReserva} no encontrada");
+        var idReservaResuelto = await ResolveReservaIdAsync(request.IdReserva, request.CodigoReserva);
+        if (!idReservaResuelto.HasValue)
+            throw new BusinessException("Debe especificar idReserva o codigoReserva.");
+
+        var reserva = await _reservaDataService.GetByIdAsync(idReservaResuelto.Value)
+            ?? throw new NotFoundException($"Reserva con ID {idReservaResuelto.Value} no encontrada");
 
         if (reserva.EstadoReserva != "CONFIRMADA")
             throw new BusinessException("Solo se puede generar contrato para reservas confirmadas");
 
         // Verificar que no exista ya un contrato para esta reserva
-        var existente = await _contratoDataService.GetByReservaIdAsync(request.IdReserva);
+        var existente = await _contratoDataService.GetByReservaIdAsync(idReservaResuelto.Value);
         if (existente != null)
             throw new ConflictException("Ya existe un contrato para esta reserva");
 
-        var numero = $"CTR-{DateTime.UtcNow:yyyyMMddHHmmss}-{request.IdReserva:D6}";
+        var numero = $"CTR-{DateTime.UtcNow:yyyyMMddHHmmss}-{idReservaResuelto.Value:D6}";
 
         var model = new ContratoModel
         {
@@ -218,4 +222,29 @@ public class ContratoService : IContratoService
         CargoKmExtra = c.CargoKmExtra,
         Observaciones = c.Observaciones
     };
+
+    private async Task<int?> ResolveReservaIdAsync(int? idReserva, string? codigoReserva)
+    {
+        var hasId = idReserva.HasValue && idReserva.Value > 0;
+        var hasCodigo = !string.IsNullOrWhiteSpace(codigoReserva);
+
+        if (hasId && hasCodigo)
+            throw new BusinessException("Envía idReserva o codigoReserva, pero no ambos.");
+
+        if (hasCodigo)
+        {
+            var normalized = codigoReserva!.Trim().ToUpperInvariant();
+            var resolved = await _context.Reservas
+                .Where(r => r.CodigoReserva == normalized)
+                .Select(r => (int?)r.IdReserva)
+                .FirstOrDefaultAsync();
+
+            if (!resolved.HasValue)
+                throw new NotFoundException($"No existe reserva con código {normalized}");
+
+            return resolved.Value;
+        }
+
+        return idReserva;
+    }
 }

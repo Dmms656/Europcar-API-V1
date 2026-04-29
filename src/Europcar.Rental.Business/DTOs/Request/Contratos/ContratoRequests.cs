@@ -2,7 +2,12 @@ namespace Europcar.Rental.Business.DTOs.Request.Contratos;
 
 public class CrearContratoRequest
 {
-    public int IdReserva { get; set; }
+    /// <summary>ID numérico de la reserva. Mutuamente excluyente con <see cref="CodigoReserva"/>.</summary>
+    public int? IdReserva { get; set; }
+
+    /// <summary>Código de reserva (ej: RES-0002). Mutuamente excluyente con <see cref="IdReserva"/>.</summary>
+    public string? CodigoReserva { get; set; }
+
     public int KilometrajeSalida { get; set; }
     public decimal NivelCombustibleSalida { get; set; }
     public string? Observaciones { get; set; }
