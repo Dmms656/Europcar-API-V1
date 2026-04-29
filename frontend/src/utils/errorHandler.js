@@ -77,7 +77,7 @@ export function parseApiError(error) {
 
   return baseResult({
     status,
-    message,
+    message: sanitizeUserMessage(message),
     fieldErrors,
     traceId: apiPayload.traceId || null,
     detail: apiPayload.detail || null,
@@ -124,10 +124,19 @@ function flattenFieldErrors(errors) {
   const out = {};
   for (const [field, messages] of Object.entries(errors)) {
     if (Array.isArray(messages)) {
-      out[field] = messages[0] || '';
+      out[field] = sanitizeUserMessage(messages[0] || '');
     } else if (typeof messages === 'string') {
-      out[field] = messages;
+      out[field] = sanitizeUserMessage(messages);
     }
   }
   return out;
+}
+
+function sanitizeUserMessage(rawMessage) {
+  const text = String(rawMessage || '');
+  return text
+    .replace(/\s*ref:\s*[A-Z0-9:-]+/gi, '')
+    .replace(/\s*traceid:\s*[A-Z0-9:-]+/gi, '')
+    .replace(/\n{2,}/g, '\n')
+    .trim();
 }

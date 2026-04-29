@@ -150,7 +150,9 @@ public class ReservaDataService : IReservaDataService
             EsPrincipal = esPrincipal,
             CargoConductorJoven = cargoConductorJoven,
             EstadoReservaConductor = "ACT",
-            OrigenRegistro = "API"
+            OrigenRegistro = "API",
+            CreadoPorUsuario = "API",
+            FechaRegistroUtc = DateTimeOffset.UtcNow
         };
         await _context.ReservaConductores.AddAsync(entity);
     }

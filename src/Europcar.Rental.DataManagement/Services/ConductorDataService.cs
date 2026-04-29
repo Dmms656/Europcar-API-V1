@@ -44,7 +44,10 @@ public class ConductorDataService : IConductorDataService
             EdadConductor = model.EdadConductor,
             ConTelefono = model.Telefono,
             ConCorreo = model.Correo,
-            EstadoConductor = "ACT"
+            EstadoConductor = "ACT",
+            CreadoPorUsuario = "API",
+            OrigenRegistro = "API",
+            FechaRegistroUtc = DateTimeOffset.UtcNow
         };
 
         _context.Conductores.Add(entity);
@@ -67,6 +70,8 @@ public class ConductorDataService : IConductorDataService
         entity.EdadConductor = model.EdadConductor;
         entity.ConTelefono = model.Telefono;
         entity.ConCorreo = model.Correo;
+        entity.ModificadoPorUsuario = "API";
+        entity.FechaModificacionUtc = DateTimeOffset.UtcNow;
 
         await _context.SaveChangesAsync();
     }
@@ -77,6 +82,8 @@ public class ConductorDataService : IConductorDataService
         if (entity != null)
         {
             entity.EstadoConductor = "INA";
+            entity.ModificadoPorUsuario = "API";
+            entity.FechaModificacionUtc = DateTimeOffset.UtcNow;
             await _context.SaveChangesAsync();
         }
     }
