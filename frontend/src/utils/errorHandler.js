@@ -134,9 +134,16 @@ function flattenFieldErrors(errors) {
 
 function sanitizeUserMessage(rawMessage) {
   const text = String(rawMessage || '');
-  return text
+  const sanitized = text
     .replace(/\s*ref:\s*[A-Z0-9:-]+/gi, '')
     .replace(/\s*traceid:\s*[A-Z0-9:-]+/gi, '')
     .replace(/\n{2,}/g, '\n')
     .trim();
+
+  // Evita mostrar mensajes técnicos de BD cuando en realidad fue un problema de latencia/transitorio.
+  if (/error de base de datos/i.test(sanitized)) {
+    return 'El servidor tardó en responder. Intenta nuevamente en unos segundos.';
+  }
+
+  return sanitized;
 }

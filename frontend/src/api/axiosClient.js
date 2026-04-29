@@ -14,13 +14,13 @@ import { parseApiError } from '../utils/errorHandler';
  */
 
 const PUBLIC_PATHS = ['/', '/buscar', '/catalogo', '/login', '/registro', '/reservar'];
-const MAX_RETRIES = 2;
-const RETRY_BACKOFF_MS = 600;
+const MAX_RETRIES = 3;
+const RETRY_BACKOFF_MS = 800;
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
   headers: { 'Content-Type': 'application/json' },
-  timeout: 20000,
+  timeout: 45000,
 });
 
 // === Request interceptor: token + tracking de retries ===
@@ -81,7 +81,7 @@ function shouldRetry(error) {
   // Sin respuesta (red): reintentar
   if (!error.response) return true;
   // Status transitorios
-  return [502, 503, 504].includes(error.response.status);
+  return [408, 429, 502, 503, 504].includes(error.response.status);
 }
 
 function wait(ms) {

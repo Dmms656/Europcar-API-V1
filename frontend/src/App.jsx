@@ -51,11 +51,11 @@ const queryClient = new QueryClient({
         const status = error?.response?.status;
         // No reintentes errores del cliente (4xx)
         if (status && status >= 400 && status < 500) return false;
-        return failureCount < 2;
+        return failureCount < 3;
       },
-      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+      retryDelay: (attempt) => Math.min(1200 * 2 ** attempt, 10000),
       refetchOnWindowFocus: false,
-      staleTime: 30_000,
+      staleTime: 60_000,
     },
     mutations: {
       retry: false,
