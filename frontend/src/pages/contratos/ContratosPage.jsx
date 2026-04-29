@@ -53,7 +53,13 @@ export default function ContratosPage() {
   const doCheckout = async (e) => {
     e.preventDefault(); setSaving(true);
     try {
-      await contratosApi.checkout({ ...checkoutForm, idContrato: Number(checkoutForm.idContrato), kilometrajeSalida: Number(checkoutForm.kilometrajeSalida) });
+      await contratosApi.checkout({
+        idContrato: Number(checkoutForm.idContrato),
+        kilometraje: Number(checkoutForm.kilometrajeSalida),
+        nivelCombustible: Number(checkoutForm.nivelCombustibleSalida),
+        Limpio: true,
+        observaciones: checkoutForm.observacionesSalida || null,
+      });
       toast.success('Check-out registrado'); setShowCheckout(false); loadContratos();
     } catch (e) { toast.error(e.response?.data?.message || 'Error'); }
     finally { setSaving(false); }
@@ -62,7 +68,13 @@ export default function ContratosPage() {
   const doCheckin = async (e) => {
     e.preventDefault(); setSaving(true);
     try {
-      await contratosApi.checkin({ ...checkinForm, idContrato: Number(checkinForm.idContrato), kilometrajeEntrada: Number(checkinForm.kilometrajeEntrada), cargosAdicionales: Number(checkinForm.cargosAdicionales) });
+      await contratosApi.checkin({
+        idContrato: Number(checkinForm.idContrato),
+        kilometraje: Number(checkinForm.kilometrajeEntrada),
+        nivelCombustible: Number(checkinForm.nivelCombustibleEntrada),
+        Limpio: true,
+        observaciones: checkinForm.observacionesEntrada || null,
+      });
       toast.success('Check-in registrado'); setShowCheckin(false); loadContratos();
     } catch (e) { toast.error(e.response?.data?.message || 'Error'); }
     finally { setSaving(false); }
