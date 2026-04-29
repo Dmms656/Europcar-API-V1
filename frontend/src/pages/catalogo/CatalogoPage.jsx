@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { vehiculosApi } from '../../api/vehiculosApi';
 import { bookingApi } from '../../api/bookingApi';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -25,6 +25,27 @@ export default function CatalogoPage() {
   const [showFilters, setShowFilters] = useState(false);
   const { isAuthenticated, userType } = useAuthStore();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  /** ?categoria=... desde la home u otros enlaces */
+  useEffect(() => {
+    const raw = searchParams.get('categoria');
+    if (!raw) return;
+    const decoded = decodeURIComponent(raw.trim());
+    setFiltros((prev) => ({ ...prev, categoria: decoded }));
+  }, [searchParams]);
+
+  /** ?idCategoria=... — resolver al nombre cuando el listado ya cargó */
+  useEffect(() => {
+    const idParam = searchParams.get('idCategoria');
+    if (!idParam || categorias.length === 0) return;
+    const id = Number(idParam);
+    if (Number.isNaN(id)) return;
+    const found = categorias.find((c) => Number(c.id ?? c.idCategoria) === id);
+    const nombre = found?.nombre ?? found?.nombreCategoria ?? '';
+    if (nombre)
+      setFiltros((prev) => ({ ...prev, categoria: nombre }));
+  }, [categorias, searchParams]);
 
   useEffect(() => {
     loadData();
@@ -58,8 +79,13 @@ export default function CatalogoPage() {
         (v.modelo || v.modeloVehiculo || '').toLowerCase().includes(search) ||
         (v.categoria || '').toLowerCase().includes(search);
 
-      const matchCategoria = !filtros.categoria ||
-        (v.categoria || '').toLowerCase() === filtros.categoria.toLowerCase();
+      const catFilter = (filtros.categoria || '').trim().toLowerCase();
+      const matchCategoria =
+        !catFilter
+        || (v.categoria || v.nombreCategoria || '')
+          .toString()
+          .trim()
+          .toLowerCase() === catFilter;
 
       const matchCombustible = !filtros.combustible ||
         (v.tipoCombustible || '').toLowerCase() === filtros.combustible.toLowerCase();
@@ -82,6 +108,10 @@ export default function CatalogoPage() {
   const clearFilters = () => {
     setFiltros({ categoria: '', combustible: '', transmision: '', precioMin: '', precioMax: '' });
     setSearchTerm('');
+    const next = new URLSearchParams(searchParams);
+    next.delete('categoria');
+    next.delete('idCategoria');
+    setSearchParams(next, { replace: true });
   };
 
   const activeFilterCount = Object.values(filtros).filter(Boolean).length + (searchTerm ? 1 : 0);
@@ -127,11 +157,24 @@ export default function CatalogoPage() {
           <div className="catalog-filters__inner">
             <div className="catalog-filters__group">
               <label className="form-label">Categoría</label>
-              <select className="form-input" value={filtros.categoria}
-                onChange={(e) => setFiltros({ ...filtros, categoria: e.target.value })}>
+              <select
+                className="form-input"
+                value={filtros.categoria}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFiltros({ ...filtros, categoria: val });
+                  const next = new URLSearchParams(searchParams);
+                  if (val) next.set('categoria', val);
+                  else next.delete('categoria');
+                  next.delete('idCategoria');
+                  setSearchParams(next, { replace: true });
+                }}
+              >
                 <option value="">Todas</option>
                 {categorias.map((c) => (
-                  <option key={c.id} value={c.nombre}>{c.nombre}</option>
+                  <option key={c.id ?? c.idCategoria} value={c.nombre ?? c.nombreCategoria ?? ''}>
+                    {c.nombre ?? c.nombreCategoria}
+                  </option>
                 ))}
               </select>
             </div>

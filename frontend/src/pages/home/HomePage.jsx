@@ -171,8 +171,11 @@ export default function HomePage() {
             </div>
             <div className="category-grid">
               {categorias.map((cat) => (
-                <Link to={`/catalogo?categoria=${cat.nombreCategoria || cat.nombre}`}
-                  key={cat.idCategoria || cat.id} className="category-card">
+                <Link
+                  to={`/catalogo?categoria=${encodeURIComponent(cat.nombre || cat.nombreCategoria || '')}`}
+                  key={cat.idCategoria || cat.id}
+                  className="category-card"
+                >
                   <Car size={32} />
                   <h3>{cat.nombreCategoria || cat.nombre}</h3>
                   {cat.descripcion && <p>{cat.descripcion}</p>}
