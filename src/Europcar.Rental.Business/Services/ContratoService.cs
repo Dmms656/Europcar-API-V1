@@ -91,8 +91,13 @@ public class ContratoService : IContratoService
         // El trigger fn_post_contrato_creado cambia la reserva a EN_CURSO y el vehículo a ALQUILADO
         await _unitOfWork.SaveChangesAsync();
 
-        var result = await _contratoDataService.GetByIdAsync(created.IdContrato);
-        return MapToResponse(result!);
+        // Importante: created.IdContrato puede quedar en 0 si EF no generó el Identity aún.
+        // La forma robusta de obtener la entidad creada es consultarla por la reserva (única por reserva).
+        var result = await _contratoDataService.GetByReservaIdAsync(reserva.IdReserva);
+        if (result is null)
+            throw new NotFoundException("No se pudo recargar el contrato creado tras guardarlo.");
+
+        return MapToResponse(result);
     }
 
     public async Task<CheckInOutResponse> RegistrarCheckOutAsync(CheckOutRequest request, string usuario)
