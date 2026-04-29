@@ -712,6 +712,21 @@ input, select, textarea { font-family: inherit; }
 }
 .hero-search__btn:hover { background: var(--color-primary-light); }
 
+/* Tablet: permitir salto de línea controlado para evitar desbordes */
+@media (max-width: 1200px) {
+  .hero-search {
+    flex-wrap: wrap;
+  }
+  .hero-search__field {
+    min-width: 220px;
+    flex: 1 1 220px;
+  }
+  .hero-search__field--datetime {
+    min-width: 240px;
+    flex: 1 1 240px;
+  }
+}
+
 /* Stats */
 .home-stats { background: var(--color-surface); border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); }
 .home-stats__inner { max-width: 1200px; margin: 0 auto; padding: var(--spacing-xl); display: flex; justify-content: space-around; flex-wrap: wrap; gap: var(--spacing-lg); }
@@ -819,9 +834,15 @@ input, select, textarea { font-family: inherit; }
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
 .data-table thead { background: var(--color-bg-secondary); }
 .data-table th { padding: 0.75rem 1rem; text-align: left; font-weight: 600; color: var(--color-text-secondary); white-space: nowrap; border-bottom: 1px solid var(--color-border); }
-.data-table td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--color-border); color: var(--color-text); vertical-align: middle; }
+.data-table td { padding: 0.75rem 1rem; border-bottom: none; color: var(--color-text); vertical-align: middle; }
 .data-table tbody tr:hover { background: var(--color-surface-hover); }
-.data-table tbody tr:last-child td { border-bottom: none; }
+/* Separador por fila completa para evitar cortes visuales entre columnas */
+.data-table tbody tr {
+  box-shadow: inset 0 -1px 0 var(--color-border);
+}
+.data-table tbody tr:last-child {
+  box-shadow: none;
+}
 .data-table code { font-size: 0.75rem; color: var(--color-primary-light); background: var(--color-primary-ghost); padding: 2px 6px; border-radius: var(--radius-sm); }
 /* Importante: el TD debe seguir siendo table-cell para no romper la línea separadora. */
 .data-table td.table-actions {
@@ -1036,10 +1057,23 @@ input, select, textarea { font-family: inherit; }
   .topbar__menu { display: block; }
   .hero__title { font-size: 2rem; }
   .hero-search { flex-direction: column; }
+  .hero-search__field,
+  .hero-search__field--datetime {
+    width: 100%;
+    min-width: 100%;
+    flex: 1 1 100%;
+  }
+  .hero-search__btn {
+    width: 100%;
+    justify-content: center;
+  }
   .search-page__content { flex-direction: column; }
   .search-filters { width: 100%; }
   .form-row, .form-row--3, .form-row--4 { grid-template-columns: 1fr; }
   .module-page__header { flex-direction: column; align-items: flex-start; }
+  .module-page__toolbar { width: 100%; }
+  .search-box { width: 100%; }
+  .search-box input { width: 100%; }
 }
 
 /* =============================================
