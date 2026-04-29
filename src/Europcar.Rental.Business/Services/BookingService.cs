@@ -390,6 +390,7 @@ public class BookingService : IBookingService
         var canalReserva = string.IsNullOrWhiteSpace(request.OrigenCanalReserva)
             ? "BOOKING"
             : request.OrigenCanalReserva.Trim().ToUpperInvariant();
+        var extrasRequest = request.Extras ?? new List<BookingReservaExtraItem>();
 
         var crearInterno = new CrearReservaRequest
         {
@@ -401,7 +402,7 @@ public class BookingService : IBookingService
             FechaHoraRecogida = fechaRecogida,
             FechaHoraDevolucion = fechaDevolucion,
             Conductores = conductoresInternos,
-            Extras = request.Extras.Select(e => new ReservaExtraItemRequest
+            Extras = extrasRequest.Select(e => new ReservaExtraItemRequest
             {
                 IdExtra = e.IdExtra,
                 Cantidad = e.Cantidad

@@ -156,7 +156,8 @@ export default function ReservarPage() {
     (l) => String(l.idLocalizacion ?? l.id) === String(vehiculo?.idLocalizacion)
   );
   const subtotalVehiculo = precioBase * dias;
-  const conductoresAdicionales = form.conductores.filter(c => !c.esPrincipal).length;
+  const totalConductoresActivos = form.conductores.length;
+  const conductoresAdicionales = Math.max(totalConductoresActivos - 1, 0);
   const recargoConductores = conductoresAdicionales * RECARGO_CONDUCTOR_ADICIONAL_DIA * dias;
   const subtotalExtras = form.extrasSeleccionados.reduce((acc, ex) => {
     return acc + (Number(ex.valorFijo || ex.precio || 0) * ex.cantidad * dias);
@@ -328,6 +329,20 @@ export default function ReservarPage() {
       ...prev,
       conductores: prev.conductores.map((cc, i) => ({ ...cc, esPrincipal: i === idx })),
     }));
+  };
+
+  const desactivarConductorTitular = () => {
+    setForm(prev => {
+      const principalAlterno = prev.conductores.find(c => !c.esCliente && c.esPrincipal);
+      if (!principalAlterno) {
+        toast.error('Primero asigna un conductor adicional como principal.');
+        return prev;
+      }
+      return {
+        ...prev,
+        conductores: prev.conductores.filter(c => !c.esCliente),
+      };
+    });
   };
 
   const validateConductorDraft = (draft) => {
@@ -949,6 +964,15 @@ export default function ReservarPage() {
                               ...prev,
                               conductores: prev.conductores.filter((_, i) => i !== idx)
                             }))}><X size={14} /> Quitar</button>
+                        )}
+                        {c.esCliente && !c.esPrincipal && form.conductores.some(cc => !cc.esCliente && cc.esPrincipal) && (
+                          <button
+                            className="btn btn--ghost btn--sm"
+                            style={{ color: '#e67e22' }}
+                            onClick={desactivarConductorTitular}
+                          >
+                            <X size={14} /> Desactivar titular
+                          </button>
                         )}
                       </div>
                     </div>
