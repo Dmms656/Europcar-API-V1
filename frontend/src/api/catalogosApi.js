@@ -1,6 +1,18 @@
 import api from './axiosClient';
 
 export const catalogosApi = {
+  getPaises: () => api.get('/Catalogos/paises'),
+  getPaisById: (id) => api.get(`/Catalogos/paises/${id}`),
+  createPais: (data) => api.post('/Catalogos/paises', data),
+  updatePais: (id, data) => api.put(`/Catalogos/paises/${id}`, data),
+  cambiarEstadoPais: (id, estado, motivo) => api.put(`/Catalogos/paises/${id}/estado`, { estado, motivo }),
+  deletePais: (id) => api.delete(`/Catalogos/paises/${id}`),
+  getCiudades: () => api.get('/Catalogos/ciudades'),
+  getCiudadById: (id) => api.get(`/Catalogos/ciudades/${id}`),
+  createCiudad: (data) => api.post('/Catalogos/ciudades', data),
+  updateCiudad: (id, data) => api.put(`/Catalogos/ciudades/${id}`, data),
+  cambiarEstadoCiudad: (id, estado, motivo) => api.put(`/Catalogos/ciudades/${id}/estado`, { estado, motivo }),
+  deleteCiudad: (id) => api.delete(`/Catalogos/ciudades/${id}`),
   getLocalizaciones: () => api.get('/Catalogos/localizaciones'),
   getLocalizacionById: (id) => api.get(`/Catalogos/localizaciones/${id}`),
   getCategorias: () => api.get('/Catalogos/categorias'),

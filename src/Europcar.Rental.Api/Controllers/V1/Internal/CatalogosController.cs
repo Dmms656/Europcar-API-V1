@@ -21,6 +21,108 @@ public class CatalogosController : ControllerBase
         _catalogoService = catalogoService;
     }
 
+    [HttpGet("paises")]
+    public async Task<IActionResult> GetPaises()
+    {
+        var result = await _catalogoService.GetPaisesAsync();
+        return Ok(ApiResponse<object>.Ok(result));
+    }
+
+    [HttpGet("paises/{id:int}")]
+    public async Task<IActionResult> GetPaisById(int id)
+    {
+        var result = await _catalogoService.GetPaisByIdAsync(id);
+        return Ok(ApiResponse<object>.Ok(result));
+    }
+
+    [HttpPost("paises")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> CreatePais([FromBody] CrearPaisRequest request)
+    {
+        var usuario = User.FindFirstValue(ClaimTypes.Name) ?? "API";
+        var result = await _catalogoService.CreatePaisAsync(request, usuario);
+        return CreatedAtAction(nameof(GetPaisById), new { id = result.Id },
+            ApiResponse<object>.Ok(result, "País creado exitosamente"));
+    }
+
+    [HttpPut("paises/{id:int}")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> UpdatePais(int id, [FromBody] ActualizarPaisRequest request)
+    {
+        var usuario = User.FindFirstValue(ClaimTypes.Name) ?? "API";
+        var result = await _catalogoService.UpdatePaisAsync(id, request, usuario);
+        return Ok(ApiResponse<object>.Ok(result, "País actualizado exitosamente"));
+    }
+
+    [HttpPut("paises/{id:int}/estado")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> CambiarEstadoPais(int id, [FromBody] CambiarEstadoPaisRequest request)
+    {
+        var usuario = User.FindFirstValue(ClaimTypes.Name) ?? "API";
+        await _catalogoService.CambiarEstadoPaisAsync(id, request, usuario);
+        return Ok(ApiResponse<object>.Ok(new { id, estado = request.Estado }, "Estado actualizado"));
+    }
+
+    [HttpDelete("paises/{id:int}")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> DeletePais(int id)
+    {
+        var usuario = User.FindFirstValue(ClaimTypes.Name) ?? "API";
+        await _catalogoService.DeletePaisAsync(id, usuario);
+        return Ok(ApiResponse<object>.Ok(new { id }, "País eliminado exitosamente"));
+    }
+
+    [HttpGet("ciudades")]
+    public async Task<IActionResult> GetCiudades()
+    {
+        var result = await _catalogoService.GetCiudadesAsync();
+        return Ok(ApiResponse<object>.Ok(result));
+    }
+
+    [HttpGet("ciudades/{id:int}")]
+    public async Task<IActionResult> GetCiudadById(int id)
+    {
+        var result = await _catalogoService.GetCiudadByIdAsync(id);
+        return Ok(ApiResponse<object>.Ok(result));
+    }
+
+    [HttpPost("ciudades")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> CreateCiudad([FromBody] CrearCiudadRequest request)
+    {
+        var usuario = User.FindFirstValue(ClaimTypes.Name) ?? "API";
+        var result = await _catalogoService.CreateCiudadAsync(request, usuario);
+        return CreatedAtAction(nameof(GetCiudadById), new { id = result.IdCiudad },
+            ApiResponse<object>.Ok(result, "Ciudad creada exitosamente"));
+    }
+
+    [HttpPut("ciudades/{id:int}")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> UpdateCiudad(int id, [FromBody] ActualizarCiudadRequest request)
+    {
+        var usuario = User.FindFirstValue(ClaimTypes.Name) ?? "API";
+        var result = await _catalogoService.UpdateCiudadAsync(id, request, usuario);
+        return Ok(ApiResponse<object>.Ok(result, "Ciudad actualizada exitosamente"));
+    }
+
+    [HttpPut("ciudades/{id:int}/estado")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> CambiarEstadoCiudad(int id, [FromBody] CambiarEstadoCiudadRequest request)
+    {
+        var usuario = User.FindFirstValue(ClaimTypes.Name) ?? "API";
+        await _catalogoService.CambiarEstadoCiudadAsync(id, request, usuario);
+        return Ok(ApiResponse<object>.Ok(new { id, estado = request.Estado }, "Estado actualizado"));
+    }
+
+    [HttpDelete("ciudades/{id:int}")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<IActionResult> DeleteCiudad(int id)
+    {
+        var usuario = User.FindFirstValue(ClaimTypes.Name) ?? "API";
+        await _catalogoService.DeleteCiudadAsync(id, usuario);
+        return Ok(ApiResponse<object>.Ok(new { id }, "Ciudad eliminada exitosamente"));
+    }
+
     /// <summary>
     /// Obtener todas las localizaciones (sucursales) activas.
     /// </summary>

@@ -3,7 +3,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useAppStore } from '../../store/useAppStore';
 import {
   LayoutDashboard, Users, Car, CalendarCheck, FileText,
-  CreditCard, Wrench, LogOut, ChevronRight, Shield, MapPin, PackagePlus
+  CreditCard, Wrench, LogOut, ChevronRight, Shield, MapPin, PackagePlus, Globe
 } from 'lucide-react';
 
 const navigation = [
@@ -15,6 +15,7 @@ const navigation = [
   { name: 'Pagos', path: '/pagos', icon: CreditCard, roles: ['ADMIN', 'AGENTE_POS'] },
   { name: 'Mantenimientos', path: '/mantenimientos', icon: Wrench, roles: ['ADMIN', 'AGENTE_POS'] },
   { name: 'Localizaciones', path: '/localizaciones', icon: MapPin, roles: ['ADMIN', 'AGENTE_POS'] },
+  { name: 'Países y Ciudades', path: '/ubicaciones', icon: Globe, roles: ['ADMIN', 'AGENTE_POS'] },
   { name: 'Extras', path: '/extras', icon: PackagePlus, roles: ['ADMIN', 'AGENTE_POS'] },
   { name: 'Usuarios', path: '/usuarios', icon: Shield, roles: ['ADMIN'] },
 ];

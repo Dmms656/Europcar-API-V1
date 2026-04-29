@@ -20,6 +20,142 @@ public class CatalogoService : ICatalogoService
         _catalogoDataService = catalogoDataService;
     }
 
+    public async Task<IEnumerable<CatalogoResponse>> GetPaisesAsync()
+    {
+        var lista = await _catalogoDataService.GetPaisesAsync();
+        return lista.Select(MapCatalogo);
+    }
+
+    public async Task<CatalogoResponse> GetPaisByIdAsync(int id)
+    {
+        var p = await _catalogoDataService.GetPaisByIdAsync(id)
+            ?? throw new NotFoundException($"País con ID {id} no encontrado");
+        return MapCatalogo(p);
+    }
+
+    public async Task<CatalogoResponse> CreatePaisAsync(CrearPaisRequest request, string usuario)
+    {
+        var codigo = (request.CodigoIso2 ?? string.Empty).Trim().ToUpper();
+        var nombre = (request.NombrePais ?? string.Empty).Trim();
+        ValidatePais(codigo, nombre);
+
+        var existente = await _catalogoDataService.GetPaisByCodigoIso2Async(codigo);
+        if (existente != null)
+            throw new ConflictException($"Ya existe un país con código '{codigo}'");
+
+        var model = await _catalogoDataService.CreatePaisAsync(new DataManagement.Models.CatalogoModel
+        {
+            Codigo = codigo,
+            Nombre = nombre,
+            Estado = "ACT"
+        }, usuario);
+
+        return MapCatalogo(model);
+    }
+
+    public async Task<CatalogoResponse> UpdatePaisAsync(int id, ActualizarPaisRequest request, string usuario)
+    {
+        var existing = await _catalogoDataService.GetPaisByIdAsync(id)
+            ?? throw new NotFoundException($"País con ID {id} no encontrado");
+        var nombre = (request.NombrePais ?? string.Empty).Trim();
+        ValidatePais(existing.Codigo, nombre);
+        existing.Nombre = nombre;
+        await _catalogoDataService.UpdatePaisAsync(existing, usuario);
+        var fresh = await _catalogoDataService.GetPaisByIdAsync(id);
+        return MapCatalogo(fresh!);
+    }
+
+    public async Task CambiarEstadoPaisAsync(int id, CambiarEstadoPaisRequest request, string usuario)
+    {
+        var estado = (request.Estado ?? string.Empty).Trim().ToUpper();
+        if (!EstadosValidos.Contains(estado))
+            throw new BusinessException("Estado inválido. Use 'ACT' o 'INA'.");
+
+        var existing = await _catalogoDataService.GetPaisByIdAsync(id)
+            ?? throw new NotFoundException($"País con ID {id} no encontrado");
+
+        await _catalogoDataService.UpdatePaisEstadoAsync(id, estado, usuario, request.Motivo);
+        _ = existing;
+    }
+
+    public async Task DeletePaisAsync(int id, string usuario)
+    {
+        var existing = await _catalogoDataService.GetPaisByIdAsync(id)
+            ?? throw new NotFoundException($"País con ID {id} no encontrado");
+        await _catalogoDataService.SoftDeletePaisAsync(id, usuario);
+        _ = existing;
+    }
+
+    public async Task<IEnumerable<CiudadResponse>> GetCiudadesAsync()
+    {
+        var lista = await _catalogoDataService.GetCiudadesAsync();
+        return lista.Select(MapCiudad);
+    }
+
+    public async Task<CiudadResponse> GetCiudadByIdAsync(int id)
+    {
+        var ciudad = await _catalogoDataService.GetCiudadByIdAsync(id)
+            ?? throw new NotFoundException($"Ciudad con ID {id} no encontrada");
+        return MapCiudad(ciudad);
+    }
+
+    public async Task<CiudadResponse> CreateCiudadAsync(CrearCiudadRequest request, string usuario)
+    {
+        ValidateCiudad(request.IdPais, request.NombreCiudad);
+        var pais = await _catalogoDataService.GetPaisByIdAsync(request.IdPais)
+            ?? throw new BusinessException($"No existe país con ID {request.IdPais}");
+        if (pais.Estado != "ACT")
+            throw new BusinessException("El país seleccionado está inactivo.");
+
+        var created = await _catalogoDataService.CreateCiudadAsync(new DataManagement.Models.CiudadModel
+        {
+            IdPais = request.IdPais,
+            NombreCiudad = request.NombreCiudad.Trim(),
+            EstadoCiudad = "ACT"
+        }, usuario);
+
+        var fresh = await _catalogoDataService.GetCiudadByIdAsync(created.IdCiudad);
+        return MapCiudad(fresh!);
+    }
+
+    public async Task<CiudadResponse> UpdateCiudadAsync(int id, ActualizarCiudadRequest request, string usuario)
+    {
+        var existing = await _catalogoDataService.GetCiudadByIdAsync(id)
+            ?? throw new NotFoundException($"Ciudad con ID {id} no encontrada");
+        ValidateCiudad(request.IdPais, request.NombreCiudad);
+        var pais = await _catalogoDataService.GetPaisByIdAsync(request.IdPais)
+            ?? throw new BusinessException($"No existe país con ID {request.IdPais}");
+        if (pais.Estado != "ACT")
+            throw new BusinessException("El país seleccionado está inactivo.");
+
+        existing.IdPais = request.IdPais;
+        existing.NombreCiudad = request.NombreCiudad.Trim();
+        await _catalogoDataService.UpdateCiudadAsync(existing, usuario);
+        var fresh = await _catalogoDataService.GetCiudadByIdAsync(id);
+        return MapCiudad(fresh!);
+    }
+
+    public async Task CambiarEstadoCiudadAsync(int id, CambiarEstadoCiudadRequest request, string usuario)
+    {
+        var estado = (request.Estado ?? string.Empty).Trim().ToUpper();
+        if (!EstadosValidos.Contains(estado))
+            throw new BusinessException("Estado inválido. Use 'ACT' o 'INA'.");
+
+        var existing = await _catalogoDataService.GetCiudadByIdAsync(id)
+            ?? throw new NotFoundException($"Ciudad con ID {id} no encontrada");
+
+        await _catalogoDataService.UpdateCiudadEstadoAsync(id, estado, usuario, request.Motivo);
+        _ = existing;
+    }
+
+    public async Task DeleteCiudadAsync(int id, string usuario)
+    {
+        var existing = await _catalogoDataService.GetCiudadByIdAsync(id)
+            ?? throw new NotFoundException($"Ciudad con ID {id} no encontrada");
+        await _catalogoDataService.SoftDeleteCiudadAsync(id, usuario);
+        _ = existing;
+    }
+
     public async Task<IEnumerable<LocalizacionResponse>> GetLocalizacionesAsync()
     {
         var lista = await _localizacionDataService.GetAllAsync(soloActivas: true);
@@ -171,4 +307,42 @@ public class CatalogoService : ICatalogoService
         ValorFijo = c.ValorFijo ?? 0m,
         EstadoExtra = c.Estado
     };
+
+    private static CatalogoResponse MapCatalogo(DataManagement.Models.CatalogoModel c) => new()
+    {
+        Id = c.Id,
+        Guid = c.Guid,
+        Codigo = c.Codigo,
+        Nombre = c.Nombre,
+        Descripcion = c.Descripcion,
+        Estado = c.Estado
+    };
+
+    private static CiudadResponse MapCiudad(DataManagement.Models.CiudadModel c) => new()
+    {
+        IdCiudad = c.IdCiudad,
+        CiudadGuid = c.CiudadGuid,
+        IdPais = c.IdPais,
+        NombreCiudad = c.NombreCiudad,
+        NombrePais = c.NombrePais,
+        EstadoCiudad = c.EstadoCiudad
+    };
+
+    private static void ValidatePais(string codigoIso2, string nombre)
+    {
+        if (string.IsNullOrWhiteSpace(codigoIso2) || codigoIso2.Length != 2)
+            throw new BusinessException("El código ISO2 del país debe tener exactamente 2 caracteres.");
+        if (!codigoIso2.All(char.IsLetter))
+            throw new BusinessException("El código ISO2 del país solo debe contener letras.");
+        if (string.IsNullOrWhiteSpace(nombre) || nombre.Length > 100)
+            throw new BusinessException("El nombre del país es obligatorio (máximo 100 caracteres).");
+    }
+
+    private static void ValidateCiudad(int idPais, string nombreCiudad)
+    {
+        if (idPais <= 0)
+            throw new BusinessException("Debe seleccionar un país válido.");
+        if (string.IsNullOrWhiteSpace(nombreCiudad) || nombreCiudad.Trim().Length > 120)
+            throw new BusinessException("El nombre de la ciudad es obligatorio (máximo 120 caracteres).");
+    }
 }

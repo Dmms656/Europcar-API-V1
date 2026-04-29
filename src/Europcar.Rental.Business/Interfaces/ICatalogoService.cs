@@ -21,6 +21,20 @@ namespace Europcar.Rental.Business.Interfaces;
 
 public interface ICatalogoService
 {
+    Task<IEnumerable<CatalogoResponse>> GetPaisesAsync();
+    Task<CatalogoResponse> GetPaisByIdAsync(int id);
+    Task<CatalogoResponse> CreatePaisAsync(CrearPaisRequest request, string usuario);
+    Task<CatalogoResponse> UpdatePaisAsync(int id, ActualizarPaisRequest request, string usuario);
+    Task CambiarEstadoPaisAsync(int id, CambiarEstadoPaisRequest request, string usuario);
+    Task DeletePaisAsync(int id, string usuario);
+
+    Task<IEnumerable<CiudadResponse>> GetCiudadesAsync();
+    Task<CiudadResponse> GetCiudadByIdAsync(int id);
+    Task<CiudadResponse> CreateCiudadAsync(CrearCiudadRequest request, string usuario);
+    Task<CiudadResponse> UpdateCiudadAsync(int id, ActualizarCiudadRequest request, string usuario);
+    Task CambiarEstadoCiudadAsync(int id, CambiarEstadoCiudadRequest request, string usuario);
+    Task DeleteCiudadAsync(int id, string usuario);
+
     Task<IEnumerable<LocalizacionResponse>> GetLocalizacionesAsync();
     Task<LocalizacionResponse> GetLocalizacionByIdAsync(int id);
     Task<IEnumerable<CatalogoResponse>> GetCategoriasAsync();
