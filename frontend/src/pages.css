@@ -302,18 +302,27 @@
   .hero-search__field--datetime { min-width: 100%; }
   .datetime-picker__row { flex-direction: column; }
   .catalog-search {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr;
     align-items: stretch;
     gap: 6px;
     padding: 8px 10px;
   }
+  .catalog-search__icon {
+    display: none;
+  }
   .catalog-search__input {
+    flex: 0 0 auto;
     width: 100%;
     min-width: 0;
-    padding: 6px 0;
+    padding: 8px 10px;
     font-size: 0.9rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-secondary);
   }
   .catalog-search__filter-btn {
+    flex: 0 0 auto;
     width: 100%;
     justify-content: center;
     padding: 8px 10px;
