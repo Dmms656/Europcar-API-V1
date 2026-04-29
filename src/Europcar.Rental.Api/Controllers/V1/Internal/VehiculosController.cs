@@ -83,6 +83,19 @@ public class VehiculosController : ControllerBase
     }
 
     /// <summary>
+    /// Cambiar estado operativo manual del vehículo.
+    /// Regla: ALQUILADO no es editable manualmente.
+    /// </summary>
+    [HttpPut("{id:int}/estado-operativo")]
+    [Authorize(Roles = "ADMIN,AGENTE_POS")]
+    public async Task<IActionResult> CambiarEstadoOperativo(int id, [FromBody] CambiarEstadoVehiculoRequest request)
+    {
+        var usuario = User.FindFirstValue(ClaimTypes.Name) ?? "API";
+        await _vehiculoService.CambiarEstadoOperativoAsync(id, request, usuario);
+        return Ok(ApiResponse<object>.Ok(new { Id = id, EstadoOperativo = request.EstadoOperativo }, "Estado operativo actualizado"));
+    }
+
+    /// <summary>
     /// Eliminar un vehículo (soft-delete lógico).
     /// </summary>
     [HttpDelete("{id:int}")]

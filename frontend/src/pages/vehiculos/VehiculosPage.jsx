@@ -13,6 +13,8 @@ const INITIAL_FORM = {
   observacionesGenerales: '', imagenReferencialUrl: '',
 };
 
+const ESTADOS_OPERATIVOS_EDITABLES = ['DISPONIBLE', 'RESERVADO', 'MANTENIMIENTO', 'TALLER', 'FUERA_SERVICIO'];
+
 export default function VehiculosPage() {
   const [vehiculos, setVehiculos] = useState([]);
   const [marcas, setMarcas] = useState([]);
@@ -85,6 +87,21 @@ export default function VehiculosPage() {
     catch (e) { toast.error(e.response?.data?.message || 'Error al eliminar'); }
   };
 
+  const handleEstadoOperativoChange = async (vehiculo, nuevoEstado) => {
+    if (!nuevoEstado || nuevoEstado === vehiculo.estadoOperativo) return;
+    if (vehiculo.estadoOperativo === 'ALQUILADO') {
+      toast.error('ALQUILADO no es editable manualmente');
+      return;
+    }
+    try {
+      await vehiculosApi.cambiarEstadoOperativo(vehiculo.idVehiculo, nuevoEstado);
+      toast.success('Estado operativo actualizado');
+      loadAll();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'No se pudo actualizar el estado operativo');
+    }
+  };
+
   const filtered = vehiculos.filter((v) => {
     const text = `${v.placa} ${v.marca} ${v.modelo} ${v.codigoInterno}`.toLowerCase();
     return text.includes(search.toLowerCase());
@@ -119,7 +136,22 @@ export default function VehiculosPage() {
                   <td>{v.anioFabricacion}</td>
                   <td><span className="badge">{v.categoria}</span></td>
                   <td><strong>${Number(v.precioBaseDia).toFixed(2)}</strong></td>
-                  <td><span className={`status-badge status-badge--${v.estadoOperativo === 'DISPONIBLE' ? 'success' : v.estadoOperativo === 'ALQUILADO' ? 'warning' : 'danger'}`}>{v.estadoOperativo}</span></td>
+                  <td>
+                    {v.estadoOperativo === 'ALQUILADO' ? (
+                      <span className="status-badge status-badge--warning">ALQUILADO</span>
+                    ) : (
+                      <select
+                        className="form-input"
+                        value={v.estadoOperativo}
+                        onChange={(e) => handleEstadoOperativoChange(v, e.target.value)}
+                        style={{ minWidth: 150 }}
+                      >
+                        {ESTADOS_OPERATIVOS_EDITABLES.map((estado) => (
+                          <option key={estado} value={estado}>{estado}</option>
+                        ))}
+                      </select>
+                    )}
+                  </td>
                   <td>{v.localizacion}</td>
                   <td className="table-actions">
                     <button className="icon-btn" onClick={() => openEdit(v)} title="Editar"><Pencil size={15} /></button>

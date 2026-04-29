@@ -10,5 +10,6 @@ public interface IVehiculoService
     Task<VehiculoResponse> GetByIdAsync(int id);
     Task<VehiculoResponse> CreateAsync(CrearVehiculoRequest request);
     Task<VehiculoResponse> UpdateAsync(int id, ActualizarVehiculoRequest request);
+    Task CambiarEstadoOperativoAsync(int id, CambiarEstadoVehiculoRequest request, string usuario);
     Task DeleteAsync(int id, string usuario);
 }

@@ -16,6 +16,7 @@ public class VehiculoService : IVehiculoService
     // Valores válidos según constraints de la base de datos
     private static readonly string[] CombustiblesValidos = { "GASOLINA", "DIESEL", "HIBRIDO", "ELECTRICO" };
     private static readonly string[] TransmisionesValidas = { "AUTOMATICA", "MANUAL" };
+    private static readonly string[] EstadosOperativosEditables = { "DISPONIBLE", "RESERVADO", "MANTENIMIENTO", "TALLER", "FUERA_SERVICIO" };
 
     public VehiculoService(IVehiculoDataService vehiculoDataService, IUnitOfWork unitOfWork)
     {
@@ -145,6 +146,26 @@ public class VehiculoService : IVehiculoService
             throw new BusinessException("No se puede eliminar un vehículo que tiene reservas activas o está alquilado");
 
         await _vehiculoDataService.SoftDeleteAsync(id, usuario);
+        await _unitOfWork.SaveChangesAsync();
+    }
+
+    public async Task CambiarEstadoOperativoAsync(int id, CambiarEstadoVehiculoRequest request, string usuario)
+    {
+        var existing = await _vehiculoDataService.GetByIdAsync(id)
+            ?? throw new NotFoundException($"Vehículo con ID {id} no encontrado");
+
+        // Regla de negocio solicitada: ALQUILADO no se edita manualmente.
+        if (existing.EstadoOperativo == "ALQUILADO")
+            throw new BusinessException("No se puede editar manualmente el estado de un vehículo ALQUILADO.");
+
+        var nuevoEstado = (request.EstadoOperativo ?? string.Empty).Trim().ToUpperInvariant();
+        if (!EstadosOperativosEditables.Contains(nuevoEstado))
+            throw new BusinessException($"Estado operativo inválido para edición manual. Valores permitidos: {string.Join(", ", EstadosOperativosEditables)}.");
+
+        if (nuevoEstado == "ALQUILADO")
+            throw new BusinessException("El estado ALQUILADO solo puede ser gestionado por el flujo operativo (reservas/contratos).");
+
+        await _vehiculoDataService.UpdateEstadoOperativoAsync(id, nuevoEstado, usuario);
         await _unitOfWork.SaveChangesAsync();
     }
 

@@ -8,5 +8,6 @@ export const vehiculosApi = {
   getById: (id) => api.get(`/admin/Vehiculos/${id}`),
   create: (data) => api.post('/admin/Vehiculos', data),
   update: (id, data) => api.put(`/admin/Vehiculos/${id}`, data),
+  cambiarEstadoOperativo: (id, estadoOperativo) => api.put(`/admin/Vehiculos/${id}/estado-operativo`, { estadoOperativo }),
   delete: (id) => api.delete(`/admin/Vehiculos/${id}`),
 };
