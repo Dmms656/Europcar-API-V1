@@ -43,7 +43,13 @@ public class AuthService : IAuthService
         if (user.BloqueadoHastaUtc.HasValue && user.BloqueadoHastaUtc > DateTimeOffset.UtcNow)
             throw new UnauthorizedException($"Usuario bloqueado hasta {user.BloqueadoHastaUtc:yyyy-MM-dd HH:mm:ss} UTC");
 
-        if (!VerifyPassword(request.Password, user.PasswordHash, user.PasswordSalt))
+        var verification = VerifyPassword(request.Password, user.PasswordHash, user.PasswordSalt);
+        if (verification == PasswordVerificationResult.InvalidFormat)
+            throw new BusinessException(
+                "No se pudo validar esta cuenta por una inconsistencia interna de credenciales. Reinicia la API para que repare el usuario seed o carga un seed compatible.",
+                500);
+
+        if (verification != PasswordVerificationResult.Success)
             throw new UnauthorizedException("Credenciales inválidas");
 
         await _usuarioDataService.UpdateUltimoLoginAsync(user.IdUsuario);
@@ -135,12 +141,32 @@ public class AuthService : IAuthService
         return new { userId, username = request.Username, idCliente, message = "Usuario registrado exitosamente" };
     }
 
-    private static bool VerifyPassword(string password, string storedHash, string storedSalt)
+    private static PasswordVerificationResult VerifyPassword(string password, string storedHash, string storedSalt)
     {
-        var saltBytes = Convert.FromBase64String(storedSalt);
-        using var hmac = new HMACSHA512(saltBytes);
-        var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
-        return Convert.ToBase64String(computedHash) == storedHash;
+        try
+        {
+            var saltBytes = Convert.FromBase64String(storedSalt);
+            using var hmac = new HMACSHA512(saltBytes);
+            var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
+            return Convert.ToBase64String(computedHash) == storedHash
+                ? PasswordVerificationResult.Success
+                : PasswordVerificationResult.InvalidCredentials;
+        }
+        catch (FormatException)
+        {
+            return PasswordVerificationResult.InvalidFormat;
+        }
+        catch (CryptographicException)
+        {
+            return PasswordVerificationResult.InvalidFormat;
+        }
+    }
+
+    private enum PasswordVerificationResult
+    {
+        Success,
+        InvalidCredentials,
+        InvalidFormat
     }
 
     /// <summary>

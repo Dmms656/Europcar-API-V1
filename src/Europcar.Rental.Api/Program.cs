@@ -96,11 +96,29 @@ static async Task SeedUserIfMissingAsync(
     string rol,
     ILogger logger)
 {
-    var exists = await db.UsuariosApp
+    var existing = await db.UsuariosApp
         .IgnoreQueryFilters()
-        .AnyAsync(u => u.Username == username);
+        .FirstOrDefaultAsync(u => u.Username == username);
 
-    if (exists) return;
+    if (existing != null)
+    {
+        // Reparación para ambientes donde el usuario fue creado con otro esquema de hash (p.ej. pgcrypto).
+        if (!LooksLikeBase64(existing.PasswordSalt) || !LooksLikeBase64(existing.PasswordHash))
+        {
+            var (repairHash, repairSalt) = AuthService.CreatePasswordHash("12345");
+            existing.PasswordHash = repairHash;
+            existing.PasswordSalt = repairSalt;
+            existing.RequiereCambioPassword = false;
+            existing.EstadoUsuario = "ACT";
+            existing.Activo = true;
+            existing.ModificadoPorUsuario = "SYSTEM";
+            existing.FechaModificacionUtc = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync();
+            logger.LogWarning("Seed: credenciales de '{Username}' reparadas al esquema HMAC local.", username);
+        }
+
+        return;
+    }
 
     var (hash, salt) = AuthService.CreatePasswordHash("12345");
 
@@ -143,6 +161,13 @@ static async Task SeedUserIfMissingAsync(
     }
 
     logger.LogInformation("Seed: usuario '{Username}' creado con contraseña por defecto.", username);
+}
+
+static bool LooksLikeBase64(string? value)
+{
+    if (string.IsNullOrWhiteSpace(value)) return false;
+    Span<byte> buffer = new byte[value.Length];
+    return Convert.TryFromBase64String(value, buffer, out _);
 }
 
 static Task WriteHealthResponseAsync(HttpContext context, HealthReport report)
