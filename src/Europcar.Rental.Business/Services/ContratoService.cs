@@ -43,6 +43,12 @@ public class ContratoService : IContratoService
         return contratos.Select(MapToResponse);
     }
 
+    public async Task<IEnumerable<ContratoResponse>> GetByClienteIdAsync(int idCliente)
+    {
+        var contratos = await _contratoDataService.GetByClienteIdAsync(idCliente);
+        return contratos.Select(MapToResponse);
+    }
+
     public async Task<ContratoResponse> CrearDesdeReservaAsync(CrearContratoRequest request, string usuario)
     {
         var reserva = await _reservaDataService.GetByIdAsync(request.IdReserva)

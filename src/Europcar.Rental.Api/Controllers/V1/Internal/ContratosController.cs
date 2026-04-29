@@ -33,6 +33,23 @@ public class ContratosController : ControllerBase
     }
 
     /// <summary>
+    /// Obtener contratos del cliente autenticado.
+    /// </summary>
+    [HttpGet("mis-contratos")]
+    [Authorize(Roles = "CLIENTE_WEB")]
+    public async Task<IActionResult> GetMisContratos()
+    {
+        var idClienteClaim = User.FindFirstValue("idCliente");
+        if (!int.TryParse(idClienteClaim, out var idCliente))
+        {
+            return Unauthorized(ApiResponse<object>.Fail("No se pudo resolver el cliente autenticado."));
+        }
+
+        var result = await _contratoService.GetByClienteIdAsync(idCliente);
+        return Ok(ApiResponse<object>.Ok(result));
+    }
+
+    /// <summary>
     /// Obtener un contrato por su ID.
     /// </summary>
     [HttpGet("{id:int}")]

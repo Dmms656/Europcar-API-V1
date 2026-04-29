@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { authApi } from '../../api/authApi';
-import { getErrorMessage, getFieldErrors, parseApiError } from '../../utils/errorHandler';
+import { getErrorMessage, getFieldErrors } from '../../utils/errorHandler';
 import { Car, Eye, EyeOff, Loader2, Shield, User, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
@@ -14,7 +14,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [touched, setTouched] = useState({});
   const [shake, setShake] = useState(false);
-  const [errorRef, setErrorRef] = useState('');
 
   const login = useAuthStore((s) => s.login);
   const navigate = useNavigate();
@@ -33,7 +32,6 @@ export default function LoginPage() {
     e.preventDefault();
     setTouched({ username: true, password: true });
     setError('');
-    setErrorRef('');
 
     if (!username.trim() || !password) {
       setShake(true);
@@ -65,14 +63,12 @@ export default function LoginPage() {
         navigate(userType === 'admin' ? '/dashboard' : '/mi-cuenta', { replace: true });
       }
     } catch (err) {
-      const parsed = parseApiError(err);
       const fieldErrs = getFieldErrors(err);
       if (Object.keys(fieldErrs).length > 0) {
         setError(Object.values(fieldErrs)[0]);
       } else {
         setError(getErrorMessage(err));
       }
-      setErrorRef(parsed.traceId || '');
     } finally {
       setLoading(false);
     }
@@ -107,11 +103,6 @@ export default function LoginPage() {
                 <small style={{ display: 'block', marginTop: 6, opacity: 0.9 }}>
                   Sugerencia: reinicia la API para que ejecute la reparación automática del usuario seed,
                   o vuelve a cargar un seed compatible con el esquema actual de contraseñas.
-                </small>
-              )}
-              {errorRef && (
-                <small style={{ display: 'block', marginTop: 6, opacity: 0.8 }}>
-                  Ref: {errorRef}
                 </small>
               )}
             </div>

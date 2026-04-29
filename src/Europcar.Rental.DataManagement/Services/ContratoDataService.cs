@@ -42,6 +42,18 @@ public class ContratoDataService : IContratoDataService
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<ContratoModel>> GetByClienteIdAsync(int idCliente)
+    {
+        return await _context.Contratos
+            .Include(c => c.Cliente)
+            .Include(c => c.Vehiculo)
+            .Include(c => c.Reserva)
+            .Where(c => c.IdCliente == idCliente)
+            .OrderByDescending(c => c.FechaRegistroUtc)
+            .Select(c => MapToModel(c))
+            .ToListAsync();
+    }
+
     public async Task<ContratoModel> CreateAsync(ContratoModel model, string usuario)
     {
         var entity = new ContratoEntity

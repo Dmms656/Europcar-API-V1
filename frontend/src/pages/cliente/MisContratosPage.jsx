@@ -22,13 +22,9 @@ export default function MisContratosPage() {
   const loadContratos = async () => {
     setLoading(true);
     try {
-      const res = await contratosApi.getAll();
+      const res = await contratosApi.getMisContratos();
       const data = res.data?.data;
-      const all = Array.isArray(data) ? data : [];
-      // Filter by client if idCliente is available
-      const idCliente = user?.idCliente;
-      const filtered = idCliente ? all.filter(c => c.idCliente === idCliente) : all;
-      setContratos(filtered);
+      setContratos(Array.isArray(data) ? data : []);
     } catch (err) {
       console.warn('Error cargando contratos:', err);
       setContratos([]);

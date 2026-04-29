@@ -4,6 +4,57 @@ import { authApi } from '../../api/authApi';
 import { Car, UserPlus, Eye, EyeOff, Loader2, User, Mail, Phone, MapPin, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { validators } from '../../utils/validation';
+import { parseApiError } from '../../utils/errorHandler';
+
+const NAME_REGEX = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' ]{2,50}$/;
+const CLIENTE_EXISTENTE_REGEX = /^([0-9]{10}|CLT-[A-Za-z0-9-]{2,30})$/i;
+const PASSWORD_STRONG_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,64}$/;
+
+function isValidEcuadorCedula(value) {
+  if (!/^\d{10}$/.test(value)) return false;
+  const provincia = Number(value.slice(0, 2));
+  const tercerDigito = Number(value[2]);
+  if (provincia < 1 || provincia > 24 || tercerDigito >= 6) return false;
+
+  const digits = value.split('').map(Number);
+  const suma = digits
+    .slice(0, 9)
+    .reduce((acc, digit, idx) => {
+      if (idx % 2 === 0) {
+        const doubled = digit * 2;
+        return acc + (doubled > 9 ? doubled - 9 : doubled);
+      }
+      return acc + digit;
+    }, 0);
+
+  const decenaSuperior = Math.ceil(suma / 10) * 10;
+  const verificador = (decenaSuperior - suma) % 10;
+  return verificador === digits[9];
+}
+
+function validateDocumento(value) {
+  const doc = String(value || '').trim();
+  if (!doc) return '';
+  if (/^\d+$/.test(doc)) {
+    return isValidEcuadorCedula(doc) ? '' : 'La cédula ecuatoriana no es válida';
+  }
+  return /^[A-Z0-9-]{6,20}$/i.test(doc) ? '' : 'El documento/pasaporte debe tener 6-20 caracteres alfanuméricos';
+}
+
+function validateName(value, label) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return `${label} es requerido`;
+  return NAME_REGEX.test(trimmed) ? '' : `${label} solo permite letras y espacios (2-50 caracteres)`;
+}
+
+function validatePassword(value) {
+  const pwd = String(value || '');
+  if (!pwd) return 'La contraseña es requerida';
+  if (!PASSWORD_STRONG_REGEX.test(pwd)) {
+    return 'La contraseña debe tener 8-64 caracteres, mayúscula, minúscula, número y símbolo';
+  }
+  return '';
+}
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -24,7 +75,13 @@ export default function RegisterPage() {
   });
 
   const updateField = (field, value) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+    let nextValue = value;
+    if (field === 'correo') nextValue = value.trim().toLowerCase();
+    if (field === 'cedula' || field === 'idClienteExistente') nextValue = value.trim().toUpperCase();
+    if (field === 'nombre' || field === 'apellido' || field === 'direccion') nextValue = value.replace(/\s{2,}/g, ' ');
+    if (field === 'telefono') nextValue = value.replace(/[^\d+()\-\s]/g, '');
+
+    setForm(prev => ({ ...prev, [field]: nextValue }));
     if (field === 'cedula') {
       setCedulaExists(false);
     }
@@ -60,18 +117,20 @@ export default function RegisterPage() {
   const errors = {};
   errors.username = validators.required(form.username, 'El usuario') || validators.username(form.username);
   errors.correo = validators.required(form.correo, 'El correo') || validators.email(form.correo);
-  errors.password = validators.required(form.password, 'La contraseña') || validators.minLength(form.password, 6, 'La contraseña');
+  errors.password = validatePassword(form.password);
   errors.confirmPassword = validators.required(form.confirmPassword, 'La confirmación') || validators.match(form.confirmPassword, form.password, 'Las contraseñas');
   if (mode === 'nuevo') {
-    errors.nombre = validators.required(form.nombre, 'El nombre');
-    errors.apellido = validators.required(form.apellido, 'El apellido');
+    errors.nombre = validateName(form.nombre, 'El nombre');
+    errors.apellido = validateName(form.apellido, 'El apellido');
     errors.cedula = validators.required(form.cedula, 'La cédula')
-      || validators.cedula(form.cedula)
+      || validateDocumento(form.cedula)
       || (cedulaExists ? 'La cédula ya está registrada' : '');
     errors.telefono = form.telefono ? validators.phone(form.telefono) : '';
+    errors.direccion = form.direccion ? validators.maxLength(form.direccion.trim(), 160, 'La dirección') : '';
   }
   if (mode === 'existente') {
-    errors.idClienteExistente = validators.required(form.idClienteExistente, 'El ID de cliente');
+    errors.idClienteExistente = validators.required(form.idClienteExistente, 'La cédula o ID de cliente')
+      || (!CLIENTE_EXISTENTE_REGEX.test(form.idClienteExistente.trim()) ? 'Formato inválido: usa cédula (10 dígitos) o CLT-XXX' : '');
   }
 
   const formValid = Object.values(errors).every(e => !e);
@@ -103,23 +162,37 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      const payload = { username: form.username, correo: form.correo, password: form.password };
+      const payload = {
+        username: form.username.trim(),
+        correo: form.correo.trim().toLowerCase(),
+        password: form.password,
+      };
       if (mode === 'nuevo') {
-        payload.nombre = form.nombre;
-        payload.apellido = form.apellido;
-        payload.cedula = form.cedula;
-        payload.telefono = form.telefono;
-        payload.direccion = form.direccion;
+        payload.nombre = form.nombre.trim();
+        payload.apellido = form.apellido.trim();
+        payload.cedula = form.cedula.trim().toUpperCase();
+        payload.telefono = form.telefono.trim();
+        payload.direccion = form.direccion.trim();
       }
       if (mode === 'existente') {
         // Send the cedula/ID so the backend can look up the existing client
-        payload.cedula = form.idClienteExistente;
+        payload.cedula = form.idClienteExistente.trim().toUpperCase();
       }
       await authApi.register(payload);
       setStep(2);
       toast.success('¡Cuenta creada exitosamente!');
     } catch (err) {
-      const msg = err.response?.data?.message || err.response?.data?.title || 'Error al crear la cuenta';
+      const parsed = parseApiError(err);
+      const backendFieldErrors = parsed.fieldErrors || {};
+      const touchedFields = {};
+      for (const field of Object.keys(backendFieldErrors)) {
+        touchedFields[field] = true;
+      }
+      if (Object.keys(touchedFields).length > 0) {
+        setTouched(prev => ({ ...prev, ...touchedFields }));
+      }
+      const firstFieldError = Object.values(backendFieldErrors).find(Boolean);
+      const msg = firstFieldError || parsed.message || 'Error al crear la cuenta';
       setError(msg);
       toast.error(msg);
     } finally {
@@ -199,6 +272,7 @@ export default function RegisterPage() {
               {renderField('cedula', <>
                 <label className="form-label">Cédula / Pasaporte *</label>
                 <input className="form-input" placeholder="1712345678" value={form.cedula}
+                  maxLength={20}
                   onChange={(e) => updateField('cedula', e.target.value)}
                   onBlur={async () => { handleBlur('cedula'); await validateCedulaExists(); }} />
                 {checkingCedula && <span className="form-helper">Validando cédula...</span>}
@@ -207,11 +281,13 @@ export default function RegisterPage() {
                 {renderField('telefono', <>
                   <label className="form-label"><Phone size={14} /> Teléfono</label>
                   <input className="form-input" placeholder="+593 99 999 9999" value={form.telefono}
+                    maxLength={20}
                     onChange={(e) => updateField('telefono', e.target.value)} onBlur={() => handleBlur('telefono')} />
                 </>)}
                 <div className="form-group">
                   <label className="form-label"><MapPin size={14} /> Dirección</label>
                   <input className="form-input" placeholder="Av. Principal 123" value={form.direccion}
+                    maxLength={160}
                     onChange={(e) => updateField('direccion', e.target.value)} />
                 </div>
               </div>
@@ -223,6 +299,7 @@ export default function RegisterPage() {
             renderField('idClienteExistente', <>
               <label className="form-label">Cédula o ID de Cliente *</label>
               <input className="form-input" placeholder="1712345678 o CLT-001" value={form.idClienteExistente}
+                maxLength={34}
                 onChange={(e) => updateField('idClienteExistente', e.target.value)} onBlur={() => handleBlur('idClienteExistente')} />
             </>)
           )}
@@ -230,6 +307,7 @@ export default function RegisterPage() {
           {renderField('username', <>
             <label className="form-label"><User size={14} /> Nombre de Usuario *</label>
             <input className="form-input" placeholder="juan.perez" value={form.username}
+              maxLength={30}
               onChange={(e) => updateField('username', e.target.value)} onBlur={() => handleBlur('username')} />
           </>)}
           {renderField('correo', <>
@@ -241,7 +319,8 @@ export default function RegisterPage() {
             <label className="form-label">Contraseña *</label>
             <div className="form-input-wrapper">
               <input type={showPassword ? 'text' : 'password'} className="form-input"
-                placeholder="Mínimo 6 caracteres" value={form.password}
+                placeholder="8+ chars, mayúscula, minúscula, número y símbolo" value={form.password}
+                maxLength={64}
                 onChange={(e) => updateField('password', e.target.value)} onBlur={() => handleBlur('password')} />
               <button type="button" className="form-input-toggle" tabIndex={-1}
                 onClick={() => setShowPassword(!showPassword)}>

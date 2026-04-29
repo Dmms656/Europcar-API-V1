@@ -59,7 +59,6 @@ api.interceptors.response.use(
       // No spammear el toast en 401 (ya redirigimos) ni en 422 (suelen ser errores de campo gestionados por la pantalla)
       if (status !== 401 && status !== 422 && !parsed.isCanceled) {
         toast.error(parsed.message, {
-          description: parsed.traceId ? `Ref: ${parsed.traceId}` : undefined,
           duration: parsed.isNetwork ? 6000 : 4000,
         });
       }

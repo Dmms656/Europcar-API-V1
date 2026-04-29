@@ -14,7 +14,12 @@ import {
 import { toast } from 'sonner';
 
 const IVA_RATE = 0.15;
+const RECARGO_CONDUCTOR_ADICIONAL_DIA = 15;
+const EXTRA_CONDUCTOR_ADICIONAL_CODE = 'COND-ADIC';
 const isValidImageUrl = (url) => url && (url.startsWith('http://') || url.startsWith('https://'));
+const NAME_REGEX = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' ]{2,50}$/;
+const PHONE_REGEX = /^[+]?[\d\s()-]{7,20}$/;
+const LICENCIA_REGEX = /^[A-Za-z0-9-]{5,20}$/;
 
 export default function ReservarPage() {
   const { id } = useParams();
@@ -32,6 +37,10 @@ export default function ReservarPage() {
   const [extras, setExtras] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [checkingDisponibilidad, setCheckingDisponibilidad] = useState(false);
+  const [disponibilidadBloqueada, setDisponibilidadBloqueada] = useState(false);
+  const [disponibilidadMsg, setDisponibilidadMsg] = useState('');
+  const [lastAdditionalCount, setLastAdditionalCount] = useState(0);
   const [reservaConfirmada, setReservaConfirmada] = useState(null);
   const [stepErrors, setStepErrors] = useState({});
   const [shake, setShake] = useState(false);
@@ -54,7 +63,10 @@ export default function ReservarPage() {
     conductores: [], // [{id, nombre, licencia, esPrincipal, esNuevo?, ...}]
   });
   const [showAddConductor, setShowAddConductor] = useState(false);
-  const [newConductor, setNewConductor] = useState({ nombre: '', apellido: '', licencia: '', edad: '', telefono: '' });
+  const [newConductor, setNewConductor] = useState({
+    nombre: '', apellido: '', licencia: '', edad: '', telefono: '', esPrincipal: false,
+  });
+  const [newConductorErrors, setNewConductorErrors] = useState({});
 
   // Payment form
   const [pago, setPago] = useState({
@@ -134,20 +146,49 @@ export default function ReservarPage() {
 
   const dias = calcularDias();
   const precioBase = Number(vehiculo?.precioBaseDia || vehiculo?.precioDia || 0);
+  const nombreVehiculo = `${vehiculo?.marca || ''} ${vehiculo?.modelo || vehiculo?.modeloVehiculo || ''}`.trim();
+  const categoriaVehiculo = vehiculo?.categoria || vehiculo?.categoriaVehiculo || 'No especificada';
+  const placaVehiculo = vehiculo?.placa || vehiculo?.placaVehiculo || 'No disponible';
+  const puertasVehiculo = vehiculo?.numeroPuertas ?? 'N/D';
+  const maletasVehiculo = vehiculo?.capacidadMaletas ?? 'N/D';
+  const anioVehiculo = vehiculo?.anioFabricacion ?? 'N/D';
+  const localizacionActual = localizaciones.find(
+    (l) => String(l.idLocalizacion ?? l.id) === String(vehiculo?.idLocalizacion)
+  );
   const subtotalVehiculo = precioBase * dias;
+  const conductoresAdicionales = form.conductores.filter(c => !c.esPrincipal).length;
+  const recargoConductores = conductoresAdicionales * RECARGO_CONDUCTOR_ADICIONAL_DIA * dias;
   const subtotalExtras = form.extrasSeleccionados.reduce((acc, ex) => {
     return acc + (Number(ex.valorFijo || ex.precio || 0) * ex.cantidad * dias);
   }, 0);
-  const subtotal = subtotalVehiculo + subtotalExtras;
+  const subtotal = subtotalVehiculo + subtotalExtras + recargoConductores;
   const iva = subtotal * IVA_RATE;
   const total = subtotal + iva;
   const isOneWay = form.idLocalizacionRecogida !== form.idLocalizacionDevolucion;
   const cargoOneWay = isOneWay ? 25.00 : 0;
   const totalFinal = total + cargoOneWay;
+  const conductoresStepIndex = STEPS.indexOf('Conductores');
+
+  const isConductorExtra = (extra) =>
+    String(extra?.codigoExtra || extra?.codigo || '').toUpperCase() === EXTRA_CONDUCTOR_ADICIONAL_CODE;
+
+  const getConductorExtraFromCatalog = () =>
+    extras.find((ex) => isConductorExtra(ex));
 
   const toggleExtra = (extra) => {
+    const isCondAdic = isConductorExtra(extra);
+    if (isCondAdic && conductoresAdicionales <= 0) {
+      toast.error('Para aplicar COND-ADIC primero debes agregar un conductor adicional.');
+      if (conductoresStepIndex >= 0) setStep(conductoresStepIndex);
+      return;
+    }
+
     setForm(prev => {
       const exists = prev.extrasSeleccionados.find(e => e.id === (extra.idExtra || extra.id));
+      if (isCondAdic && exists && conductoresAdicionales > 0) {
+        // Mientras exista conductor adicional, este extra queda bloqueado.
+        return prev;
+      }
       if (exists) {
         return {
           ...prev,
@@ -159,6 +200,7 @@ export default function ReservarPage() {
         extrasSeleccionados: [...prev.extrasSeleccionados, {
           id: extra.idExtra || extra.id,
           nombre: extra.nombreExtra || extra.nombre,
+          codigo: extra.codigoExtra || extra.codigo || '',
           valorFijo: extra.valorFijo || extra.precio || 0,
           cantidad: 1,
         }]
@@ -173,6 +215,179 @@ export default function ReservarPage() {
         e.id === extraId ? { ...e, cantidad: Math.max(1, e.cantidad + delta) } : e
       )
     }));
+  };
+
+  useEffect(() => {
+    if (conductoresAdicionales > lastAdditionalCount) {
+      toast.info(`Se aplicó recargo por conductor adicional: +$${RECARGO_CONDUCTOR_ADICIONAL_DIA.toFixed(2)} por día`, {
+        duration: 3500,
+      });
+    } else if (conductoresAdicionales < lastAdditionalCount && conductoresAdicionales >= 0) {
+      toast.info('Se actualizó el recargo por conductores adicionales.', { duration: 3000 });
+    }
+    setLastAdditionalCount(conductoresAdicionales);
+  }, [conductoresAdicionales, lastAdditionalCount]);
+
+  useEffect(() => {
+    const condExtraCatalog = getConductorExtraFromCatalog();
+    if (!condExtraCatalog) return;
+
+    setForm((prev) => {
+      const already = prev.extrasSeleccionados.find((ex) =>
+        String(ex.codigoExtra || ex.codigo || '').toUpperCase() === EXTRA_CONDUCTOR_ADICIONAL_CODE
+      );
+
+      if (conductoresAdicionales > 0) {
+        if (!already) {
+          toast.info('Se agregó automáticamente el extra COND-ADIC por conductor adicional.');
+          return {
+            ...prev,
+            extrasSeleccionados: [
+              ...prev.extrasSeleccionados,
+              {
+                id: condExtraCatalog.idExtra || condExtraCatalog.id,
+                nombre: condExtraCatalog.nombreExtra || condExtraCatalog.nombre,
+                codigo: condExtraCatalog.codigoExtra || condExtraCatalog.codigo || EXTRA_CONDUCTOR_ADICIONAL_CODE,
+                valorFijo: condExtraCatalog.valorFijo || condExtraCatalog.precio || 0,
+                cantidad: conductoresAdicionales,
+              },
+            ],
+          };
+        }
+        if (already.cantidad !== conductoresAdicionales) {
+          return {
+            ...prev,
+            extrasSeleccionados: prev.extrasSeleccionados.map((ex) =>
+              String(ex.codigoExtra || ex.codigo || '').toUpperCase() === EXTRA_CONDUCTOR_ADICIONAL_CODE
+                ? { ...ex, cantidad: conductoresAdicionales }
+                : ex
+            ),
+          };
+        }
+        return prev;
+      }
+
+      if (already) {
+        return {
+          ...prev,
+          extrasSeleccionados: prev.extrasSeleccionados.filter((ex) =>
+            String(ex.codigoExtra || ex.codigo || '').toUpperCase() !== EXTRA_CONDUCTOR_ADICIONAL_CODE
+          ),
+        };
+      }
+      return prev;
+    });
+  }, [extras, conductoresAdicionales]);
+
+  useEffect(() => {
+    const validateDisponibilidad = async () => {
+      if (!vehiculo || !form.fechaRecogida || !form.fechaDevolucion || !form.idLocalizacionRecogida) {
+        setDisponibilidadBloqueada(false);
+        setDisponibilidadMsg('');
+        return;
+      }
+
+      if (new Date(form.fechaDevolucion) <= new Date(form.fechaRecogida)) return;
+
+      setCheckingDisponibilidad(true);
+      try {
+        const res = await bookingApi.checkDisponibilidad(String(vehiculo.codigoInterno || vehiculo.idVehiculo || id), {
+          fechaRecogida: new Date(form.fechaRecogida).toISOString(),
+          fechaDevolucion: new Date(form.fechaDevolucion).toISOString(),
+          idLocalizacion: Number(form.idLocalizacionRecogida),
+        });
+        const payload = res.data?.data || res.data?.Data || {};
+        const disponibilidad = payload.disponibilidad || payload.Disponibilidad || {};
+        const disponible = Boolean(disponibilidad.disponible ?? disponibilidad.Disponible);
+
+        if (disponible) {
+          setDisponibilidadBloqueada(false);
+          setDisponibilidadMsg('');
+          setStepErrors(prev => ({ ...prev, disponibilidad: '' }));
+        } else {
+          const msg = 'El vehículo no está disponible para esas fechas. Ya existe una reserva o bloqueo que impide su uso.';
+          setDisponibilidadBloqueada(true);
+          setDisponibilidadMsg(msg);
+          setStepErrors(prev => ({ ...prev, disponibilidad: msg }));
+        }
+      } catch {
+        const msg = 'No se pudo validar disponibilidad en este momento. Intenta nuevamente.';
+        setDisponibilidadBloqueada(true);
+        setDisponibilidadMsg(msg);
+        setStepErrors(prev => ({ ...prev, disponibilidad: msg }));
+      } finally {
+        setCheckingDisponibilidad(false);
+      }
+    };
+
+    validateDisponibilidad();
+  }, [vehiculo, form.fechaRecogida, form.fechaDevolucion, form.idLocalizacionRecogida, id]);
+
+  const setConductorPrincipal = (idx) => {
+    setForm(prev => ({
+      ...prev,
+      conductores: prev.conductores.map((cc, i) => ({ ...cc, esPrincipal: i === idx })),
+    }));
+  };
+
+  const validateConductorDraft = (draft) => {
+    const errs = {};
+    const nombre = draft.nombre.trim();
+    const apellido = draft.apellido.trim();
+    const licencia = draft.licencia.trim().toUpperCase();
+    const telefono = draft.telefono.trim();
+    const edadNum = Number(draft.edad);
+
+    if (!nombre) errs.nombre = 'Nombre requerido';
+    else if (!NAME_REGEX.test(nombre)) errs.nombre = 'Nombre inválido (solo letras y espacios, 2-50)';
+
+    if (!apellido) errs.apellido = 'Apellido requerido';
+    else if (!NAME_REGEX.test(apellido)) errs.apellido = 'Apellido inválido (solo letras y espacios, 2-50)';
+
+    if (!licencia) errs.licencia = 'Número de licencia requerido';
+    else if (!LICENCIA_REGEX.test(licencia)) errs.licencia = 'Licencia inválida (5-20 caracteres alfanuméricos)';
+
+    if (!draft.edad) errs.edad = 'Edad requerida';
+    else if (!Number.isInteger(edadNum) || edadNum < 18 || edadNum > 85) errs.edad = 'Edad debe estar entre 18 y 85 años';
+
+    if (!telefono) errs.telefono = 'Teléfono requerido';
+    else if (!PHONE_REGEX.test(telefono)) errs.telefono = 'Teléfono inválido';
+
+    return errs;
+  };
+
+  const handleAddConductor = () => {
+    const errs = validateConductorDraft(newConductor);
+    setNewConductorErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      toast.error(Object.values(errs)[0]);
+      return;
+    }
+
+    setForm(prev => {
+      const nextConductores = prev.conductores.map((c) => ({
+        ...c,
+        esPrincipal: newConductor.esPrincipal ? false : c.esPrincipal,
+      }));
+      nextConductores.push({
+        id: null,
+        nombre: `${newConductor.nombre.trim()} ${newConductor.apellido.trim()}`,
+        licencia: newConductor.licencia.trim().toUpperCase(),
+        edad: String(newConductor.edad).trim(),
+        telefono: newConductor.telefono.trim(),
+        esPrincipal: newConductor.esPrincipal,
+        esCliente: false,
+      });
+      if (!nextConductores.some(c => c.esPrincipal)) {
+        nextConductores[0].esPrincipal = true;
+      }
+      return { ...prev, conductores: nextConductores };
+    });
+
+    setNewConductor({ nombre: '', apellido: '', licencia: '', edad: '', telefono: '', esPrincipal: false });
+    setNewConductorErrors({});
+    setShowAddConductor(false);
+    toast.success('Conductor adicional agregado');
   };
 
   const canProceed = () => {
@@ -198,10 +413,15 @@ export default function ReservarPage() {
         errs.fechaDevolucion = 'La devolución debe ser posterior a la recogida';
       if (!form.idLocalizacionRecogida) errs.idLocalizacionRecogida = 'Selecciona sucursal de recogida';
       if (!form.idLocalizacionDevolucion) errs.idLocalizacionDevolucion = 'Selecciona sucursal de devolución';
+      if (disponibilidadBloqueada) errs.disponibilidad = disponibilidadMsg || 'Vehículo no disponible para el rango seleccionado';
     }
     if (currentStep === 'Conductores') {
       if (form.conductores.length === 0) errs.conductores = 'Debe haber al menos un conductor';
       if (!form.conductores.some(c => c.esPrincipal)) errs.conductores = 'Debe haber un conductor principal';
+      const conductorInvalido = form.conductores.find(c =>
+        !c.esCliente && (!c.nombre?.trim() || !c.licencia?.trim() || !c.edad || !c.telefono?.trim())
+      );
+      if (conductorInvalido) errs.conductores = 'Completa los datos del conductor adicional';
     }
     if (currentStep === 'Pago') {
       if (!pago.nombreTitular.trim()) errs.nombreTitular = 'Nombre del titular requerido';
@@ -209,6 +429,14 @@ export default function ReservarPage() {
       if (!pago.mesExpiracion) errs.mesExpiracion = 'Mes requerido';
       if (!pago.anioExpiracion) errs.anioExpiracion = 'Año requerido';
       if (!pago.cvv || pago.cvv.length < 3) errs.cvv = 'CVV inválido';
+    }
+    if (currentStep === 'Extras') {
+      const condAdic = form.extrasSeleccionados.find((ex) =>
+        String(ex.codigoExtra || ex.codigo || '').toUpperCase() === EXTRA_CONDUCTOR_ADICIONAL_CODE
+      );
+      if (condAdic && conductoresAdicionales === 0) {
+        errs.extras = 'No se puede aplicar COND-ADIC sin conductor adicional.';
+      }
     }
     return errs;
   };
@@ -255,6 +483,9 @@ export default function ReservarPage() {
       setTimeout(() => setShake(false), 500);
       const first = Object.values(errs)[0];
       toast.error(first);
+      if (errs.extras && conductoresStepIndex >= 0) {
+        setStep(conductoresStepIndex);
+      }
       return;
     }
     setStepErrors({});
@@ -292,6 +523,76 @@ export default function ReservarPage() {
     // ── EVERYTHING ELSE RUNS IN BACKGROUND (fire-and-forget) ──
     (async () => {
       try {
+        const principal = form.conductores.find(c => c.esPrincipal) || form.conductores[0];
+        const secundario = form.conductores.find(c => !c.esPrincipal);
+
+        const splitNombres = (fullName = '') => {
+          const trimmed = String(fullName || '').trim();
+          const parts = trimmed.split(/\s+/).filter(Boolean);
+          if (parts.length === 0) return { nombres: '', apellidos: '' };
+          if (parts.length === 1) return { nombres: parts[0], apellidos: principal?.esCliente ? (guestForm.apellido || 'N/A') : 'N/A' };
+          return { nombres: parts.slice(0, -1).join(' '), apellidos: parts.slice(-1).join(' ') };
+        };
+
+        // Public flow: use Booking API to persist selected drivers (principal/secundario).
+        if (!isAuthenticated && principal) {
+          const principalNames = splitNombres(principal.nombre);
+          const secondaryNames = secundario ? splitNombres(secundario.nombre) : null;
+          const fechaIni = new Date(form.fechaRecogida);
+          const fechaFin = new Date(form.fechaDevolucion);
+          const horaInicio = `${String(fechaIni.getHours()).padStart(2, '0')}:${String(fechaIni.getMinutes()).padStart(2, '0')}:00`;
+          const horaFin = `${String(fechaFin.getHours()).padStart(2, '0')}:${String(fechaFin.getMinutes()).padStart(2, '0')}:00`;
+
+          const bookingPayload = {
+            idVehiculo: String(vehiculo?.codigoInterno || vehiculo?.idVehiculo || id),
+            idLocalizacionRecogida: Number(form.idLocalizacionRecogida),
+            idLocalizacionEntrega: Number(form.idLocalizacionDevolucion),
+            fechaInicio: form.fechaRecogida.slice(0, 10),
+            fechaFin: form.fechaDevolucion.slice(0, 10),
+            horaInicio,
+            horaFin,
+            origenCanalReserva: 'WEB',
+            cliente: {
+              nombres: guestForm.nombre.trim(),
+              apellidos: guestForm.apellido.trim() || 'N/A',
+              tipoIdentificacion: 'CED',
+              numeroIdentificacion: guestForm.cedula.trim(),
+              correo: guestForm.correo.trim(),
+              telefono: guestForm.telefono.trim(),
+            },
+            conductorPrincipal: {
+              nombres: principalNames.nombres || guestForm.nombre.trim(),
+              apellidos: principalNames.apellidos || guestForm.apellido.trim() || 'N/A',
+              tipoIdentificacion: 'CED',
+              numeroIdentificacion: principal.esCliente ? guestForm.cedula.trim() : `${guestForm.cedula.trim()}-A`,
+              correo: guestForm.correo.trim(),
+              telefono: principal.telefono?.trim() || guestForm.telefono.trim(),
+              numeroLicencia: principal.licencia?.trim() || 'PENDIENTE',
+              edadConductor: Number(principal.edad) || 25,
+            },
+            conductorSecundario: secondaryNames ? {
+              nombres: secondaryNames.nombres,
+              apellidos: secondaryNames.apellidos,
+              tipoIdentificacion: 'PAS',
+              numeroIdentificacion: `${guestForm.cedula.trim()}-B`,
+              correo: guestForm.correo.trim(),
+              telefono: secundario?.telefono?.trim() || guestForm.telefono.trim(),
+              numeroLicencia: secundario?.licencia?.trim() || 'PENDIENTE',
+              edadConductor: Number(secundario?.edad) || 25,
+            } : null,
+            extras: form.extrasSeleccionados.map(ex => ({ idExtra: ex.id, cantidad: ex.cantidad })),
+          };
+
+          const bookingRes = await bookingApi.crearReserva(bookingPayload);
+          const bookingData = bookingRes.data?.data;
+          setReservaConfirmada(prev => ({
+            ...prev,
+            codigoReserva: bookingData?.codigoReserva || prev.codigoReserva,
+            codigoConfirmacion: bookingData?.codigoReserva || prev.codigoConfirmacion,
+          }));
+          return;
+        }
+
         // 1. Create reservation
         const reservaPayload = {
           idCliente: clientId,
@@ -447,11 +748,26 @@ export default function ReservarPage() {
                   </div>
                 )}
               </div>
-              <h3>{vehiculo?.marca} {vehiculo?.modelo || vehiculo?.modeloVehiculo}</h3>
+              <h3>{nombreVehiculo}</h3>
+              <div className="reservar-step-desc" style={{ marginBottom: '0.75rem' }}>
+                {categoriaVehiculo} • Año {anioVehiculo}
+              </div>
               <div className="reservar-vehicle-specs">
                 <span><Users size={14} /> {vehiculo?.capacidadPasajeros} pax</span>
                 <span><Fuel size={14} /> {vehiculo?.tipoCombustible}</span>
                 <span><Settings2 size={14} /> {vehiculo?.tipoTransmision}</span>
+              </div>
+              <div className="reservar-info" style={{ marginTop: '0.75rem' }}>
+                <Car size={16} />
+                <span>Placa: <strong>{placaVehiculo}</strong> • Puertas: <strong>{puertasVehiculo}</strong> • Maletas: <strong>{maletasVehiculo}</strong></span>
+              </div>
+              <div className="reservar-info" style={{ marginTop: '0.5rem' }}>
+                <MapPin size={16} />
+                <span>Sucursal del vehículo: <strong>{localizacionActual?.nombreLocalizacion || localizacionActual?.nombre || 'No disponible'}</strong></span>
+              </div>
+              <div className="reservar-info" style={{ marginTop: '0.5rem' }}>
+                <ShieldCheck size={16} />
+                <span>Incluye kilometraje estándar y asistencia básica en carretera.</span>
               </div>
               <div className="reservar-price-summary">
                 <div className="reservar-price-line">
@@ -462,6 +778,12 @@ export default function ReservarPage() {
                   <div className="reservar-price-line">
                     <span>Extras</span>
                     <span>${subtotalExtras.toFixed(2)}</span>
+                  </div>
+                )}
+                {conductoresAdicionales > 0 && (
+                  <div className="reservar-price-line">
+                    <span>Recargo conductores ({conductoresAdicionales})</span>
+                    <span>${recargoConductores.toFixed(2)}</span>
                   </div>
                 )}
                 {isOneWay && (
@@ -542,7 +864,7 @@ export default function ReservarPage() {
                       id="fecha-recogida"
                       label="Fecha y hora de Recogida *"
                       value={form.fechaRecogida}
-                      onChange={(val) => { setForm({ ...form, fechaRecogida: val }); setStepErrors(e => ({...e, fechaRecogida: ''})); }}
+                      onChange={(val) => { setForm({ ...form, fechaRecogida: val }); setStepErrors(e => ({...e, fechaRecogida: '', disponibilidad: ''})); }}
                     />
                     {stepErrors.fechaRecogida && <span className="form-error"><AlertCircle size={13} /> {stepErrors.fechaRecogida}</span>}
                   </div>
@@ -552,14 +874,14 @@ export default function ReservarPage() {
                       label="Fecha y hora de Devolución *"
                       value={form.fechaDevolucion}
                       minDate={form.fechaRecogida}
-                      onChange={(val) => { setForm({ ...form, fechaDevolucion: val }); setStepErrors(e => ({...e, fechaDevolucion: ''})); }}
+                      onChange={(val) => { setForm({ ...form, fechaDevolucion: val }); setStepErrors(e => ({...e, fechaDevolucion: '', disponibilidad: ''})); }}
                     />
                     {stepErrors.fechaDevolucion && <span className="form-error"><AlertCircle size={13} /> {stepErrors.fechaDevolucion}</span>}
                   </div>
                   <div className={`form-group ${stepErrors.idLocalizacionRecogida ? 'form-group--error' : ''}`}>
                     <label className="form-label"><MapPin size={16} /> Sucursal de Recogida *</label>
                     <select className="form-input" value={form.idLocalizacionRecogida}
-                      onChange={(e) => { setForm({ ...form, idLocalizacionRecogida: e.target.value }); setStepErrors(er => ({...er, idLocalizacionRecogida: ''})); }}>
+                      onChange={(e) => { setForm({ ...form, idLocalizacionRecogida: e.target.value }); setStepErrors(er => ({...er, idLocalizacionRecogida: '', disponibilidad: ''})); }}>
                       <option value="">Seleccionar...</option>
                       {localizaciones.map((l) => (
                         <option key={l.idLocalizacion || l.id} value={l.idLocalizacion || l.id}>
@@ -587,6 +909,17 @@ export default function ReservarPage() {
                   <div className="reservar-info">
                     <ShieldCheck size={16} />
                     <span>Se aplicará un cargo de <strong>$25.00</strong> por devolución en diferente sucursal.</span>
+                  </div>
+                )}
+                {checkingDisponibilidad && (
+                  <div className="reservar-info">
+                    <Loader2 size={16} className="spin" />
+                    <span>Validando disponibilidad en tiempo real...</span>
+                  </div>
+                )}
+                {stepErrors.disponibilidad && (
+                  <div className="form-error" style={{ marginTop: '0.75rem' }}>
+                    <AlertCircle size={13} /> {stepErrors.disponibilidad}
                   </div>
                 )}
               </div>
@@ -619,10 +952,7 @@ export default function ReservarPage() {
                         {!c.esPrincipal && (
                           <button className="btn btn--ghost btn--sm"
                             onClick={() => {
-                              setForm(prev => ({
-                                ...prev,
-                                conductores: prev.conductores.map((cc, i) => ({ ...cc, esPrincipal: i === idx }))
-                              }));
+                              setConductorPrincipal(idx);
                             }}>Hacer Principal</button>
                         )}
                         {!c.esCliente && (
@@ -646,61 +976,82 @@ export default function ReservarPage() {
                   <div className="pago-card" style={{ marginTop: '1rem', padding: '1.5rem' }}>
                     <h4 style={{ marginBottom: '1rem' }}>Nuevo Conductor</h4>
                     <div className="pago-form__row" style={{ gap: '1rem', flexWrap: 'wrap' }}>
-                      <div className="form-group" style={{ flex: 1, minWidth: '200px' }}>
+                      <div className={`form-group ${newConductorErrors.nombre ? 'form-group--error' : ''}`} style={{ flex: 1, minWidth: '200px' }}>
                         <label className="form-label">Nombre *</label>
                         <input className="form-input" placeholder="Nombre completo"
                           value={newConductor.nombre}
-                          onChange={(e) => setNewConductor({ ...newConductor, nombre: e.target.value })} />
+                          maxLength={50}
+                          onChange={(e) => {
+                            setNewConductor({ ...newConductor, nombre: e.target.value.replace(/\s{2,}/g, ' ') });
+                            setNewConductorErrors(prev => ({ ...prev, nombre: '' }));
+                          }} />
+                        {newConductorErrors.nombre && <span className="form-error"><AlertCircle size={13} /> {newConductorErrors.nombre}</span>}
                       </div>
-                      <div className="form-group" style={{ flex: 1, minWidth: '200px' }}>
+                      <div className={`form-group ${newConductorErrors.apellido ? 'form-group--error' : ''}`} style={{ flex: 1, minWidth: '200px' }}>
                         <label className="form-label">Apellido *</label>
                         <input className="form-input" placeholder="Apellido"
                           value={newConductor.apellido}
-                          onChange={(e) => setNewConductor({ ...newConductor, apellido: e.target.value })} />
+                          maxLength={50}
+                          onChange={(e) => {
+                            setNewConductor({ ...newConductor, apellido: e.target.value.replace(/\s{2,}/g, ' ') });
+                            setNewConductorErrors(prev => ({ ...prev, apellido: '' }));
+                          }} />
+                        {newConductorErrors.apellido && <span className="form-error"><AlertCircle size={13} /> {newConductorErrors.apellido}</span>}
                       </div>
                     </div>
                     <div className="pago-form__row" style={{ gap: '1rem', flexWrap: 'wrap' }}>
-                      <div className="form-group" style={{ flex: 1, minWidth: '150px' }}>
-                        <label className="form-label">No. Licencia</label>
+                      <div className={`form-group ${newConductorErrors.licencia ? 'form-group--error' : ''}`} style={{ flex: 1, minWidth: '150px' }}>
+                        <label className="form-label">No. Licencia *</label>
                         <input className="form-input" placeholder="Licencia de conducir"
                           value={newConductor.licencia}
-                          onChange={(e) => setNewConductor({ ...newConductor, licencia: e.target.value })} />
+                          maxLength={20}
+                          onChange={(e) => {
+                            setNewConductor({ ...newConductor, licencia: e.target.value.toUpperCase() });
+                            setNewConductorErrors(prev => ({ ...prev, licencia: '' }));
+                          }} />
+                        {newConductorErrors.licencia && <span className="form-error"><AlertCircle size={13} /> {newConductorErrors.licencia}</span>}
                       </div>
-                      <div className="form-group" style={{ flex: 1, minWidth: '100px' }}>
-                        <label className="form-label">Edad</label>
+                      <div className={`form-group ${newConductorErrors.edad ? 'form-group--error' : ''}`} style={{ flex: 1, minWidth: '100px' }}>
+                        <label className="form-label">Edad *</label>
                         <input className="form-input" type="number" placeholder="25"
                           value={newConductor.edad}
-                          onChange={(e) => setNewConductor({ ...newConductor, edad: e.target.value })} />
+                          min={18}
+                          max={85}
+                          onChange={(e) => {
+                            setNewConductor({ ...newConductor, edad: e.target.value.replace(/[^\d]/g, '') });
+                            setNewConductorErrors(prev => ({ ...prev, edad: '' }));
+                          }} />
+                        {newConductorErrors.edad && <span className="form-error"><AlertCircle size={13} /> {newConductorErrors.edad}</span>}
                       </div>
-                      <div className="form-group" style={{ flex: 1, minWidth: '150px' }}>
-                        <label className="form-label">Teléfono</label>
+                      <div className={`form-group ${newConductorErrors.telefono ? 'form-group--error' : ''}`} style={{ flex: 1, minWidth: '150px' }}>
+                        <label className="form-label">Teléfono *</label>
                         <input className="form-input" placeholder="+593..."
                           value={newConductor.telefono}
-                          onChange={(e) => setNewConductor({ ...newConductor, telefono: e.target.value })} />
+                          maxLength={20}
+                          onChange={(e) => {
+                            setNewConductor({ ...newConductor, telefono: e.target.value.replace(/[^\d+()\-\s]/g, '') });
+                            setNewConductorErrors(prev => ({ ...prev, telefono: '' }));
+                          }} />
+                        {newConductorErrors.telefono && <span className="form-error"><AlertCircle size={13} /> {newConductorErrors.telefono}</span>}
                       </div>
                     </div>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                      <input
+                        type="checkbox"
+                        checked={newConductor.esPrincipal}
+                        onChange={(e) => setNewConductor({ ...newConductor, esPrincipal: e.target.checked })}
+                      />
+                      Marcar como conductor principal
+                    </label>
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
                       <button className="btn btn--primary btn--sm"
-                        disabled={!newConductor.nombre.trim() || !newConductor.apellido.trim()}
-                        onClick={() => {
-                          setForm(prev => ({
-                            ...prev,
-                            conductores: [...prev.conductores, {
-                              id: null,
-                              nombre: `${newConductor.nombre} ${newConductor.apellido}`,
-                              licencia: newConductor.licencia,
-                              edad: newConductor.edad,
-                              telefono: newConductor.telefono,
-                              esPrincipal: false,
-                              esCliente: false,
-                            }]
-                          }));
-                          setNewConductor({ nombre: '', apellido: '', licencia: '', edad: '', telefono: '' });
-                          setShowAddConductor(false);
-                          toast.success('Conductor adicional agregado');
-                        }}><Check size={16} /> Agregar</button>
+                        onClick={handleAddConductor}><Check size={16} /> Agregar</button>
                       <button className="btn btn--ghost btn--sm"
-                        onClick={() => setShowAddConductor(false)}><X size={16} /> Cancelar</button>
+                        onClick={() => {
+                          setShowAddConductor(false);
+                          setNewConductorErrors({});
+                          setNewConductor({ nombre: '', apellido: '', licencia: '', edad: '', telefono: '', esPrincipal: false });
+                        }}><X size={16} /> Cancelar</button>
                     </div>
                   </div>
                 )}
@@ -718,9 +1069,12 @@ export default function ReservarPage() {
                   <div className="extras-grid">
                     {extras.map((extra) => {
                       const selected = form.extrasSeleccionados.find(e => e.id === (extra.idExtra || extra.id));
+                      const isCondAdic = isConductorExtra(extra);
+                      const lockCondAdic = isCondAdic && conductoresAdicionales > 0;
                       return (
                         <div key={extra.idExtra || extra.id}
                           className={`extra-card ${selected ? 'extra-card--selected' : ''}`}
+                          style={lockCondAdic ? { cursor: 'not-allowed', opacity: 0.92 } : undefined}
                           onClick={() => toggleExtra(extra)}
                         >
                           <div className="extra-card__header">
@@ -734,13 +1088,28 @@ export default function ReservarPage() {
                           <div className="extra-card__price">
                             ${Number(extra.valorFijo || extra.precio || 0).toFixed(2)}/día
                           </div>
+                          {isCondAdic && (
+                            <p className="extra-card__desc" style={{ marginTop: '0.4rem', fontWeight: 600 }}>
+                              {conductoresAdicionales > 0
+                                ? 'Aplicado automáticamente por conductor adicional'
+                                : 'Requiere agregar conductor adicional'}
+                            </p>
+                          )}
                           {selected && (
                             <div className="extra-card__qty" onClick={(e) => e.stopPropagation()}>
-                              <button className="extra-card__qty-btn" onClick={() => updateExtraCantidad(selected.id, -1)}>
+                              <button
+                                className="extra-card__qty-btn"
+                                disabled={isCondAdic}
+                                onClick={() => updateExtraCantidad(selected.id, -1)}
+                              >
                                 <Minus size={14} />
                               </button>
                               <span>{selected.cantidad}</span>
-                              <button className="extra-card__qty-btn" onClick={() => updateExtraCantidad(selected.id, 1)}>
+                              <button
+                                className="extra-card__qty-btn"
+                                disabled={isCondAdic}
+                                onClick={() => updateExtraCantidad(selected.id, 1)}
+                              >
                                 <Plus size={14} />
                               </button>
                             </div>
@@ -748,6 +1117,14 @@ export default function ReservarPage() {
                         </div>
                       );
                     })}
+                  </div>
+                )}
+                {conductoresAdicionales > 0 && (
+                  <div className="reservar-info" style={{ marginTop: '1rem' }}>
+                    <ShieldCheck size={16} />
+                    <span>
+                      Recargo por conductor adicional: <strong>${RECARGO_CONDUCTOR_ADICIONAL_DIA.toFixed(2)}</strong> por día x {conductoresAdicionales} conductor(es).
+                    </span>
                   </div>
                 )}
               </div>
@@ -779,6 +1156,13 @@ export default function ReservarPage() {
                       {form.extrasSeleccionados.map(ex => (
                         <p key={ex.id}>{ex.nombre} x{ex.cantidad} — ${(Number(ex.valorFijo) * ex.cantidad * dias).toFixed(2)}</p>
                       ))}
+                    </div>
+                  )}
+                  {conductoresAdicionales > 0 && (
+                    <div className="resumen-section">
+                      <h4>Recargo por Conductores</h4>
+                      <p>{conductoresAdicionales} adicional(es) x ${RECARGO_CONDUCTOR_ADICIONAL_DIA.toFixed(2)}/día</p>
+                      <p><strong>Total recargo:</strong> ${recargoConductores.toFixed(2)}</p>
                     </div>
                   )}
                   <div className="resumen-section">
