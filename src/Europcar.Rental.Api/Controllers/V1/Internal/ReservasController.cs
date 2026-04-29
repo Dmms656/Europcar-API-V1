@@ -99,6 +99,18 @@ public class ReservasController : ControllerBase
     }
 
     /// <summary>
+    /// Editar una reserva existente.
+    /// </summary>
+    [HttpPut("{id:int}")]
+    [Authorize(Roles = "ADMIN,AGENTE_POS")]
+    public async Task<IActionResult> Update(int id, [FromBody] ActualizarReservaRequest request)
+    {
+        var usuario = User.FindFirstValue(ClaimTypes.Name) ?? "API";
+        var result = await _reservaService.UpdateAsync(id, request, usuario);
+        return Ok(ApiResponse<object>.Ok(result, "Reserva actualizada exitosamente"));
+    }
+
+    /// <summary>
     /// Obtener una reserva por su código.
     /// </summary>
     [HttpGet("{codigo}")]

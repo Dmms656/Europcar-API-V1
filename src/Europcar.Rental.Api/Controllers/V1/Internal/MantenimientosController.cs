@@ -68,6 +68,18 @@ public class MantenimientosController : ControllerBase
     }
 
     /// <summary>
+    /// Editar un mantenimiento.
+    /// </summary>
+    [HttpPut("{id:int}")]
+    [Authorize(Roles = "ADMIN,AGENTE_POS")]
+    public async Task<IActionResult> Update(int id, [FromBody] ActualizarMantenimientoRequest request)
+    {
+        var usuario = User.FindFirstValue(ClaimTypes.Name) ?? "API";
+        var result = await _mantenimientoService.UpdateAsync(id, request, usuario);
+        return Ok(ApiResponse<object>.Ok(result, "Mantenimiento actualizado exitosamente"));
+    }
+
+    /// <summary>
     /// Cerrar un mantenimiento (devuelve el vehículo a disponible).
     /// </summary>
     [HttpPut("{id:int}/cerrar")]

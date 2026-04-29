@@ -93,6 +93,8 @@ public class PagoService : IPagoService
 
     public async Task<PagoResponse> CreateAsync(CrearPagoRequest request, string usuario)
     {
+        request.IdReserva = await ResolveReservaIdAsync(request.IdReserva, request.CodigoReserva);
+
         if (request.IdReserva == null && request.IdContrato == null)
             throw new BusinessException("Todo pago debe referenciar una reserva o un contrato");
 
@@ -176,5 +178,58 @@ public class PagoService : IPagoService
             ReferenciaExterna = request.ReferenciaExterna,
             ObservacionesPago = request.Observaciones
         };
+    }
+
+    public async Task<PagoResponse> UpdateAsync(int idPago, ActualizarPagoRequest request, string usuario)
+    {
+        request.IdReserva = await ResolveReservaIdAsync(request.IdReserva, request.CodigoReserva);
+
+        if (request.IdReserva == null && request.IdContrato == null)
+            throw new BusinessException("Todo pago debe referenciar una reserva o un contrato");
+        if (request.Monto <= 0)
+            throw new BusinessException("El monto del pago debe ser mayor a cero");
+
+        var pago = await _context.Pagos.FirstOrDefaultAsync(p => p.IdPago == idPago)
+            ?? throw new NotFoundException($"Pago con ID {idPago} no encontrado");
+
+        pago.IdReserva = request.IdReserva;
+        pago.IdContrato = request.IdContrato;
+        pago.IdCliente = request.IdCliente;
+        pago.TipoPago = request.TipoPago.Trim().ToUpperInvariant();
+        pago.MetodoPago = request.MetodoPago.Trim().ToUpperInvariant();
+        pago.EstadoPago = request.EstadoPago.Trim().ToUpperInvariant();
+        pago.Monto = request.Monto;
+        pago.ReferenciaExterna = string.IsNullOrWhiteSpace(request.ReferenciaExterna) ? null : request.ReferenciaExterna.Trim();
+        pago.ObservacionesPago = string.IsNullOrWhiteSpace(request.Observaciones) ? null : request.Observaciones.Trim();
+        pago.ModificadoPorUsuario = usuario;
+        pago.FechaModificacionUtc = DateTimeOffset.UtcNow;
+
+        await _context.SaveChangesAsync();
+        return await GetByIdAsync(idPago);
+    }
+
+    private async Task<int?> ResolveReservaIdAsync(int? idReserva, string? codigoReserva)
+    {
+        var hasId = idReserva.HasValue;
+        var hasCodigo = !string.IsNullOrWhiteSpace(codigoReserva);
+
+        if (hasId && hasCodigo)
+            throw new BusinessException("Envía idReserva o codigoReserva, pero no ambos.");
+
+        if (hasCodigo)
+        {
+            var normalized = codigoReserva!.Trim().ToUpperInvariant();
+            var resolved = await _context.Reservas
+                .Where(r => r.CodigoReserva == normalized)
+                .Select(r => (int?)r.IdReserva)
+                .FirstOrDefaultAsync();
+
+            if (!resolved.HasValue)
+                throw new NotFoundException($"No existe reserva con código {normalized}");
+
+            return resolved.Value;
+        }
+
+        return idReserva;
     }
 }

@@ -4,6 +4,7 @@ import api from './axiosClient';
 // La ruta pública /api/v1/reservas queda reservada para el contrato Booking.
 export const reservasApi = {
   create: (data) => api.post('/admin/Reservas', data),
+  update: (id, data) => api.put(`/admin/Reservas/${id}`, data),
   getByCodigo: (codigo) => api.get(`/admin/Reservas/${codigo}`),
   getByCliente: (idCliente) => api.get(`/admin/Reservas/cliente/${idCliente}`),
   confirmar: (id, data) => api.put(`/admin/Reservas/${id}/confirmar`, data || {}),

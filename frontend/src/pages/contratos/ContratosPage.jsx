@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { contratosApi } from '../../api/contratosApi';
 import { toast } from 'sonner';
-import { Search, Loader2, FileText, ArrowRightCircle, ArrowLeftCircle, X, Plus } from 'lucide-react';
+import { Search, Loader2, FileText, ArrowRightCircle, ArrowLeftCircle, X, Plus, Pencil } from 'lucide-react';
 import { useClientPagination } from '../../hooks/useClientPagination';
 import PaginationControls from '../../components/ui/PaginationControls';
 
@@ -11,10 +11,14 @@ export default function ContratosPage() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [showCheckin, setShowCheckin] = useState(false);
   const [showCrear, setShowCrear] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const [saving, setSaving] = useState(false);
   const [crearForm, setCrearForm] = useState({ idReserva: '' });
   const [checkoutForm, setCheckoutForm] = useState({ idContrato: '', kilometrajeSalida: '', nivelCombustibleSalida: '', observacionesSalida: '' });
   const [checkinForm, setCheckinForm] = useState({ idContrato: '', kilometrajeEntrada: '', nivelCombustibleEntrada: '', observacionesEntrada: '', cargosAdicionales: 0 });
+  const [editForm, setEditForm] = useState({
+    idContrato: '', fechaHoraSalida: '', fechaHoraPrevistaDevolucion: '', kilometrajeSalida: '', nivelCombustibleSalida: '', estadoContrato: 'ABIERTO', observaciones: '',
+  });
   const pagination = useClientPagination(contratos, 10);
 
   useEffect(() => { loadContratos(); }, []);
@@ -53,6 +57,37 @@ export default function ContratosPage() {
     finally { setSaving(false); }
   };
 
+  const openEdit = (c) => {
+    setEditForm({
+      idContrato: String(c.idContrato),
+      fechaHoraSalida: c.fechaHoraSalida ? new Date(c.fechaHoraSalida).toISOString().slice(0, 16) : '',
+      fechaHoraPrevistaDevolucion: c.fechaHoraPrevistaDevolucion ? new Date(c.fechaHoraPrevistaDevolucion).toISOString().slice(0, 16) : '',
+      kilometrajeSalida: String(c.kilometrajeSalida || 0),
+      nivelCombustibleSalida: String(c.nivelCombustibleSalida || 0),
+      estadoContrato: c.estadoContrato || 'ABIERTO',
+      observaciones: c.observacionesContrato || '',
+    });
+    setShowEdit(true);
+  };
+
+  const doEdit = async (e) => {
+    e.preventDefault(); setSaving(true);
+    try {
+      await contratosApi.update(Number(editForm.idContrato), {
+        fechaHoraSalida: editForm.fechaHoraSalida,
+        fechaHoraPrevistaDevolucion: editForm.fechaHoraPrevistaDevolucion,
+        kilometrajeSalida: Number(editForm.kilometrajeSalida),
+        nivelCombustibleSalida: Number(editForm.nivelCombustibleSalida),
+        estadoContrato: editForm.estadoContrato,
+        observaciones: editForm.observaciones || null,
+      });
+      toast.success('Contrato actualizado');
+      setShowEdit(false);
+      loadContratos();
+    } catch (e) { toast.error(e.response?.data?.message || 'Error'); }
+    finally { setSaving(false); }
+  };
+
   return (
     <div className="module-page">
       <div className="module-page__header">
@@ -69,7 +104,7 @@ export default function ContratosPage() {
         <>
         <div className="data-table-wrapper">
           <table className="data-table">
-            <thead><tr><th>ID</th><th>Código Reserva</th><th>Cliente</th><th>Vehículo</th><th>Inicio</th><th>Fin</th><th>Estado</th></tr></thead>
+            <thead><tr><th>ID</th><th>Código Reserva</th><th>Cliente</th><th>Vehículo</th><th>Inicio</th><th>Fin</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody>
               {pagination.paginatedItems.map(c => (
                 <tr key={c.idContrato}>
@@ -80,9 +115,16 @@ export default function ContratosPage() {
                   <td>{c.fechaInicioContrato ? new Date(c.fechaInicioContrato).toLocaleDateString() : '-'}</td>
                   <td>{c.fechaFinContrato ? new Date(c.fechaFinContrato).toLocaleDateString() : '-'}</td>
                   <td><span className={`status-badge status-badge--${c.estadoContrato === 'CERRADO' ? 'success' : c.estadoContrato === 'ABIERTO' ? 'warning' : 'danger'}`}>{c.estadoContrato}</span></td>
+                  <td className="table-actions">
+                    {c.estadoContrato !== 'CERRADO' && (
+                      <button className="icon-btn" onClick={() => openEdit(c)} title="Editar">
+                        <Pencil size={15} />
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
-              {contratos.length === 0 && <tr><td colSpan={7} className="table-empty">No hay contratos</td></tr>}
+              {contratos.length === 0 && <tr><td colSpan={8} className="table-empty">No hay contratos</td></tr>}
             </tbody>
           </table>
         </div>
@@ -155,6 +197,39 @@ export default function ContratosPage() {
               <div className="modal__footer">
                 <button type="button" className="btn btn--ghost" onClick={() => setShowCheckin(false)}>Cancelar</button>
                 <button type="submit" className="btn btn--primary" disabled={saving}>{saving ? 'Registrando...' : 'Registrar Check-In'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Editar Contrato Modal */}
+      {showEdit && (
+        <div className="modal-overlay" onClick={() => setShowEdit(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal__header"><h2>Editar Contrato</h2><button className="icon-btn" onClick={() => setShowEdit(false)}><X size={18} /></button></div>
+            <form onSubmit={doEdit} className="modal__body">
+              <div className="form-row">
+                <div className="form-group"><label className="form-label">Fecha salida</label>
+                  <input type="datetime-local" className="form-input" required value={editForm.fechaHoraSalida} onChange={e => setEditForm({...editForm, fechaHoraSalida: e.target.value})} /></div>
+                <div className="form-group"><label className="form-label">Fecha devolución prevista</label>
+                  <input type="datetime-local" className="form-input" required value={editForm.fechaHoraPrevistaDevolucion} onChange={e => setEditForm({...editForm, fechaHoraPrevistaDevolucion: e.target.value})} /></div>
+              </div>
+              <div className="form-row">
+                <div className="form-group"><label className="form-label">Kilometraje salida</label>
+                  <input type="number" className="form-input" required value={editForm.kilometrajeSalida} onChange={e => setEditForm({...editForm, kilometrajeSalida: e.target.value})} /></div>
+                <div className="form-group"><label className="form-label">Nivel combustible salida</label>
+                  <input type="number" step="0.01" className="form-input" required value={editForm.nivelCombustibleSalida} onChange={e => setEditForm({...editForm, nivelCombustibleSalida: e.target.value})} /></div>
+              </div>
+              <div className="form-group"><label className="form-label">Estado</label>
+                <select className="form-input" value={editForm.estadoContrato} onChange={e => setEditForm({...editForm, estadoContrato: e.target.value})}>
+                  <option value="ABIERTO">Abierto</option>
+                  <option value="CERRADO">Cerrado</option>
+                </select></div>
+              <div className="form-group"><label className="form-label">Observaciones</label>
+                <input className="form-input" value={editForm.observaciones} onChange={e => setEditForm({...editForm, observaciones: e.target.value})} /></div>
+              <div className="modal__footer">
+                <button type="button" className="btn btn--ghost" onClick={() => setShowEdit(false)}>Cancelar</button>
+                <button type="submit" className="btn btn--primary" disabled={saving}>{saving ? 'Guardando...' : 'Guardar cambios'}</button>
               </div>
             </form>
           </div>

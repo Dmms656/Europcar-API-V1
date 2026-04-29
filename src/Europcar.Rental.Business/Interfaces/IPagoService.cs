@@ -24,4 +24,5 @@ public interface IPagoService
     Task<PagoResponse> GetByIdAsync(int id);
     Task<IEnumerable<PagoResponse>> GetByReservaIdAsync(int idReserva);
     Task<PagoResponse> CreateAsync(CrearPagoRequest request, string usuario);
+    Task<PagoResponse> UpdateAsync(int idPago, ActualizarPagoRequest request, string usuario);
 }

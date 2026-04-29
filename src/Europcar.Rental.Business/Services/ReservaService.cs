@@ -189,6 +189,44 @@ public class ReservaService : IReservaService
         return response!;
     }
 
+    public async Task<ReservaResponse> UpdateAsync(int id, ActualizarReservaRequest request, string usuario)
+    {
+        var reserva = await _context.Reservas.FirstOrDefaultAsync(r => r.IdReserva == id)
+            ?? throw new NotFoundException($"Reserva con ID {id} no encontrada");
+
+        if (reserva.EstadoReserva is "FINALIZADA" or "CANCELADA")
+            throw new BusinessException($"No se puede editar una reserva en estado {reserva.EstadoReserva}");
+        if (request.FechaHoraDevolucion <= request.FechaHoraRecogida)
+            throw new BusinessException("La fecha de devolución debe ser posterior a la de recogida");
+        if (request.FechaHoraRecogida <= DateTimeOffset.UtcNow)
+            throw new BusinessException("La fecha de recogida debe ser futura");
+
+        var solapamiento = await _context.Reservas.AnyAsync(r =>
+            r.IdReserva != id
+            && r.IdVehiculo == request.IdVehiculo
+            && r.EstadoReserva != "CANCELADA"
+            && r.EstadoReserva != "FINALIZADA"
+            && r.EstadoReserva != "NO_SHOW"
+            && r.FechaHoraRecogida < request.FechaHoraDevolucion
+            && r.FechaHoraDevolucion > request.FechaHoraRecogida
+        );
+        if (solapamiento)
+            throw new ConflictException("El vehículo ya tiene una reserva activa en el rango de fechas solicitado");
+
+        reserva.IdVehiculo = request.IdVehiculo;
+        reserva.IdLocalizacionRecogida = request.IdLocalizacionRecogida;
+        reserva.IdLocalizacionDevolucion = request.IdLocalizacionDevolucion;
+        reserva.FechaHoraRecogida = request.FechaHoraRecogida;
+        reserva.FechaHoraDevolucion = request.FechaHoraDevolucion;
+        reserva.CanalReserva = string.IsNullOrWhiteSpace(request.CanalReserva) ? reserva.CanalReserva : request.CanalReserva.Trim().ToUpperInvariant();
+        reserva.ModificadoPorUsuario = usuario;
+        reserva.FechaModificacionUtc = DateTimeOffset.UtcNow;
+
+        await _context.SaveChangesAsync();
+        var updated = await _reservaDataService.GetByIdAsync(id);
+        return MapToResponse(updated!);
+    }
+
     public async Task<ReservaResponse> ConfirmarAsync(int id, string usuario, decimal? monto = null, string? referenciaExterna = null)
     {
         var reserva = await _reservaDataService.GetByIdAsync(id)

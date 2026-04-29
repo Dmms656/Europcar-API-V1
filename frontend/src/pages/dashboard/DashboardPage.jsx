@@ -29,6 +29,8 @@ export default function DashboardPage() {
         totalVehiculos: vehiculos.length,
         vehiculosDisponibles: vehiculos.filter(v => v.estadoOperativo === 'DISPONIBLE').length,
         vehiculosAlquilados: vehiculos.filter(v => v.estadoOperativo === 'ALQUILADO').length,
+        vehiculosMantenimiento: vehiculos.filter(v => v.estadoOperativo === 'MANTENIMIENTO' || v.estadoOperativo === 'TALLER').length,
+        vehiculosFueraServicio: vehiculos.filter(v => v.estadoOperativo === 'FUERA_SERVICIO').length,
         totalClientes: clientes.length,
         totalContratos: contratos.length,
         contratosAbiertos: contratos.filter(c => c.estadoContrato === 'ABIERTO').length,
@@ -36,6 +38,7 @@ export default function DashboardPage() {
     } catch (e) {
       setStats({
         totalVehiculos: '-', vehiculosDisponibles: '-', vehiculosAlquilados: '-',
+        vehiculosMantenimiento: '-', vehiculosFueraServicio: '-',
         totalClientes: '-', totalContratos: '-', contratosAbiertos: '-',
       });
     } finally { setLoading(false); }
@@ -47,6 +50,8 @@ export default function DashboardPage() {
     { title: 'Contratos', value: stats?.totalContratos, sub: `${stats?.contratosAbiertos} abiertos`, icon: FileText, path: '/contratos', color: 'var(--color-info)' },
     { title: 'Alquilados', value: stats?.vehiculosAlquilados, sub: 'vehículos en uso', icon: TrendingUp, path: '/reservas', color: 'var(--color-warning)' },
   ];
+  const totalVehiculos = Number(stats?.totalVehiculos || 0);
+  const disponibilidad = totalVehiculos > 0 ? Math.round((Number(stats?.vehiculosDisponibles || 0) / totalVehiculos) * 100) : 0;
 
   return (
     <div className="dashboard">
@@ -80,6 +85,22 @@ export default function DashboardPage() {
       )}
 
       <div className="dashboard__info">
+        <div className="info-card">
+          <h3>Seguimiento general de flota</h3>
+          <div className="info-card__row">
+            <span>Disponibilidad general</span>
+            <strong>{disponibilidad}%</strong>
+          </div>
+          <div className="info-card__row">
+            <span>En mantenimiento / taller</span>
+            <strong>{stats?.vehiculosMantenimiento}</strong>
+          </div>
+          <div className="info-card__row">
+            <span>Fuera de servicio</span>
+            <strong>{stats?.vehiculosFueraServicio}</strong>
+          </div>
+        </div>
+
         <div className="info-card">
           <h3>Información de sesión</h3>
           <div className="info-card__row">

@@ -24,5 +24,6 @@ public interface IMantenimientoService
     Task<MantenimientoResponse> GetByIdAsync(int id);
     Task<IEnumerable<MantenimientoResponse>> GetByVehiculoIdAsync(int idVehiculo);
     Task<MantenimientoResponse> CreateAsync(CrearMantenimientoRequest request, string usuario);
+    Task<MantenimientoResponse> UpdateAsync(int id, ActualizarMantenimientoRequest request, string usuario);
     Task<MantenimientoResponse> CerrarAsync(int id, string usuario);
 }

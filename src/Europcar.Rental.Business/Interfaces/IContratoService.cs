@@ -24,6 +24,7 @@ public interface IContratoService
     Task<IEnumerable<ContratoResponse>> GetAllAsync();
     Task<IEnumerable<ContratoResponse>> GetByClienteIdAsync(int idCliente);
     Task<ContratoResponse> CrearDesdeReservaAsync(CrearContratoRequest request, string usuario);
+    Task<ContratoResponse> UpdateAsync(int id, ActualizarContratoRequest request, string usuario);
     Task<CheckInOutResponse> RegistrarCheckOutAsync(CheckOutRequest request, string usuario);
     Task<CheckInOutResponse> RegistrarCheckInAsync(CheckInRequest request, string usuario);
 }

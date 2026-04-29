@@ -9,3 +9,13 @@ public class CrearMantenimientoRequest
     public string? ProveedorTaller { get; set; }
     public string? Observaciones { get; set; }
 }
+
+public class ActualizarMantenimientoRequest
+{
+    public string TipoMantenimiento { get; set; } = "PREVENTIVO";
+    public int KilometrajeMantenimiento { get; set; }
+    public decimal CostoMantenimiento { get; set; }
+    public string? ProveedorTaller { get; set; }
+    public string? Observaciones { get; set; }
+    public string EstadoMantenimiento { get; set; } = "ABIERTO";
+}

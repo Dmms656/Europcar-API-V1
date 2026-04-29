@@ -4,7 +4,7 @@ import { vehiculosApi } from '../../api/vehiculosApi';
 import { clientesApi } from '../../api/clientesApi';
 import { catalogosApi } from '../../api/catalogosApi';
 import { toast } from 'sonner';
-import { Plus, Search, CheckCircle, XCircle, Loader2, CalendarCheck, X, RefreshCw } from 'lucide-react';
+import { Plus, Search, CheckCircle, XCircle, Loader2, CalendarCheck, X, RefreshCw, Pencil } from 'lucide-react';
 import { useClientPagination } from '../../hooks/useClientPagination';
 import PaginationControls from '../../components/ui/PaginationControls';
 
@@ -17,6 +17,7 @@ export default function ReservasPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [editingReserva, setEditingReserva] = useState(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     idCliente: '', idVehiculo: '', idLocalizacionRecogida: '', idLocalizacionDevolucion: '',
@@ -104,6 +105,44 @@ export default function ReservasPage() {
     finally { setSaving(false); }
   };
 
+  const openEdit = (r) => {
+    setEditingReserva(r);
+    setForm({
+      ...form,
+      idCliente: String(r.idCliente || ''),
+      idVehiculo: String(r.idVehiculo || ''),
+      idLocalizacionRecogida: String(r.idLocalizacionRecogida || ''),
+      idLocalizacionDevolucion: String(r.idLocalizacionDevolucion || ''),
+      canalReserva: r.canalReserva || 'WEB',
+      fechaHoraRecogida: r.fechaHoraRecogida ? new Date(r.fechaHoraRecogida).toISOString().slice(0, 16) : '',
+      fechaHoraDevolucion: r.fechaHoraDevolucion ? new Date(r.fechaHoraDevolucion).toISOString().slice(0, 16) : '',
+      extras: [],
+    });
+    setShowModal(true);
+  };
+
+  const handleSave = async (e) => {
+    if (!editingReserva) return handleCreate(e);
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const payload = {
+        idVehiculo: Number(form.idVehiculo),
+        idLocalizacionRecogida: Number(form.idLocalizacionRecogida),
+        idLocalizacionDevolucion: Number(form.idLocalizacionDevolucion),
+        fechaHoraRecogida: form.fechaHoraRecogida,
+        fechaHoraDevolucion: form.fechaHoraDevolucion,
+        canalReserva: form.canalReserva,
+      };
+      await reservasApi.update(editingReserva.idReserva, payload);
+      toast.success('Reserva actualizada');
+      setShowModal(false);
+      setEditingReserva(null);
+      loadAll();
+    } catch (e) { toast.error(e.response?.data?.message || 'Error al actualizar reserva'); }
+    finally { setSaving(false); }
+  };
+
   const confirmar = async (id) => {
     try { await reservasApi.confirmar(id); toast.success('Reserva confirmada'); loadAll(); }
     catch (e) { toast.error(e.response?.data?.message || 'Error'); }
@@ -158,6 +197,11 @@ export default function ReservasPage() {
                   <td><strong>${Number(r.totalReserva || r.total || 0).toFixed(2)}</strong></td>
                   <td><span className={`status-badge status-badge--${r.estadoReserva === 'CONFIRMADA' ? 'success' : r.estadoReserva === 'PENDIENTE' ? 'warning' : 'danger'}`}>{r.estadoReserva}</span></td>
                   <td className="table-actions">
+                    {(r.estadoReserva === 'PENDIENTE' || r.estadoReserva === 'CONFIRMADA') && (
+                      <button className="icon-btn" onClick={() => openEdit(r)} title="Editar">
+                        <Pencil size={15} />
+                      </button>
+                    )}
                     {r.estadoReserva === 'PENDIENTE' && <button className="icon-btn icon-btn--success" onClick={() => confirmar(r.idReserva)} title="Confirmar"><CheckCircle size={15} /></button>}
                     {(r.estadoReserva === 'PENDIENTE' || r.estadoReserva === 'CONFIRMADA') && <button className="icon-btn icon-btn--danger" onClick={() => cancelar(r.idReserva)} title="Cancelar"><XCircle size={15} /></button>}
                   </td>
@@ -181,8 +225,8 @@ export default function ReservasPage() {
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal modal--lg" onClick={(e) => e.stopPropagation()}>
-            <div className="modal__header"><h2>Nueva Reserva</h2><button className="icon-btn" onClick={() => setShowModal(false)}><X size={18} /></button></div>
-            <form onSubmit={handleCreate} className="modal__body">
+            <div className="modal__header"><h2>{editingReserva ? 'Editar Reserva' : 'Nueva Reserva'}</h2><button className="icon-btn" onClick={() => { setShowModal(false); setEditingReserva(null); }}><X size={18} /></button></div>
+            <form onSubmit={handleSave} className="modal__body">
               <div className="form-row">
                 <div className="form-group"><label className="form-label">Cliente</label>
                   <select className="form-input" required value={form.idCliente} onChange={(e) => setForm({...form, idCliente: e.target.value})}>
@@ -228,9 +272,9 @@ export default function ReservasPage() {
                 <button type="button" className="btn btn--ghost btn--sm" onClick={addExtra}><Plus size={14} /> Agregar extra</button>
               </div>
               <div className="modal__footer">
-                <button type="button" className="btn btn--ghost" onClick={() => setShowModal(false)}>Cancelar</button>
+                <button type="button" className="btn btn--ghost" onClick={() => { setShowModal(false); setEditingReserva(null); }}>Cancelar</button>
                 <button type="submit" className="btn btn--primary" disabled={saving}>
-                  {saving ? <><Loader2 size={16} className="spin" /> Creando...</> : 'Crear Reserva'}
+                  {saving ? <><Loader2 size={16} className="spin" /> Guardando...</> : (editingReserva ? 'Guardar cambios' : 'Crear Reserva')}
                 </button>
               </div>
             </form>

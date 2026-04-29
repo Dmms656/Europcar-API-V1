@@ -2,9 +2,11 @@ using Europcar.Rental.Business.DTOs.Request.Mantenimientos;
 using Europcar.Rental.Business.DTOs.Response.Mantenimientos;
 using Europcar.Rental.Business.Exceptions;
 using Europcar.Rental.Business.Interfaces;
+using Europcar.Rental.DataAccess.Context;
 using Europcar.Rental.DataManagement.Common;
 using Europcar.Rental.DataManagement.Interfaces;
 using Europcar.Rental.DataManagement.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace Europcar.Rental.Business.Services;
 
@@ -13,15 +15,18 @@ public class MantenimientoService : IMantenimientoService
     private readonly IMantenimientoDataService _mantenimientoDataService;
     private readonly IVehiculoDataService _vehiculoDataService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly RentalDbContext _context;
 
     public MantenimientoService(
         IMantenimientoDataService mantenimientoDataService,
         IVehiculoDataService vehiculoDataService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        RentalDbContext context)
     {
         _mantenimientoDataService = mantenimientoDataService;
         _vehiculoDataService = vehiculoDataService;
         _unitOfWork = unitOfWork;
+        _context = context;
     }
 
     public async Task<IEnumerable<MantenimientoResponse>> GetAllAsync()
@@ -85,6 +90,26 @@ public class MantenimientoService : IMantenimientoService
         await _mantenimientoDataService.CerrarAsync(id, usuario);
         await _unitOfWork.SaveChangesAsync();
 
+        var result = await _mantenimientoDataService.GetByIdAsync(id);
+        return MapToResponse(result!);
+    }
+
+    public async Task<MantenimientoResponse> UpdateAsync(int id, ActualizarMantenimientoRequest request, string usuario)
+    {
+        var entity = await _context.Mantenimientos.FirstOrDefaultAsync(m => m.IdMantenimiento == id)
+            ?? throw new NotFoundException($"Mantenimiento con ID {id} no encontrado");
+
+        if (entity.EstadoMantenimiento == "CERRADO")
+            throw new BusinessException("No se puede editar un mantenimiento cerrado");
+
+        entity.TipoMantenimiento = request.TipoMantenimiento.Trim().ToUpperInvariant();
+        entity.KilometrajeMantenimiento = request.KilometrajeMantenimiento;
+        entity.CostoMantenimiento = request.CostoMantenimiento;
+        entity.ProveedorTaller = string.IsNullOrWhiteSpace(request.ProveedorTaller) ? null : request.ProveedorTaller.Trim();
+        entity.Observaciones = string.IsNullOrWhiteSpace(request.Observaciones) ? null : request.Observaciones.Trim();
+        entity.EstadoMantenimiento = request.EstadoMantenimiento.Trim().ToUpperInvariant();
+
+        await _context.SaveChangesAsync();
         var result = await _mantenimientoDataService.GetByIdAsync(id);
         return MapToResponse(result!);
     }

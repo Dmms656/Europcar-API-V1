@@ -65,4 +65,16 @@ public class PagosController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = result.IdPago },
             ApiResponse<object>.Ok(result, "Pago registrado exitosamente"));
     }
+
+    /// <summary>
+    /// Editar un pago.
+    /// </summary>
+    [HttpPut("{id:int}")]
+    [Authorize(Roles = "ADMIN,AGENTE_POS")]
+    public async Task<IActionResult> Update(int id, [FromBody] ActualizarPagoRequest request)
+    {
+        var usuario = User.FindFirstValue(ClaimTypes.Name) ?? "API";
+        var result = await _pagoService.UpdateAsync(id, request, usuario);
+        return Ok(ApiResponse<object>.Ok(result, "Pago actualizado exitosamente"));
+    }
 }

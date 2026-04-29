@@ -39,3 +39,13 @@ public class ReservaConductorItemRequest
     public int IdConductor { get; set; }
     public bool EsPrincipal { get; set; } = false;
 }
+
+public class ActualizarReservaRequest
+{
+    public int IdVehiculo { get; set; }
+    public int IdLocalizacionRecogida { get; set; }
+    public int IdLocalizacionDevolucion { get; set; }
+    public DateTimeOffset FechaHoraRecogida { get; set; }
+    public DateTimeOffset FechaHoraDevolucion { get; set; }
+    public string CanalReserva { get; set; } = "API";
+}

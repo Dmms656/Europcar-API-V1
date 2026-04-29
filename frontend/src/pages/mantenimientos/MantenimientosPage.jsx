@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { mantenimientosApi } from '../../api/mantenimientosApi';
 import { toast } from 'sonner';
-import { Wrench, Search, Plus, X, Loader2, CheckCircle, RefreshCw } from 'lucide-react';
+import { Wrench, Search, Plus, X, Loader2, CheckCircle, RefreshCw, Pencil } from 'lucide-react';
 import { useClientPagination } from '../../hooks/useClientPagination';
 import PaginationControls from '../../components/ui/PaginationControls';
 
@@ -11,8 +11,15 @@ export default function MantenimientosPage() {
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({
-    idVehiculo: '', tipoMantenimiento: 'PREVENTIVO', descripcion: '', costoEstimado: '',
+    idVehiculo: '',
+    tipoMantenimiento: 'PREVENTIVO',
+    kilometrajeMantenimiento: '',
+    costoMantenimiento: '',
+    proveedorTaller: '',
+    observaciones: '',
+    estadoMantenimiento: 'ABIERTO',
   });
 
   useEffect(() => { loadMantenimientos(); }, []);
@@ -26,15 +33,60 @@ export default function MantenimientosPage() {
     finally { setLoading(false); }
   };
 
-  const handleCreate = async (e) => {
+  const handleSave = async (e) => {
     e.preventDefault(); setSaving(true);
     try {
-      await mantenimientosApi.create({ ...form, idVehiculo: Number(form.idVehiculo), costoEstimado: Number(form.costoEstimado) });
-      toast.success('Mantenimiento registrado');
+      const payload = {
+        idVehiculo: Number(form.idVehiculo),
+        tipoMantenimiento: form.tipoMantenimiento,
+        kilometrajeMantenimiento: Number(form.kilometrajeMantenimiento || 0),
+        costoMantenimiento: Number(form.costoMantenimiento || 0),
+        proveedorTaller: form.proveedorTaller || null,
+        observaciones: form.observaciones || null,
+        estadoMantenimiento: form.estadoMantenimiento,
+      };
+
+      if (editing) {
+        await mantenimientosApi.update(editing.idMantenimiento, payload);
+        toast.success('Mantenimiento actualizado');
+      } else {
+        await mantenimientosApi.create(payload);
+        toast.success('Mantenimiento registrado');
+      }
+
       setShowModal(false);
+      setEditing(null);
       loadMantenimientos();
     } catch (e) { toast.error(e.response?.data?.message || 'Error'); }
     finally { setSaving(false); }
+  };
+
+  const openCreate = () => {
+    setEditing(null);
+    setForm({
+      idVehiculo: '',
+      tipoMantenimiento: 'PREVENTIVO',
+      kilometrajeMantenimiento: '',
+      costoMantenimiento: '',
+      proveedorTaller: '',
+      observaciones: '',
+      estadoMantenimiento: 'ABIERTO',
+    });
+    setShowModal(true);
+  };
+
+  const openEdit = (m) => {
+    setEditing(m);
+    setForm({
+      idVehiculo: String(m.idVehiculo || ''),
+      tipoMantenimiento: m.tipoMantenimiento || 'PREVENTIVO',
+      kilometrajeMantenimiento: String(m.kilometrajeMantenimiento || 0),
+      costoMantenimiento: String(m.costoMantenimiento || 0),
+      proveedorTaller: m.proveedorTaller || '',
+      observaciones: m.observaciones || '',
+      estadoMantenimiento: m.estadoMantenimiento || 'ABIERTO',
+    });
+    setShowModal(true);
   };
 
   const cerrar = async (id) => {
@@ -60,7 +112,7 @@ export default function MantenimientosPage() {
           <button className="btn btn--outline btn--sm" onClick={loadMantenimientos} disabled={loading}>
             <RefreshCw size={16} className={loading ? 'spin' : ''} /> Recargar
           </button>
-          <button className="btn btn--primary" onClick={() => setShowModal(true)}><Plus size={16} /> Nuevo Mantenimiento</button>
+          <button className="btn btn--primary" onClick={openCreate}><Plus size={16} /> Nuevo Mantenimiento</button>
         </div>
       </div>
       <div className="module-page__toolbar">
@@ -89,6 +141,11 @@ export default function MantenimientosPage() {
                   <td><span className={`status-badge status-badge--${m.estadoMantenimiento === 'CERRADO' ? 'success' : 'warning'}`}>{m.estadoMantenimiento}</span></td>
                   <td className="table-actions">
                     {m.estadoMantenimiento !== 'CERRADO' && (
+                      <button className="icon-btn" onClick={() => openEdit(m)} title="Editar">
+                        <Pencil size={15} />
+                      </button>
+                    )}
+                    {m.estadoMantenimiento !== 'CERRADO' && (
                       <button className="icon-btn icon-btn--success" onClick={() => cerrar(m.idMantenimiento)} title="Cerrar">
                         <CheckCircle size={15} />
                       </button>
@@ -113,25 +170,38 @@ export default function MantenimientosPage() {
         </>
       )}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+        <div className="modal-overlay" onClick={() => { setShowModal(false); setEditing(null); }}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal__header"><h2>Nuevo Mantenimiento</h2><button className="icon-btn" onClick={() => setShowModal(false)}><X size={18} /></button></div>
-            <form onSubmit={handleCreate} className="modal__body">
+            <div className="modal__header"><h2>{editing ? 'Editar Mantenimiento' : 'Nuevo Mantenimiento'}</h2><button className="icon-btn" onClick={() => { setShowModal(false); setEditing(null); }}><X size={18} /></button></div>
+            <form onSubmit={handleSave} className="modal__body">
               <div className="form-row">
                 <div className="form-group"><label className="form-label">ID Vehículo</label>
-                  <input type="number" className="form-input" required value={form.idVehiculo} onChange={e => setForm({...form, idVehiculo: e.target.value})} /></div>
+                  <input type="number" className="form-input" required disabled={!!editing} value={form.idVehiculo} onChange={e => setForm({...form, idVehiculo: e.target.value})} /></div>
                 <div className="form-group"><label className="form-label">Tipo</label>
                   <select className="form-input" value={form.tipoMantenimiento} onChange={e => setForm({...form, tipoMantenimiento: e.target.value})}>
                     <option value="PREVENTIVO">Preventivo</option><option value="CORRECTIVO">Correctivo</option><option value="PREDICTIVO">Predictivo</option>
                   </select></div>
               </div>
-              <div className="form-group"><label className="form-label">Descripción</label>
-                <input className="form-input" required value={form.descripcion} onChange={e => setForm({...form, descripcion: e.target.value})} /></div>
-              <div className="form-group"><label className="form-label">Costo Estimado ($)</label>
-                <input type="number" step="0.01" className="form-input" value={form.costoEstimado} onChange={e => setForm({...form, costoEstimado: e.target.value})} /></div>
+              <div className="form-row">
+                <div className="form-group"><label className="form-label">Kilometraje</label>
+                  <input type="number" className="form-input" value={form.kilometrajeMantenimiento} onChange={e => setForm({...form, kilometrajeMantenimiento: e.target.value})} /></div>
+                <div className="form-group"><label className="form-label">Costo ($)</label>
+                  <input type="number" step="0.01" className="form-input" value={form.costoMantenimiento} onChange={e => setForm({...form, costoMantenimiento: e.target.value})} /></div>
+              </div>
+              <div className="form-group"><label className="form-label">Proveedor</label>
+                <input className="form-input" value={form.proveedorTaller} onChange={e => setForm({...form, proveedorTaller: e.target.value})} /></div>
+              <div className="form-group"><label className="form-label">Observaciones</label>
+                <input className="form-input" value={form.observaciones} onChange={e => setForm({...form, observaciones: e.target.value})} /></div>
+              {editing && (
+                <div className="form-group"><label className="form-label">Estado</label>
+                  <select className="form-input" value={form.estadoMantenimiento} onChange={e => setForm({...form, estadoMantenimiento: e.target.value})}>
+                    <option value="ABIERTO">Abierto</option>
+                    <option value="CERRADO">Cerrado</option>
+                  </select></div>
+              )}
               <div className="modal__footer">
-                <button type="button" className="btn btn--ghost" onClick={() => setShowModal(false)}>Cancelar</button>
-                <button type="submit" className="btn btn--primary" disabled={saving}>{saving ? 'Registrando...' : 'Crear'}</button>
+                <button type="button" className="btn btn--ghost" onClick={() => { setShowModal(false); setEditing(null); }}>Cancelar</button>
+                <button type="submit" className="btn btn--primary" disabled={saving}>{saving ? 'Guardando...' : (editing ? 'Guardar cambios' : 'Crear')}</button>
               </div>
             </form>
           </div>

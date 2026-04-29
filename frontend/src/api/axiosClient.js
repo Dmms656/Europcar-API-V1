@@ -39,6 +39,8 @@ api.interceptors.response.use(
   async (error) => {
     const config = error.config || {};
     const status = error.response?.status;
+    const method = (config.method || 'get').toLowerCase();
+    const isReadRequest = ['get', 'head', 'options'].includes(method);
 
     // 1) Reintento de transitorios (red sin respuesta o 502/503/504)
     if (shouldRetry(error) && config.__retryCount < MAX_RETRIES) {
@@ -57,7 +59,10 @@ api.interceptors.response.use(
     if (!config.suppressErrorToast) {
       const parsed = parseApiError(error);
       // No spammear el toast en 401 (ya redirigimos) ni en 422 (suelen ser errores de campo gestionados por la pantalla)
-      if (status !== 401 && status !== 422 && !parsed.isCanceled) {
+      // Para consultas de lectura, evitamos ruido visual por fallos transitorios/5xx
+      // y dejamos que cada pantalla decida si mostrar un mensaje.
+      const skipAutoToast = isReadRequest && (!status || status >= 500 || parsed.isNetwork || parsed.isTimeout);
+      if (status !== 401 && status !== 422 && !parsed.isCanceled && !skipAutoToast) {
         toast.error(parsed.message, {
           duration: parsed.isNetwork ? 6000 : 4000,
         });

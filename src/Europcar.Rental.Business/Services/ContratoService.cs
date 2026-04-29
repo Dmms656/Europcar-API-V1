@@ -2,9 +2,11 @@ using Europcar.Rental.Business.DTOs.Request.Contratos;
 using Europcar.Rental.Business.DTOs.Response.Contratos;
 using Europcar.Rental.Business.Exceptions;
 using Europcar.Rental.Business.Interfaces;
+using Europcar.Rental.DataAccess.Context;
 using Europcar.Rental.DataManagement.Common;
 using Europcar.Rental.DataManagement.Interfaces;
 using Europcar.Rental.DataManagement.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace Europcar.Rental.Business.Services;
 
@@ -15,19 +17,22 @@ public class ContratoService : IContratoService
     private readonly IReservaDataService _reservaDataService;
     private readonly IVehiculoDataService _vehiculoDataService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly RentalDbContext _context;
 
     public ContratoService(
         IContratoDataService contratoDataService,
         ICheckInOutDataService checkInOutDataService,
         IReservaDataService reservaDataService,
         IVehiculoDataService vehiculoDataService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        RentalDbContext context)
     {
         _contratoDataService = contratoDataService;
         _checkInOutDataService = checkInOutDataService;
         _reservaDataService = reservaDataService;
         _vehiculoDataService = vehiculoDataService;
         _unitOfWork = unitOfWork;
+        _context = context;
     }
 
     public async Task<ContratoResponse> GetByIdAsync(int id)
@@ -109,6 +114,30 @@ public class ContratoService : IContratoService
         await _unitOfWork.SaveChangesAsync();
 
         return MapToCheckResponse(created);
+    }
+
+    public async Task<ContratoResponse> UpdateAsync(int id, ActualizarContratoRequest request, string usuario)
+    {
+        var entity = await _context.Contratos.FirstOrDefaultAsync(c => c.IdContrato == id)
+            ?? throw new NotFoundException($"Contrato con ID {id} no encontrado");
+
+        if (entity.EstadoContrato == "CERRADO")
+            throw new BusinessException("No se puede editar un contrato cerrado");
+        if (request.FechaHoraPrevistaDevolucion <= request.FechaHoraSalida)
+            throw new BusinessException("La fecha prevista de devolución debe ser posterior a la fecha de salida");
+
+        entity.FechaHoraSalida = request.FechaHoraSalida;
+        entity.FechaHoraPrevistaDevolucion = request.FechaHoraPrevistaDevolucion;
+        entity.KilometrajeSalida = request.KilometrajeSalida;
+        entity.NivelCombustibleSalida = request.NivelCombustibleSalida;
+        entity.EstadoContrato = request.EstadoContrato.Trim().ToUpperInvariant();
+        entity.ObservacionesContrato = string.IsNullOrWhiteSpace(request.Observaciones) ? null : request.Observaciones.Trim();
+        entity.ModificadoPorUsuario = usuario;
+        entity.FechaModificacionUtc = DateTimeOffset.UtcNow;
+
+        await _context.SaveChangesAsync();
+        var updated = await _contratoDataService.GetByIdAsync(id);
+        return MapToResponse(updated!);
     }
 
     public async Task<CheckInOutResponse> RegistrarCheckInAsync(CheckInRequest request, string usuario)

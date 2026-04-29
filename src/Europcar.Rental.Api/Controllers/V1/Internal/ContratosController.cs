@@ -74,6 +74,18 @@ public class ContratosController : ControllerBase
     }
 
     /// <summary>
+    /// Editar un contrato.
+    /// </summary>
+    [HttpPut("{id:int}")]
+    [Authorize(Roles = "ADMIN,AGENTE_POS")]
+    public async Task<IActionResult> Update(int id, [FromBody] ActualizarContratoRequest request)
+    {
+        var usuario = User.FindFirstValue(ClaimTypes.Name) ?? "API";
+        var result = await _contratoService.UpdateAsync(id, request, usuario);
+        return Ok(ApiResponse<object>.Ok(result, "Contrato actualizado exitosamente"));
+    }
+
+    /// <summary>
     /// Registrar check-out (entrega del vehículo al cliente).
     /// </summary>
     [HttpPost("checkout")]

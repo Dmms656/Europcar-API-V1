@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { pagosApi } from '../../api/pagosApi';
 import { toast } from 'sonner';
-import { CreditCard, Search, Plus, X, Loader2, RefreshCw } from 'lucide-react';
+import { CreditCard, Search, Plus, X, Loader2, RefreshCw, Pencil } from 'lucide-react';
 import { useClientPagination } from '../../hooks/useClientPagination';
 import PaginationControls from '../../components/ui/PaginationControls';
 
@@ -11,8 +11,17 @@ export default function PagosPage() {
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingPago, setEditingPago] = useState(null);
   const [form, setForm] = useState({
-    idReserva: '', montoPago: '', metodoPago: 'TARJETA_CREDITO', referenciaPago: '', observaciones: '',
+    reservaRef: '',
+    idContrato: '',
+    idCliente: '',
+    tipoPago: 'COBRO',
+    metodoPago: 'TARJETA',
+    estadoPago: 'APROBADO',
+    monto: '',
+    referenciaExterna: '',
+    observaciones: '',
   });
 
   useEffect(() => { loadPagos(); }, []);
@@ -26,14 +35,93 @@ export default function PagosPage() {
     finally { setLoading(false); }
   };
 
-  const handleCreate = async (e) => {
-    e.preventDefault(); setSaving(true);
+  const resetForm = () => {
+    setEditingPago(null);
+    setForm({
+      reservaRef: '',
+      idContrato: '',
+      idCliente: '',
+      tipoPago: 'COBRO',
+      metodoPago: 'TARJETA',
+      estadoPago: 'APROBADO',
+      monto: '',
+      referenciaExterna: '',
+      observaciones: '',
+    });
+  };
+
+  const openCreate = () => {
+    resetForm();
+    setShowModal(true);
+  };
+
+  const openEdit = (p) => {
+    setEditingPago(p);
+    setForm({
+      reservaRef: p.codigoReserva || (p.idReserva ? String(p.idReserva) : ''),
+      idContrato: p.idContrato ? String(p.idContrato) : '',
+      idCliente: p.idCliente ? String(p.idCliente) : '',
+      tipoPago: p.tipoPago || 'COBRO',
+      metodoPago: p.metodoPago || 'TARJETA',
+      estadoPago: p.estadoPago || 'APROBADO',
+      monto: p.monto != null ? String(p.monto) : '',
+      referenciaExterna: p.referenciaExterna || '',
+      observaciones: p.observacionesPago || '',
+    });
+    setShowModal(true);
+  };
+
+  const buildPayload = () => {
+    const reservaRef = form.reservaRef.trim();
+    const payload = {
+      idContrato: form.idContrato ? Number(form.idContrato) : null,
+      idCliente: Number(form.idCliente),
+      tipoPago: form.tipoPago,
+      metodoPago: form.metodoPago,
+      estadoPago: form.estadoPago,
+      monto: Number(form.monto),
+      referenciaExterna: form.referenciaExterna.trim() || null,
+      observaciones: form.observaciones.trim() || null,
+    };
+
+    if (/^\d+$/.test(reservaRef)) {
+      payload.idReserva = Number(reservaRef);
+      payload.codigoReserva = null;
+    } else {
+      payload.idReserva = null;
+      payload.codigoReserva = reservaRef || null;
+    }
+
+    return payload;
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
     try {
-      await pagosApi.create({ ...form, idReserva: Number(form.idReserva), montoPago: Number(form.montoPago) });
-      toast.success('Pago registrado');
+      const payload = buildPayload();
+      if (!payload.idReserva && !payload.codigoReserva && !payload.idContrato) {
+        throw new Error('Debes indicar reserva (ID o código) o contrato.');
+      }
+      if (!payload.idCliente) {
+        throw new Error('El ID de cliente es requerido.');
+      }
+      if (!(payload.monto > 0)) {
+        throw new Error('El monto debe ser mayor a cero.');
+      }
+
+      if (editingPago) {
+        await pagosApi.update(editingPago.idPago, payload);
+        toast.success('Pago actualizado');
+      } else {
+        await pagosApi.create(payload);
+        toast.success('Pago registrado');
+      }
+
       setShowModal(false);
+      resetForm();
       loadPagos();
-    } catch (e) { toast.error(e.response?.data?.message || 'Error al registrar pago'); }
+    } catch (e) { toast.error(e.response?.data?.message || e.message || 'Error al guardar pago'); }
     finally { setSaving(false); }
   };
 
@@ -51,7 +139,7 @@ export default function PagosPage() {
           <button className="btn btn--outline btn--sm" onClick={loadPagos} disabled={loading}>
             <RefreshCw size={16} className={loading ? 'spin' : ''} /> Recargar
           </button>
-          <button className="btn btn--primary" onClick={() => setShowModal(true)}><Plus size={16} /> Registrar Pago</button>
+          <button className="btn btn--primary" onClick={openCreate}><Plus size={16} /> Registrar Pago</button>
         </div>
       </div>
       <div className="module-page__toolbar">
@@ -66,7 +154,7 @@ export default function PagosPage() {
         <>
         <div className="data-table-wrapper">
           <table className="data-table">
-            <thead><tr><th>Código</th><th>Reserva</th><th>Cliente</th><th>Monto</th><th>Método</th><th>Referencia</th><th>Fecha</th><th>Estado</th></tr></thead>
+            <thead><tr><th>Código</th><th>Reserva</th><th>Cliente</th><th>Monto</th><th>Método</th><th>Referencia</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody>
               {pagination.paginatedItems.map(p => (
                 <tr key={p.idPago}>
@@ -78,9 +166,14 @@ export default function PagosPage() {
                   <td>{p.referenciaExterna || '-'}</td>
                   <td>{p.fechaPagoUtc ? new Date(p.fechaPagoUtc).toLocaleDateString() : '-'}</td>
                   <td><span className={`status-badge status-badge--${p.estadoPago === 'COMPLETADO' ? 'success' : 'warning'}`}>{p.estadoPago}</span></td>
+                  <td className="table-actions">
+                    <button className="icon-btn" onClick={() => openEdit(p)} title="Editar pago">
+                      <Pencil size={15} />
+                    </button>
+                  </td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={8} className="table-empty">No hay pagos</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={9} className="table-empty">No hay pagos</td></tr>}
             </tbody>
           </table>
         </div>
@@ -97,30 +190,47 @@ export default function PagosPage() {
         </>
       )}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+        <div className="modal-overlay" onClick={() => { setShowModal(false); resetForm(); }}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal__header"><h2>Registrar Pago</h2><button className="icon-btn" onClick={() => setShowModal(false)}><X size={18} /></button></div>
-            <form onSubmit={handleCreate} className="modal__body">
+            <div className="modal__header"><h2>{editingPago ? 'Editar Pago' : 'Registrar Pago'}</h2><button className="icon-btn" onClick={() => { setShowModal(false); resetForm(); }}><X size={18} /></button></div>
+            <form onSubmit={handleSave} className="modal__body">
               <div className="form-row">
-                <div className="form-group"><label className="form-label">ID Reserva</label>
-                  <input type="number" className="form-input" required value={form.idReserva} onChange={e => setForm({...form, idReserva: e.target.value})} /></div>
-                <div className="form-group"><label className="form-label">Monto ($)</label>
-                  <input type="number" step="0.01" className="form-input" required value={form.montoPago} onChange={e => setForm({...form, montoPago: e.target.value})} /></div>
+                <div className="form-group"><label className="form-label">Reserva (ID o Código)</label>
+                  <input className="form-input" value={form.reservaRef} onChange={e => setForm({...form, reservaRef: e.target.value})} placeholder="Ej: 123 o RSV-ABC123" /></div>
+                <div className="form-group"><label className="form-label">ID Contrato (opcional)</label>
+                  <input type="number" className="form-input" value={form.idContrato} onChange={e => setForm({...form, idContrato: e.target.value})} /></div>
               </div>
               <div className="form-row">
+                <div className="form-group"><label className="form-label">ID Cliente</label>
+                  <input type="number" className="form-input" required value={form.idCliente} onChange={e => setForm({...form, idCliente: e.target.value})} /></div>
+                <div className="form-group"><label className="form-label">Monto ($)</label>
+                  <input type="number" step="0.01" className="form-input" required value={form.monto} onChange={e => setForm({...form, monto: e.target.value})} /></div>
+              </div>
+              <div className="form-row">
+                <div className="form-group"><label className="form-label">Tipo de Pago</label>
+                  <select className="form-input" value={form.tipoPago} onChange={e => setForm({...form, tipoPago: e.target.value})}>
+                    <option value="COBRO">Cobro</option><option value="REEMBOLSO">Reembolso</option>
+                  </select></div>
                 <div className="form-group"><label className="form-label">Método de Pago</label>
                   <select className="form-input" value={form.metodoPago} onChange={e => setForm({...form, metodoPago: e.target.value})}>
-                    <option value="TARJETA_CREDITO">Tarjeta Crédito</option><option value="TARJETA_DEBITO">Tarjeta Débito</option>
-                    <option value="EFECTIVO">Efectivo</option><option value="TRANSFERENCIA">Transferencia</option>
+                    <option value="TARJETA">Tarjeta</option><option value="EFECTIVO">Efectivo</option>
+                    <option value="TRANSFERENCIA">Transferencia</option><option value="PAYPAL">PayPal</option>
+                  </select></div>
+              </div>
+              <div className="form-row">
+                <div className="form-group"><label className="form-label">Estado</label>
+                  <select className="form-input" value={form.estadoPago} onChange={e => setForm({...form, estadoPago: e.target.value})}>
+                    <option value="APROBADO">Aprobado</option><option value="PENDIENTE">Pendiente</option>
+                    <option value="ANULADO">Anulado</option><option value="REEMBOLSADO">Reembolsado</option>
                   </select></div>
                 <div className="form-group"><label className="form-label">Referencia</label>
-                  <input className="form-input" value={form.referenciaPago} onChange={e => setForm({...form, referenciaPago: e.target.value})} placeholder="# transacción" /></div>
+                  <input className="form-input" value={form.referenciaExterna} onChange={e => setForm({...form, referenciaExterna: e.target.value})} placeholder="# transacción" /></div>
               </div>
               <div className="form-group"><label className="form-label">Observaciones</label>
                 <input className="form-input" value={form.observaciones} onChange={e => setForm({...form, observaciones: e.target.value})} /></div>
               <div className="modal__footer">
-                <button type="button" className="btn btn--ghost" onClick={() => setShowModal(false)}>Cancelar</button>
-                <button type="submit" className="btn btn--primary" disabled={saving}>{saving ? 'Registrando...' : 'Registrar Pago'}</button>
+                <button type="button" className="btn btn--ghost" onClick={() => { setShowModal(false); resetForm(); }}>Cancelar</button>
+                <button type="submit" className="btn btn--primary" disabled={saving}>{saving ? 'Guardando...' : (editingPago ? 'Guardar cambios' : 'Registrar Pago')}</button>
               </div>
             </form>
           </div>
