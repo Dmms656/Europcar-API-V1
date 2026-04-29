@@ -118,29 +118,31 @@ public class VehiculoDataService : IVehiculoDataService
 
     public async Task UpdateAsync(VehiculoModel model)
     {
-        var entity = await _context.Vehiculos.FindAsync(model.IdVehiculo)
-            ?? throw new InvalidOperationException($"Vehículo {model.IdVehiculo} no encontrado");
+        var rows = await _context.Vehiculos
+            .Where(v => v.IdVehiculo == model.IdVehiculo)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(v => v.PlacaVehiculo, model.Placa)
+                .SetProperty(v => v.IdMarca, model.IdMarca)
+                .SetProperty(v => v.IdCategoria, model.IdCategoria)
+                .SetProperty(v => v.ModeloVehiculo, model.Modelo)
+                .SetProperty(v => v.AnioFabricacion, model.AnioFabricacion)
+                .SetProperty(v => v.ColorVehiculo, model.Color)
+                .SetProperty(v => v.TipoCombustible, model.TipoCombustible)
+                .SetProperty(v => v.TipoTransmision, model.TipoTransmision)
+                .SetProperty(v => v.CapacidadPasajeros, model.CapacidadPasajeros)
+                .SetProperty(v => v.CapacidadMaletas, model.CapacidadMaletas)
+                .SetProperty(v => v.NumeroPuertas, model.NumeroPuertas)
+                .SetProperty(v => v.LocalizacionActual, model.IdLocalizacion)
+                .SetProperty(v => v.PrecioBaseDia, model.PrecioBaseDia)
+                .SetProperty(v => v.KilometrajeActual, model.KilometrajeActual)
+                .SetProperty(v => v.AireAcondicionado, model.AireAcondicionado)
+                .SetProperty(v => v.ObservacionesGenerales, model.ObservacionesGenerales)
+                .SetProperty(v => v.ImagenReferencialUrl, model.ImagenUrl)
+                .SetProperty(v => v.ModificadoPorUsuario, "API")
+                .SetProperty(v => v.FechaModificacionUtc, DateTimeOffset.UtcNow));
 
-        entity.PlacaVehiculo = model.Placa;
-        entity.IdMarca = model.IdMarca;
-        entity.IdCategoria = model.IdCategoria;
-        entity.ModeloVehiculo = model.Modelo;
-        entity.AnioFabricacion = model.AnioFabricacion;
-        entity.ColorVehiculo = model.Color;
-        entity.TipoCombustible = model.TipoCombustible;
-        entity.TipoTransmision = model.TipoTransmision;
-        entity.CapacidadPasajeros = model.CapacidadPasajeros;
-        entity.CapacidadMaletas = model.CapacidadMaletas;
-        entity.NumeroPuertas = model.NumeroPuertas;
-        entity.LocalizacionActual = model.IdLocalizacion;
-        entity.PrecioBaseDia = model.PrecioBaseDia;
-        entity.KilometrajeActual = model.KilometrajeActual;
-        entity.AireAcondicionado = model.AireAcondicionado;
-        entity.ObservacionesGenerales = model.ObservacionesGenerales;
-        entity.ImagenReferencialUrl = model.ImagenUrl;
-        entity.ModificadoPorUsuario = "API";
-        entity.FechaModificacionUtc = DateTimeOffset.UtcNow;
-        entity.RowVersion = model.RowVersion;
+        if (rows == 0)
+            throw new InvalidOperationException($"Vehículo {model.IdVehiculo} no encontrado");
     }
 
     public async Task SoftDeleteAsync(int id, string usuario)
@@ -158,13 +160,15 @@ public class VehiculoDataService : IVehiculoDataService
 
     public async Task UpdateEstadoOperativoAsync(int id, string estado, string usuario)
     {
-        var entity = await _context.Vehiculos.FindAsync(id);
-        if (entity != null)
-        {
-            entity.EstadoOperativo = estado;
-            entity.ModificadoPorUsuario = usuario;
-            entity.FechaModificacionUtc = DateTimeOffset.UtcNow;
-        }
+        var rows = await _context.Vehiculos
+            .Where(v => v.IdVehiculo == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(v => v.EstadoOperativo, estado)
+                .SetProperty(v => v.ModificadoPorUsuario, usuario)
+                .SetProperty(v => v.FechaModificacionUtc, DateTimeOffset.UtcNow));
+
+        if (rows == 0)
+            throw new InvalidOperationException($"Vehículo {id} no encontrado");
     }
 
     private static VehiculoModel MapToModel(VehiculoEntity v) => new()
