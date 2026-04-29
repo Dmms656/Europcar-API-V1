@@ -91,13 +91,31 @@ public class ContratoService : IContratoService
         // El trigger fn_post_contrato_creado cambia la reserva a EN_CURSO y el vehículo a ALQUILADO
         await _unitOfWork.SaveChangesAsync();
 
-        // Importante: created.IdContrato puede quedar en 0 si EF no generó el Identity aún.
-        // La forma robusta de obtener la entidad creada es consultarla por la reserva (única por reserva).
-        var result = await _contratoDataService.GetByReservaIdAsync(reserva.IdReserva);
-        if (result is null)
-            throw new NotFoundException("No se pudo recargar el contrato creado tras guardarlo.");
+        // Evitar consultas con Include que pueden disparar joins grandes y provocar timeout.
+        // Traemos un "snapshot" ligero del contrato con un select proyectado.
+        var contratoLite = await _context.Contratos
+            .Where(c => c.IdReserva == reserva.IdReserva)
+            .Select(c => new ContratoResponse
+            {
+                IdContrato = c.IdContrato,
+                ContratoGuid = c.ContratoGuid,
+                NumeroContrato = c.NumeroContrato,
+                EstadoContrato = c.EstadoContrato,
+                FechaHoraSalida = c.FechaHoraSalida,
+                FechaHoraPrevistaDevolucion = c.FechaHoraPrevistaDevolucion,
+                KilometrajeSalida = c.KilometrajeSalida,
+                NivelCombustibleSalida = c.NivelCombustibleSalida,
+                NombreCliente = c.Cliente != null ? (c.Cliente.CliNombre1 + " " + c.Cliente.CliApellido1) : null,
+                PlacaVehiculo = c.Vehiculo != null ? c.Vehiculo.PlacaVehiculo : null,
+                CodigoReserva = c.Reserva != null ? c.Reserva.CodigoReserva : null,
+                ObservacionesContrato = c.ObservacionesContrato
+            })
+            .FirstOrDefaultAsync();
 
-        return MapToResponse(result);
+        if (contratoLite is null)
+            throw new NotFoundException("No se pudo recuperar el contrato recién creado tras guardarlo.");
+
+        return contratoLite;
     }
 
     public async Task<CheckInOutResponse> RegistrarCheckOutAsync(CheckOutRequest request, string usuario)
