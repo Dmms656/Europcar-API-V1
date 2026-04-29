@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { vehiculosApi } from '../../api/vehiculosApi';
 import { bookingApi } from '../../api/bookingApi';
-import { catalogosApi } from '../../api/catalogosApi';
 import { useAuthStore } from '../../store/useAuthStore';
 import {
   Car, Search, Users, Fuel, Settings2, MapPin,
@@ -10,6 +9,19 @@ import {
 } from 'lucide-react';
 
 const isValidImageUrl = (url) => url && (url.startsWith('http://') || url.startsWith('https://'));
+const getPayload = (res) => res?.data?.data ?? res?.data?.Data ?? {};
+const normalizeCiudad = (c) => ({
+  idCiudad: c?.idCiudad ?? c?.id ?? null,
+  idPais: c?.idPais ?? null,
+  nombreCiudad: c?.nombreCiudad ?? c?.nombre ?? '',
+  nombrePais: c?.nombrePais ?? '',
+});
+
+const normalizeLocalizacion = (l) => ({
+  idLocalizacion: l?.idLocalizacion ?? l?.id ?? null,
+  nombreLocalizacion: l?.nombreLocalizacion ?? l?.nombre ?? '',
+  idCiudad: l?.idCiudad ?? l?.ciudad?.id ?? null,
+});
 
 export default function CatalogoPage() {
   const [vehiculos, setVehiculos] = useState([]);
@@ -74,20 +86,25 @@ export default function CatalogoPage() {
       const [vehRes, catRes, ciuRes, locRes] = await Promise.allSettled([
         vehiculosApi.getDisponibles(),
         bookingApi.getCategorias(),
-        catalogosApi.getCiudades(),
-        catalogosApi.getLocalizaciones(),
+        bookingApi.getCiudades(),
+        bookingApi.getLocalizaciones({ page: 1, limit: 200 }),
       ]);
       if (vehRes.status === 'fulfilled') {
         setVehiculos(vehRes.value.data?.data || []);
       }
       if (catRes.status === 'fulfilled') {
-        setCategorias(catRes.value.data?.data?.categorias || []);
+        const payload = getPayload(catRes.value);
+        setCategorias(payload.categorias ?? payload.Categorias ?? []);
       }
       if (ciuRes.status === 'fulfilled') {
-        setCiudades(ciuRes.value.data?.data || []);
+        const payload = getPayload(ciuRes.value);
+        const items = payload.ciudades ?? payload.Ciudades ?? [];
+        setCiudades(items.map(normalizeCiudad).filter((c) => c.idCiudad));
       }
       if (locRes.status === 'fulfilled') {
-        setLocalizaciones(locRes.value.data?.data || []);
+        const payload = getPayload(locRes.value);
+        const items = payload.localizaciones ?? payload.Localizaciones ?? [];
+        setLocalizaciones(items.map(normalizeLocalizacion).filter((l) => l.idLocalizacion));
       }
     } catch (e) {
       console.error('Error loading catalog:', e);

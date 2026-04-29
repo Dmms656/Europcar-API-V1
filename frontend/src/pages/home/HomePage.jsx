@@ -6,6 +6,19 @@ import {
 } from 'lucide-react';
 import DateTimePicker from '../../components/ui/DateTimePicker';
 
+const getPayload = (res) => res?.data?.data ?? res?.data?.Data ?? {};
+const normalizeCiudad = (c) => ({
+  idCiudad: c?.idCiudad ?? c?.id ?? null,
+  idPais: c?.idPais ?? c?.id_pais ?? null,
+  nombreCiudad: c?.nombreCiudad ?? c?.nombre ?? '',
+  nombrePais: c?.nombrePais ?? c?.nombre_pais ?? '',
+});
+const normalizeLocalizacion = (l) => ({
+  idLocalizacion: l?.idLocalizacion ?? l?.id ?? null,
+  nombreLocalizacion: l?.nombreLocalizacion ?? l?.nombre ?? '',
+  idCiudad: l?.idCiudad ?? l?.ciudad?.id ?? null,
+});
+
 export default function HomePage() {
   const navigate = useNavigate();
   const [localizaciones, setLocalizaciones] = useState([]);
@@ -25,13 +38,24 @@ export default function HomePage() {
   const loadData = async () => {
     try {
       const [locRes, catRes, ciuRes] = await Promise.allSettled([
-        bookingApi.getLocalizaciones({}),
+        bookingApi.getLocalizaciones({ page: 1, limit: 200 }),
         bookingApi.getCategorias(),
         bookingApi.getCiudades(),
       ]);
-      if (locRes.status === 'fulfilled') setLocalizaciones(locRes.value.data?.data?.localizaciones || []);
-      if (catRes.status === 'fulfilled') setCategorias(catRes.value.data?.data?.categorias || []);
-      if (ciuRes.status === 'fulfilled') setCiudades(ciuRes.value.data?.data?.ciudades || []);
+      if (locRes.status === 'fulfilled') {
+        const payload = getPayload(locRes.value);
+        const locs = payload.localizaciones ?? payload.Localizaciones ?? [];
+        setLocalizaciones(locs.map(normalizeLocalizacion).filter((l) => l.idLocalizacion));
+      }
+      if (catRes.status === 'fulfilled') {
+        const payload = getPayload(catRes.value);
+        setCategorias(payload.categorias ?? payload.Categorias ?? []);
+      }
+      if (ciuRes.status === 'fulfilled') {
+        const payload = getPayload(ciuRes.value);
+        const cius = payload.ciudades ?? payload.Ciudades ?? [];
+        setCiudades(cius.map(normalizeCiudad).filter((c) => c.idCiudad));
+      }
     } catch (e) {
       console.error('Error loading homepage data:', e);
     }
@@ -39,7 +63,8 @@ export default function HomePage() {
 
   const paises = Array.from(
     ciudades.reduce((acc, c) => {
-      acc.set(String(c.idPais), c.nombrePais);
+      if (!c.idPais) return acc;
+      acc.set(String(c.idPais), c.nombrePais || `País ${c.idPais}`);
       return acc;
     }, new Map()),
   ).map(([idPais, nombrePais]) => ({ idPais, nombrePais }));

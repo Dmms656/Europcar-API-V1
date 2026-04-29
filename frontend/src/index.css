@@ -677,7 +677,7 @@ input, select, textarea { font-family: inherit; }
   background: radial-gradient(ellipse at 30% 40%, rgba(13,148,136,0.18) 0%, transparent 55%),
               radial-gradient(ellipse at 70% 60%, rgba(59,130,246,0.1) 0%, transparent 50%);
 }
-.hero__content { position: relative; z-index: 1; max-width: 720px; }
+.hero__content { position: relative; z-index: 1; max-width: 1280px; }
 .hero__badge {
   display: inline-block; padding: 6px 16px; background: var(--color-primary-ghost);
   border: 1px solid rgba(13,148,136,0.2); border-radius: var(--radius-full);
@@ -691,11 +691,11 @@ input, select, textarea { font-family: inherit; }
 .hero-search {
   display: flex; gap: var(--spacing-sm); background: var(--color-surface);
   border: 1px solid var(--color-border-light); border-radius: var(--radius-lg);
-  padding: var(--spacing-sm); flex-wrap: wrap; align-items: center;
+  padding: var(--spacing-sm); flex-wrap: nowrap; align-items: center;
 }
-.hero-search__field--datetime { flex: 1.5; min-width: 220px; }
+.hero-search__field--datetime { flex: 1.25; min-width: 180px; }
 .hero-search__field--datetime .datetime-picker__preview { display: none; }
-.hero-search__field { flex: 1; min-width: 160px; position: relative; display: flex; align-items: center; }
+.hero-search__field { flex: 1; min-width: 0; position: relative; display: flex; align-items: center; }
 .hero-search__icon { position: absolute; left: 12px; color: var(--color-text-muted); pointer-events: none; }
 .hero-search__select, .hero-search__input {
   width: 100%; padding: 0.625rem 0.625rem 0.625rem 2.25rem;
@@ -705,6 +705,7 @@ input, select, textarea { font-family: inherit; }
 .hero-search__select:focus, .hero-search__input:focus { border-color: var(--color-primary); }
 .hero-search__btn {
   display: flex; align-items: center; gap: var(--spacing-xs);
+  flex: 0 0 auto;
   padding: 0.625rem 1.5rem; background: var(--color-primary); color: white;
   border: none; border-radius: var(--radius-md); font-weight: 600; font-size: 0.875rem;
   cursor: pointer; transition: all var(--transition-fast);
