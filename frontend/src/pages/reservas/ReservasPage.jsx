@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Plus, Search, CheckCircle, XCircle, Loader2, CalendarCheck, X, RefreshCw, Pencil } from 'lucide-react';
 import { useClientPagination } from '../../hooks/useClientPagination';
 import PaginationControls from '../../components/ui/PaginationControls';
+import DateTimePicker from '../../components/ui/DateTimePicker';
 
 const EXTRA_CONDUCTOR_ADICIONAL_CODE = 'COND-ADIC';
 
@@ -157,6 +158,13 @@ export default function ReservasPage() {
     e.preventDefault();
     setSaving(true);
     try {
+      if (!form.fechaHoraRecogida || !form.fechaHoraDevolucion) {
+        throw new Error('Selecciona fecha y hora de recogida y devolución.');
+      }
+      if (new Date(form.fechaHoraDevolucion) <= new Date(form.fechaHoraRecogida)) {
+        throw new Error('La devolución debe ser posterior a la recogida.');
+      }
+
       const idPaisRecogida = getPaisByLocalizacion(form.idLocalizacionRecogida);
       const idPaisDevolucion = getPaisByLocalizacion(form.idLocalizacionDevolucion);
       if (idPaisRecogida && idPaisDevolucion && idPaisRecogida !== idPaisDevolucion) {
@@ -167,6 +175,8 @@ export default function ReservasPage() {
         ...form, idCliente: Number(form.idCliente), idVehiculo: Number(form.idVehiculo),
         idLocalizacionRecogida: Number(form.idLocalizacionRecogida),
         idLocalizacionDevolucion: Number(form.idLocalizacionDevolucion),
+        fechaHoraRecogida: new Date(form.fechaHoraRecogida).toISOString(),
+        fechaHoraDevolucion: new Date(form.fechaHoraDevolucion).toISOString(),
         extras: form.extras.filter(ex => ex.idExtra && ex.cantidad > 0).map(ex => ({ idExtra: Number(ex.idExtra), cantidad: Number(ex.cantidad) })),
         conductores: [
           { usarClienteTitular: true, esPrincipal: true },
@@ -219,6 +229,13 @@ export default function ReservasPage() {
     e.preventDefault();
     setSaving(true);
     try {
+      if (!form.fechaHoraRecogida || !form.fechaHoraDevolucion) {
+        throw new Error('Selecciona fecha y hora de recogida y devolución.');
+      }
+      if (new Date(form.fechaHoraDevolucion) <= new Date(form.fechaHoraRecogida)) {
+        throw new Error('La devolución debe ser posterior a la recogida.');
+      }
+
       const idPaisRecogida = getPaisByLocalizacion(form.idLocalizacionRecogida);
       const idPaisDevolucion = getPaisByLocalizacion(form.idLocalizacionDevolucion);
       if (idPaisRecogida && idPaisDevolucion && idPaisRecogida !== idPaisDevolucion) {
@@ -229,8 +246,8 @@ export default function ReservasPage() {
         idVehiculo: Number(form.idVehiculo),
         idLocalizacionRecogida: Number(form.idLocalizacionRecogida),
         idLocalizacionDevolucion: Number(form.idLocalizacionDevolucion),
-        fechaHoraRecogida: form.fechaHoraRecogida,
-        fechaHoraDevolucion: form.fechaHoraDevolucion,
+        fechaHoraRecogida: new Date(form.fechaHoraRecogida).toISOString(),
+        fechaHoraDevolucion: new Date(form.fechaHoraDevolucion).toISOString(),
         canalReserva: form.canalReserva,
       };
       await reservasApi.update(editingReserva.idReserva, payload);
@@ -388,10 +405,23 @@ export default function ReservasPage() {
                   </select></div>
               </div>
               <div className="form-row">
-                <div className="form-group"><label className="form-label">Fecha/Hora Recogida</label>
-                  <input type="datetime-local" className="form-input" required value={form.fechaHoraRecogida} onChange={(e) => setForm({...form, fechaHoraRecogida: e.target.value})} /></div>
-                <div className="form-group"><label className="form-label">Fecha/Hora Devolución</label>
-                  <input type="datetime-local" className="form-input" required value={form.fechaHoraDevolucion} onChange={(e) => setForm({...form, fechaHoraDevolucion: e.target.value})} /></div>
+                <div className="form-group">
+                  <DateTimePicker
+                    id="reserva-fecha-recogida"
+                    label="Fecha y hora de Recogida *"
+                    value={form.fechaHoraRecogida}
+                    onChange={(val) => setForm({ ...form, fechaHoraRecogida: val })}
+                  />
+                </div>
+                <div className="form-group">
+                  <DateTimePicker
+                    id="reserva-fecha-devolucion"
+                    label="Fecha y hora de Devolución *"
+                    value={form.fechaHoraDevolucion}
+                    minDate={form.fechaHoraRecogida}
+                    onChange={(val) => setForm({ ...form, fechaHoraDevolucion: val })}
+                  />
+                </div>
               </div>
               <div className="form-group">
                 <label className="form-label">Extras</label>
