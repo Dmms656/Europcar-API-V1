@@ -97,7 +97,8 @@ db/microservices/
 ├── 99_supabase_grants.sql               ← roles DB + GRANTs por schema (post-DDL/seed, solo Supabase)
 ├── seguridad/
 │   ├── 01_ddl.sql
-│   └── 02_seed.sql
+│   ├── 02_seed.sql
+│   └── 03_disable_rls_for_service_roles.sql  ← Supabase: quitar RLS que bloquea roles ms_* (post-grants)
 ├── catalogo/
 │   ├── 01_ddl.sql
 │   └── 02_seed.sql

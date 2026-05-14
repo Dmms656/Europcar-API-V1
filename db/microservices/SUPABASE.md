@@ -172,6 +172,7 @@ Esto es lo que da el aislamiento. Después de este paso, cada role solo podrá v
 3. Pega todo en el SQL Editor de Supabase.
 4. **Run**.
 5. **Importante**: una vez ejecutado, **revierte los cambios locales** (`git checkout db/microservices/99_supabase_grants.sql`) para que las contraseñas reales no queden en tu working tree. El archivo en el repo se queda con placeholders.
+6. **Opcional pero recomendado en Supabase:** si las tablas de `security` o `audit` tienen **RLS activo** (Supabase a veces lo enciende), los roles `ms_*` no verán filas y el login fallará aunque el hash sea correcto. Ejecuta **`db/microservices/seguridad/03_disable_rls_for_service_roles.sql`** (una vez, después de este paso).
 
 ### Verificación
 
@@ -225,6 +226,22 @@ Suele ser el **pooler transaccional** de Supabase (host `*.pooler.supabase.com`,
 
 - En la cadena Npgsql usa al menos: **`Multiplexing=false`**, **`Max Auto Prepare=0`**, **`No Reset On Close=true`** (el `EUROPCAR_V2/.env.example` ya las trae).
 - El **middleware** (`Middleware.RedCar`) aplica esos tres valores automáticamente si la cadena apunta a `pooler.supabase.com`; si el error persiste, prueba la conexión **Session mode** (puerto **5432** en el pooler) solo para diagnosticar, o revisa firewall / región.
+
+### Login correcto en SQL pero la API dice `Credenciales inválidas`
+
+Si en el SQL Editor (rol `postgres`) ves al usuario `admin` y `crypt('12345', password_hash) = password_hash`, pero el middleware (rol `ms_seguridad`) sigue fallando, comprueba **RLS**:
+
+```sql
+SELECT c.relname, c.relrowsecurity
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'security' AND c.relkind = 'r'
+ORDER BY 1;
+```
+
+Si **`relrowsecurity` = true** en `usuarios_app` (u otras tablas del `JOIN`), `postgres` **sigue viendo filas** y `ms_seguridad` **no** (sin políticas para ese rol) → el login no encuentra usuario.
+
+**Solución recomendada** en este repo (aislamiento ya lo dan los `GRANT` a `ms_*`): ejecuta **`db/microservices/seguridad/03_disable_rls_for_service_roles.sql`** en el SQL Editor. Vuelve a probar el login sin redeploy.
 
 ### Prueba de aislamiento
 
