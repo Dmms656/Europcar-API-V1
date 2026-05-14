@@ -95,6 +95,7 @@ db/microservices/
 ├── SUPABASE.md                          ← guía paso a paso para subir a Supabase
 ├── .env.example                         ← plantilla de connection strings (.env real ignorado por git)
 ├── 99_supabase_grants.sql               ← roles DB + GRANTs por schema (post-DDL/seed, solo Supabase)
+├── rotate_ms_passwords.sql              ← ALTER ROLE ... PASSWORD (rotación sin re-ejecutar grants)
 ├── seguridad/
 │   ├── 01_ddl.sql
 │   ├── 02_seed.sql

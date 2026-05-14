@@ -174,6 +174,10 @@ Esto es lo que da el aislamiento. Después de este paso, cada role solo podrá v
 5. **Importante**: una vez ejecutado, **revierte los cambios locales** (`git checkout db/microservices/99_supabase_grants.sql`) para que las contraseñas reales no queden en tu working tree. El archivo en el repo se queda con placeholders.
 6. **Opcional pero recomendado en Supabase:** si las tablas de `security` o `audit` tienen **RLS activo** (Supabase a veces lo enciende), los roles `ms_*` no verán filas y el login fallará aunque el hash sea correcto. Ejecuta **`db/microservices/seguridad/03_disable_rls_for_service_roles.sql`** (una vez, después de este paso).
 
+### Rotar contraseñas después (operación puntual)
+
+Para cambiar las contraseñas de los cinco roles sin re-ejecutar todo `99_supabase_grants.sql`, usa **`db/microservices/rotate_ms_passwords.sql`**: sustituye los placeholders `__CAMBIA_ESTO_*__`, ejecútalo en el SQL Editor y actualiza las **connection strings** en Render y en tus `.env` locales.
+
 ### Verificación
 
 ```sql
