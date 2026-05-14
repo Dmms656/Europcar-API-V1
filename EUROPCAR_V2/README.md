@@ -3,6 +3,8 @@
 Implementacion de la arquitectura **RedCar V2** con 5 microservicios independientes
 y el orquestador en `Middleware.RedCar/` (raiz del repo).
 
+Guia de despliegue **Render + Middleware** (paso a paso unificado): [`docs/RedCar-Render-Microservicios-y-Middleware.md`](../docs/RedCar-Render-Microservicios-y-Middleware.md).
+
 > Antes de empezar, leer `db/microservices/SUPABASE.md` para tener las 5 bases
 > de datos creadas en Supabase con los roles `ms_*` y los GRANTs correctos.
 
