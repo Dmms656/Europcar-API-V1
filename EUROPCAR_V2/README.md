@@ -129,6 +129,6 @@ Usa **Web Service → Language: Docker**.
 
 **Middleware** (`Middleware.RedCar.Api`): contexto = raíz del repositorio. **Root Directory** vacío y **Dockerfile path** = `Dockerfile` (en la raíz del repo).
 
-Imagen escucha en **8080** (`ASPNETCORE_URLS`). Variables: `ConnectionStrings__Default`, `Jwt__*`, `ASPNETCORE_ENVIRONMENT=Production`.
+Imagen escucha en **8080** (`ASPNETCORE_URLS`). Variables: `ConnectionStrings__Default`, `Jwt__*`, `ASPNETCORE_ENVIRONMENT=Production`. Para **Swagger** en producción (tanto microservicios como `Middleware.RedCar.Api`), define `Swagger__Enabled=true` en el Web Service de Render; en local con `Development` no hace falta.
 
 El monolito historico vive en `_legacy/EuropcarRental/` (referencia; el desarrollo activo es middleware + MS).
