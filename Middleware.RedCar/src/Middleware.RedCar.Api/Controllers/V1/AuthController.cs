@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Npgsql;
 using RedCar.Seguridad.Business.Auth;
 using RedCar.Shared.Contracts.Common;
 
@@ -14,8 +15,13 @@ namespace Middleware.RedCar.Api.Controllers.V1;
 public sealed class AuthController : ControllerBase
 {
     private readonly IAuthService _auth;
+    private readonly ILogger<AuthController> _logger;
 
-    public AuthController(IAuthService auth) => _auth = auth;
+    public AuthController(IAuthService auth, ILogger<AuthController> logger)
+    {
+        _auth = auth;
+        _logger = logger;
+    }
 
     [HttpPost("login")]
     [AllowAnonymous]
@@ -30,8 +36,23 @@ public sealed class AuthController : ControllerBase
         {
             return BadRequest(ApiResponse<LoginResponseDto>.Fail(400, ex.Message, HttpContext.TraceIdentifier));
         }
+        catch (NpgsqlException ex)
+        {
+            _logger.LogError(ex, "Login: error Npgsql (Inner={Inner})", ex.InnerException?.Message);
+            return StatusCode(500, ApiResponse<LoginResponseDto>.Fail(500,
+                "Error al conectar con la base de datos. Si usas Supabase pooler (6543), revisa la cadena de conexión y los logs del servidor.",
+                HttpContext.TraceIdentifier));
+        }
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "Login: error de lectura en el stream (Inner={Inner})", ex.InnerException?.Message);
+            return StatusCode(500, ApiResponse<LoginResponseDto>.Fail(500,
+                "Error al conectar con la base de datos. Si usas Supabase pooler (6543), revisa la cadena de conexión y los logs del servidor.",
+                HttpContext.TraceIdentifier));
+        }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Login: error no controlado.");
             return StatusCode(500, ApiResponse<LoginResponseDto>.Fail(500, ex.Message, HttpContext.TraceIdentifier));
         }
     }
@@ -49,8 +70,23 @@ public sealed class AuthController : ControllerBase
         {
             return BadRequest(ApiResponse<object>.Fail(400, ex.Message, HttpContext.TraceIdentifier));
         }
+        catch (NpgsqlException ex)
+        {
+            _logger.LogError(ex, "Register: error Npgsql (Inner={Inner})", ex.InnerException?.Message);
+            return StatusCode(500, ApiResponse<object>.Fail(500,
+                "Error al conectar con la base de datos. Si usas Supabase pooler (6543), revisa la cadena de conexión y los logs del servidor.",
+                HttpContext.TraceIdentifier));
+        }
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "Register: error de lectura en el stream (Inner={Inner})", ex.InnerException?.Message);
+            return StatusCode(500, ApiResponse<object>.Fail(500,
+                "Error al conectar con la base de datos. Si usas Supabase pooler (6543), revisa la cadena de conexión y los logs del servidor.",
+                HttpContext.TraceIdentifier));
+        }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Register: error no controlado.");
             return StatusCode(500, ApiResponse<object>.Fail(500, ex.Message, HttpContext.TraceIdentifier));
         }
     }

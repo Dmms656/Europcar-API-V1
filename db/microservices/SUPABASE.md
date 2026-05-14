@@ -194,6 +194,38 @@ ORDER BY grantee, table_schema;
 
 Cada role solo debe aparecer con su schema. `ms_seguridad` aparece con `security` y `audit` (los dos suyos).
 
+### Error `42883: function crypt(...) does not exist` al hacer login
+
+Significa que la sesión de `ms_seguridad` **no ve** las funciones de **pgcrypto** (`crypt`, `gen_salt`). Suele pasar en Supabase cuando la extensión está en el schema **`extensions`** y el `search_path` del role no lo incluye.
+
+1. En **Database → Extensions**, activa **pgcrypto** (si no lo está).
+2. En el **SQL Editor** (como `postgres`), ejecuta:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'extensions') THEN
+    EXECUTE 'GRANT USAGE ON SCHEMA extensions TO ms_seguridad';
+    EXECUTE 'ALTER ROLE ms_seguridad SET search_path = security, audit, public, extensions';
+  ELSE
+    EXECUTE 'ALTER ROLE ms_seguridad SET search_path = security, audit, public';
+  END IF;
+END $$;
+```
+
+3. Cierra conexiones existentes del middleware (o redeploy en Render) para que el role cargue el `search_path` nuevo.
+
+Si aún no aplicaste `99_supabase_grants.sql` con el bloque actualizado del repo, vuelve a ejecutar solo la sección **7** del archivo (search_path + bloque `DO` de `ms_seguridad`).
+
+### Error `Exception while reading from stream` (Npgsql / .NET)
+
+Suele ser el **pooler transaccional** de Supabase (host `*.pooler.supabase.com`, puerto **6543**) con Npgsql: prepared statements o multiplexing rompen la sesión detrás del proxy.
+
+- En la cadena Npgsql usa al menos: **`Multiplexing=false`**, **`Max Auto Prepare=0`**, **`No Reset On Close=true`** (el `EUROPCAR_V2/.env.example` ya las trae).
+- El **middleware** (`Middleware.RedCar`) aplica esos tres valores automáticamente si la cadena apunta a `pooler.supabase.com`; si el error persiste, prueba la conexión **Session mode** (puerto **5432** en el pooler) solo para diagnosticar, o revisa firewall / región.
+
 ### Prueba de aislamiento
 
 En el SQL Editor, click en el botón de **role switcher** (arriba a la derecha del editor) → **Run as → ms_catalogo** (puede que tengas que abrir una sesión separada o usar un cliente externo, según versión del dashboard).

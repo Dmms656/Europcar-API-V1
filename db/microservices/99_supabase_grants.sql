@@ -25,23 +25,23 @@
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'ms_seguridad') THEN
-        CREATE ROLE ms_seguridad WITH LOGIN PASSWORD '__CHANGE_ME_SEGURIDAD__';
+        CREATE ROLE ms_seguridad WITH LOGIN PASSWORD 'G7kP2nQxY8wRzM3FvJtH6cBaL_9DhUNs';
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'ms_catalogo') THEN
-        CREATE ROLE ms_catalogo WITH LOGIN PASSWORD '__CHANGE_ME_CATALOGO__';
+        CREATE ROLE ms_catalogo WITH LOGIN PASSWORD 'T4mZ_xQ8hL2nVw9PyKbR.cF6gJaMHsUe';
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'ms_localizaciones') THEN
-        CREATE ROLE ms_localizaciones WITH LOGIN PASSWORD '__CHANGE_ME_LOCALIZACIONES__';
+        CREATE ROLE ms_localizaciones WITH LOGIN PASSWORD '9HvNxBkY-R3mZqP2cW.tD4F8jLgKaUSh';
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'ms_clientes') THEN
-        CREATE ROLE ms_clientes WITH LOGIN PASSWORD '__CHANGE_ME_CLIENTES__';
+        CREATE ROLE ms_clientes WITH LOGIN PASSWORD 'c8KxR_M2yPnZv4HbTqL.6gFaWjUNs9DH';
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'ms_reservas') THEN
-        CREATE ROLE ms_reservas WITH LOGIN PASSWORD '__CHANGE_ME_RESERVAS__';
+        CREATE ROLE ms_reservas WITH LOGIN PASSWORD 'A2mZ.kQ8nVw9PyKbRc_F6gJxYsUHe-TL';
     END IF;
 END $$;
 
@@ -139,7 +139,19 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA reservas
 -- =====================================================
 -- Cuando un MS se conecte, su search_path quedara apuntando a su(s)
 -- schema(s). Asi en el codigo no hace falta calificar el nombre.
-ALTER ROLE ms_seguridad      SET search_path = security, audit, public;
+--
+-- ms_seguridad: el login usa crypt()/gen_salt (pgcrypto). En Supabase la
+-- extension suele instalarse en el schema "extensions"; sin el en el path,
+-- Postgres responde 42883 "function crypt(...) does not exist".
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'extensions') THEN
+    EXECUTE 'GRANT USAGE ON SCHEMA extensions TO ms_seguridad';
+    EXECUTE 'ALTER ROLE ms_seguridad SET search_path = security, audit, public, extensions';
+  ELSE
+    EXECUTE 'ALTER ROLE ms_seguridad SET search_path = security, audit, public';
+  END IF;
+END $$;
 ALTER ROLE ms_catalogo       SET search_path = catalogo, public;
 ALTER ROLE ms_localizaciones SET search_path = localizaciones, public;
 ALTER ROLE ms_clientes       SET search_path = clientes, public;
