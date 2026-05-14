@@ -114,7 +114,10 @@ var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-if (app.Environment.IsDevelopment())
+var enableSwagger = app.Environment.IsDevelopment()
+    || app.Configuration.GetValue("Swagger:Enabled", false);
+
+if (enableSwagger)
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
@@ -132,7 +135,9 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready");
-app.MapGet("/", () => Results.Redirect("/swagger"));
+app.MapGet("/", () => enableSwagger
+    ? Results.Redirect("/swagger")
+    : Results.Redirect("/health/live"));
 
 app.Logger.LogInformation("Middleware.RedCar V2 iniciado en {Urls}", string.Join(",", app.Urls));
 app.Run();
