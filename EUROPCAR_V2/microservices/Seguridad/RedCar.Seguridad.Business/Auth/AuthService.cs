@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
+using NpgsqlTypes;
 using RedCar.Seguridad.DataAccess.Context;
 using RedCar.Shared.Auth;
 
@@ -27,31 +28,27 @@ public sealed class AuthService : IAuthService
         if (_db.Database.ProviderName?.Contains("InMemory", StringComparison.OrdinalIgnoreCase) == true)
             throw new UnauthorizedAccessException("Login requiere PostgreSQL con extension pgcrypto y seed security.");
 
-        var conn = _db.Database.GetDbConnection();
+        var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
         if (conn.State != ConnectionState.Open)
             await conn.OpenAsync(ct);
 
-        await using var cmd = conn.CreateCommand();
-        cmd.CommandText = """
+        // NpgsqlCommand + tipos explicitos: evita rarezas de DbCommand generico con el pooler.
+        await using var cmd = new NpgsqlCommand(
+            """
             SELECT u.id_usuario, u.username, u.correo, u.id_cliente, u.bloqueado_hasta_utc,
                    COALESCE(string_agg(DISTINCT r.nombre_rol, ',' ORDER BY r.nombre_rol), '') AS roles_csv
               FROM security.usuarios_app u
               LEFT JOIN security.usuarios_roles ur ON ur.id_usuario = u.id_usuario
                     AND ur.estado_usuario_rol = 'ACT' AND ur.activo AND NOT ur.es_eliminado
               LEFT JOIN security.roles r ON r.id_rol = ur.id_rol AND r.estado_rol = 'ACT'
-             WHERE lower(u.username) = lower(@u)
+             WHERE lower(u.username) = lower(@username)
                AND u.activo AND NOT u.es_eliminado AND u.estado_usuario = 'ACT'
-               AND crypt(@p, u.password_hash) = u.password_hash
+               AND crypt(@password, u.password_hash) = u.password_hash
              GROUP BY u.id_usuario, u.username, u.correo, u.id_cliente, u.bloqueado_hasta_utc
-            """;
-        var pU = cmd.CreateParameter();
-        pU.ParameterName = "u";
-        pU.Value = request.Username.Trim();
-        cmd.Parameters.Add(pU);
-        var pP = cmd.CreateParameter();
-        pP.ParameterName = "p";
-        pP.Value = request.Password;
-        cmd.Parameters.Add(pP);
+            """,
+            conn);
+        cmd.Parameters.Add(new NpgsqlParameter("username", NpgsqlDbType.Text) { Value = request.Username.Trim() });
+        cmd.Parameters.Add(new NpgsqlParameter("password", NpgsqlDbType.Text) { Value = request.Password ?? string.Empty });
 
         await using var rdr = await cmd.ExecuteReaderAsync(ct);
         if (!await rdr.ReadAsync(ct))

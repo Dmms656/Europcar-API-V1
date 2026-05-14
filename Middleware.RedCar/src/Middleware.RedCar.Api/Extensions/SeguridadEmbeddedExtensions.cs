@@ -18,15 +18,27 @@ public static class SeguridadEmbeddedExtensions
     {
         if (string.IsNullOrWhiteSpace(connectionString))
             return connectionString;
-        if (!connectionString.Contains("pooler.supabase.com", StringComparison.OrdinalIgnoreCase))
+
+        NpgsqlConnectionStringBuilder b;
+        try
+        {
+            b = new NpgsqlConnectionStringBuilder(connectionString);
+        }
+        catch
+        {
+            return connectionString;
+        }
+
+        // Transaction pooler de Supabase = puerto 6543 (aunque el host no sea *.pooler.supabase.com).
+        var looksLikeTxPooler = b.Port == 6543
+            || (b.Host?.Contains("pooler.supabase.com", StringComparison.OrdinalIgnoreCase) ?? false);
+
+        if (!looksLikeTxPooler)
             return connectionString;
 
-        var b = new NpgsqlConnectionStringBuilder(connectionString)
-        {
-            Multiplexing = false,
-            NoResetOnClose = true,
-            MaxAutoPrepare = 0
-        };
+        b.Multiplexing = false;
+        b.NoResetOnClose = true;
+        b.MaxAutoPrepare = 0;
         return b.ConnectionString;
     }
 
