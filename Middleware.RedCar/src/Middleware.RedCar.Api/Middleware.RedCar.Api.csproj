@@ -9,6 +9,9 @@
     <ProjectReference Include="..\Middleware.RedCar.Business\Middleware.RedCar.Business.csproj" />
     <ProjectReference Include="..\Middleware.RedCar.DataManagement\Middleware.RedCar.DataManagement.csproj" />
     <ProjectReference Include="..\Middleware.RedCar.DataAccess\Middleware.RedCar.DataAccess.csproj" />
+    <ProjectReference Include="..\..\..\EUROPCAR_V2\microservices\Seguridad\RedCar.Seguridad.Business\RedCar.Seguridad.Business.csproj" />
+    <ProjectReference Include="..\..\..\EUROPCAR_V2\shared\RedCar.Shared.Auth\RedCar.Shared.Auth.csproj" />
+    <ProjectReference Include="..\..\..\EUROPCAR_V2\shared\RedCar.Shared.Contracts\RedCar.Shared.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,8 +1,7 @@
 namespace Middleware.RedCar.DataAccess.Clients.Interfaces;
 
 /// <summary>
-/// Cliente REST hacia MS.Seguridad. El middleware lo usa para validar tokens
-/// o resolver datos del usuario autenticado cuando los necesita reenviar a otros MS.
+/// Abstracción legacy para smoke tests; con auth embebido usa <see cref="LocalSeguridadClient"/>.
 /// </summary>
 public interface ISeguridadClient
 {

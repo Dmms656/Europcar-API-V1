@@ -8,16 +8,15 @@ namespace Middleware.RedCar.Api.Extensions;
 public static class HttpClientExtensions
 {
     /// <summary>
-    /// Registra los 5 HttpClients tipados hacia los microservicios + el handler
-    /// que reenvia el JWT del usuario llamante.
+    /// Registra los HttpClients tipados hacia microservicios externos + handler que reenvia el JWT.
+    /// Seguridad REST va embebido en el middleware (<see cref="LocalSeguridadClient"/>).
     /// </summary>
     public static IServiceCollection AddMicroservicioHttpClients(this IServiceCollection services)
     {
         services.AddHttpContextAccessor();
         services.AddTransient<BearerTokenPropagationHandler>();
 
-        services.AddHttpClient<ISeguridadClient, SeguridadClient>(ConfigureClient<MicroserviciosSettings, SeguridadClient>(s => s.Seguridad))
-            .AddHttpMessageHandler<BearerTokenPropagationHandler>();
+        services.AddSingleton<ISeguridadClient, LocalSeguridadClient>();
 
         services.AddHttpClient<ICatalogoClient, CatalogoClient>(ConfigureClient<MicroserviciosSettings, CatalogoClient>(s => s.Catalogo))
             .AddHttpMessageHandler<BearerTokenPropagationHandler>();
@@ -30,21 +29,6 @@ public static class HttpClientExtensions
 
         services.AddHttpClient<IReservasClient, ReservasClient>(ConfigureClient<MicroserviciosSettings, ReservasClient>(s => s.Reservas))
             .AddHttpMessageHandler<BearerTokenPropagationHandler>();
-
-        // Llamadas a MS.Seguridad sin propagar el Bearer del cliente (login/registro desde SPA).
-        services.AddHttpClient("SeguridadNoBearer", (sp, http) =>
-        {
-            var settings = sp.GetRequiredService<IOptions<MicroserviciosSettings>>().Value;
-            var endpoint = settings.Seguridad;
-            if (string.IsNullOrWhiteSpace(endpoint.BaseUrl))
-            {
-                throw new InvalidOperationException(
-                    "Microservicios:Seguridad:BaseUrl no configurada. Revisa appsettings + .env.");
-            }
-            var baseUrl = endpoint.BaseUrl.TrimEnd('/') + "/";
-            http.BaseAddress = new Uri(baseUrl);
-            http.Timeout = TimeSpan.FromSeconds(endpoint.TimeoutSeconds <= 0 ? 10 : endpoint.TimeoutSeconds);
-        });
 
         return services;
     }

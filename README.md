@@ -8,7 +8,7 @@ Plataforma de renta de vehículos: **frontend** en React + Vite, **backend** dis
 
 | Carpeta | Rol |
 |--------|-----|
-| `Middleware.RedCar/` | API de cara al cliente: contrato **RedCar V2** (`/api/v2/...`), compatibilidad **booking** (`/api/v1/...`), **BFF Auth** (`/api/v1/Auth/...` → MS Seguridad) y **stubs** de panel (`/api/v1/admin/Vehiculos`, `/Clientes`, `/Contratos`) hasta que los microservicios expongan CRUD real. |
+| `Middleware.RedCar/` | API única de cara al cliente: **RedCar V2** (`/api/v2/...`), compat **booking** (`/api/v1/...`), **Auth embebido** (`/api/v1/Auth/...`, mismo proceso) y **stubs** de panel hasta CRUD real en otros MS. |
 | `EUROPCAR_V2/` | Microservicios (Seguridad, Catálogo, Localizaciones, Clientes, Reservas) y proyectos compartidos (`shared/`). |
 | `db/microservices/` | DDL/seed y notas de despliegue de bases por dominio. |
 | `_legacy/EuropcarRental/` | Monolito ASP.NET original (solo referencia o funciones aún no portadas; ver `_legacy/README.md`). |
@@ -34,7 +34,7 @@ El cliente Axios usa `VITE_API_URL` como `baseURL`. Para el flujo **booking** co
 
 `VITE_API_URL=http://localhost:5200/api/v1`
 
-**Auth y panel:** el SPA debe usar una sola `VITE_API_URL` al middleware (por ejemplo `https://<tu-middleware>/api/v1`). Login/registro van a MS **Seguridad** a través del middleware; el dashboard usa listas vacías (stub) hasta conectar Catálogo/Clientes/Reservas. Funcionalidad aún no portada puede consultarse en `_legacy/EuropcarRental`.
+**Auth y panel:** una sola `VITE_API_URL` al middleware. Login/registro se ejecutan **dentro** del middleware contra PostgreSQL (`security.*`). El dashboard sigue usando stubs hasta conectar Catálogo/Clientes/Reservas. Opcional: MS **Seguridad** por separado solo si quieres dividir despliegues.
 
 ## Requisitos previos
 
@@ -54,9 +54,8 @@ Vite suele usar `http://localhost:5173`. Copia `frontend/.env.example` a `fronte
 
 ## Despliegue
 
-- **Docker**: el `Dockerfile` en la raíz publica **Middleware.RedCar.Api** (imagen lista para Render u otro host que exponga el puerto 8080). En Render: **Root Directory** vacío (raíz del repo), Dockerfile `./Dockerfile`.
-- **Render (frontend estático)**: `render.yaml` (build del SPA y rewrites). Variable de build **`VITE_API_URL`** = URL del middleware + `/api/v1`.
-- **MS Seguridad** (otro Web Service en Render): **Root Directory** `EUROPCAR_V2`, build `dotnet publish microservices/Seguridad/RedCar.Seguridad.Api/RedCar.Seguridad.Api.csproj -c Release -o out`, start `dotnet out/RedCar.Seguridad.Api.dll`; configurar `ConnectionStrings__Default` y los mismos `Jwt__*` que el middleware.
+- **Docker**: el `Dockerfile` en la raíz publica **Middleware.RedCar.Api** con **Auth embebido** (incluye código de `EUROPCAR_V2` Seguridad.Business). Render: raíz del repo, Dockerfile `./Dockerfile`. Variables mínimas: `ConnectionStrings__Default`, `Jwt__*`, `Microservicios__*` (Catálogo, Localizaciones, Clientes, Reservas), `Cors__AllowedOrigins__0`.
+- **Render (frontend estático)**: `render.yaml`. **`VITE_API_URL`** = URL del middleware + `/api/v1`.
 
 ## Documentación adicional
 

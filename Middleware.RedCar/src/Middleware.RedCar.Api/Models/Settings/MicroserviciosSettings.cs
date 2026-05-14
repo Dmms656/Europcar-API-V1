@@ -7,7 +7,6 @@ public sealed class MicroserviciosSettings
 {
     public const string SectionName = "Microservicios";
 
-    public MicroservicioEndpoint Seguridad { get; set; } = new();
     public MicroservicioEndpoint Catalogo { get; set; } = new();
     public MicroservicioEndpoint Localizaciones { get; set; } = new();
     public MicroservicioEndpoint Clientes { get; set; } = new();

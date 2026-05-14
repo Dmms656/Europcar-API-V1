@@ -49,6 +49,7 @@ builder.Services.AddFluentValidationClientsideAdapters();
 
 builder.Services.AddRedCarApiVersioning();
 builder.Services.AddRedCarCors(builder.Configuration);
+builder.Services.AddEmbeddedSeguridadAuth(builder.Configuration);
 builder.Services.AddRedCarAuthentication(builder.Configuration);
 
 builder.Services.AddMicroservicioHttpClients();

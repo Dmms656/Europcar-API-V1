@@ -1,7 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using Middleware.RedCar.Api.Models.Settings;
+using RedCar.Shared.Auth;
 
 namespace Middleware.RedCar.Api.Extensions;
 

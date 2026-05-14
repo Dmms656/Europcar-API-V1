@@ -112,6 +112,19 @@ Endpoints disponibles por MS:
 - [ ] **Fase 3** - Contratos gRPC reales (.proto) y server implementation.
 - [ ] **Fase 4** - JWT login en MS.Seguridad + validacion en los otros.
 - [x] **Fase 5** - Orquestador `Middleware.RedCar.Api` (HttpClients + gRPC hacia los MS).
-- [ ] **Fase 6** - Despliegue en Render / contenedores.
+- [ ] **Fase 6** - Despliegue en Render / contenedores (ver tabla Docker abajo).
+
+### Render sin runtime .NET nativo
+
+Usa **Web Service → Language: Docker**. **Root Directory** del repo: vacío (raíz). **Dockerfile path** por servicio:
+
+| Servicio | Dockerfile path |
+|----------|-----------------|
+| Catálogo | `EUROPCAR_V2/microservices/Catalogo/Dockerfile` |
+| Localizaciones | `EUROPCAR_V2/microservices/Localizaciones/Dockerfile` |
+| Clientes | `EUROPCAR_V2/microservices/Clientes/Dockerfile` |
+| Reservas | `EUROPCAR_V2/microservices/Reservas/Dockerfile` |
+
+Imagen escucha en **8080** (`ASPNETCORE_URLS`). Variables: `ConnectionStrings__Default`, `Jwt__*`, `ASPNETCORE_ENVIRONMENT=Production`.
 
 El monolito historico vive en `_legacy/EuropcarRental/` (referencia; el desarrollo activo es middleware + MS).

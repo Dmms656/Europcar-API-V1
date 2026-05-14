@@ -1,0 +1,90 @@
+using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using RedCar.Seguridad.Business.Auth;
+using RedCar.Shared.Contracts.Common;
+
+namespace Middleware.RedCar.Api.Controllers.V1;
+
+/// <summary>Rutas <c>/api/v1/Auth/*</c> (SPA); auth embebido sin MS Seguridad separado.</summary>
+[ApiController]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/Auth")]
+[Produces("application/json")]
+public sealed class AuthController : ControllerBase
+{
+    private readonly IAuthService _auth;
+
+    public AuthController(IAuthService auth) => _auth = auth;
+
+    [HttpPost("login")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var data = await _auth.LoginAsync(request, ct);
+            return Ok(ApiResponse<LoginResponseDto>.Ok(data, "Login exitoso", HttpContext.TraceIdentifier));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return BadRequest(ApiResponse<LoginResponseDto>.Fail(400, ex.Message, HttpContext.TraceIdentifier));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<LoginResponseDto>.Fail(500, ex.Message, HttpContext.TraceIdentifier));
+        }
+    }
+
+    [HttpPost("register")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Register([FromBody] RegisterRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var data = await _auth.RegisterAsync(request, ct);
+            return Ok(ApiResponse<object>.Ok(data, "Registro exitoso", HttpContext.TraceIdentifier));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(400, ex.Message, HttpContext.TraceIdentifier));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<object>.Fail(500, ex.Message, HttpContext.TraceIdentifier));
+        }
+    }
+
+    [HttpGet("cedula-exists")]
+    [AllowAnonymous]
+    public IActionResult CedulaExists([FromQuery] string cedula)
+    {
+        if (string.IsNullOrWhiteSpace(cedula))
+            return BadRequest(ApiResponse<object>.Fail(400, "La cédula es requerida", HttpContext.TraceIdentifier));
+        return Ok(ApiResponse<object>.Ok(new { exists = false }, "OK", HttpContext.TraceIdentifier));
+    }
+
+    [HttpPut("profile")]
+    [Authorize]
+    public IActionResult ProfileNotImplemented() =>
+        StatusCode(501, new
+        {
+            success = false,
+            statusCode = 501,
+            message = "Actualización de perfil aún no está disponible.",
+            data = (object?)null,
+            traceId = HttpContext.TraceIdentifier
+        });
+
+    [HttpPut("change-password")]
+    [Authorize]
+    public IActionResult ChangePasswordNotImplemented() =>
+        StatusCode(501, new
+        {
+            success = false,
+            statusCode = 501,
+            message = "Cambio de contraseña aún no está disponible.",
+            data = (object?)null,
+            traceId = HttpContext.TraceIdentifier
+        });
+}
