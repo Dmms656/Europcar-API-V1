@@ -1,6 +1,10 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
+# TargetFramework net10.0 vive aqui; sin esto dotnet restore falla (NETSDK1013).
+COPY ["Middleware.RedCar/Directory.Build.props", "Middleware.RedCar/"]
+COPY ["EUROPCAR_V2/Directory.Build.props", "EUROPCAR_V2/"]
+
 # Middleware
 COPY ["Middleware.RedCar/Middleware.RedCar.sln", "Middleware.RedCar/"]
 COPY ["Middleware.RedCar/src/Middleware.RedCar.Api/Middleware.RedCar.Api.csproj", "Middleware.RedCar/src/Middleware.RedCar.Api/"]
