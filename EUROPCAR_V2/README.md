@@ -116,14 +116,18 @@ Endpoints disponibles por MS:
 
 ### Render sin runtime .NET nativo
 
-Usa **Web Service → Language: Docker**. **Root Directory** del repo: vacío (raíz). **Dockerfile path** por servicio:
+Usa **Web Service → Language: Docker**.
 
-| Servicio | Dockerfile path |
-|----------|-----------------|
-| Catálogo | `EUROPCAR_V2/microservices/Catalogo/Dockerfile` |
-| Localizaciones | `EUROPCAR_V2/microservices/Localizaciones/Dockerfile` |
-| Clientes | `EUROPCAR_V2/microservices/Clientes/Dockerfile` |
-| Reservas | `EUROPCAR_V2/microservices/Reservas/Dockerfile` |
+**Microservicios RedCar** (Catálogo, Localizaciones, Clientes, Reservas): el contexto de build es la carpeta `EUROPCAR_V2`. En Render, **Root Directory** = `EUROPCAR_V2` y el **Dockerfile path** relativo a esa raíz:
+
+| Servicio | Root Directory | Dockerfile path |
+|----------|----------------|-----------------|
+| Catálogo | `EUROPCAR_V2` | `microservices/Catalogo/Dockerfile` |
+| Localizaciones | `EUROPCAR_V2` | `microservices/Localizaciones/Dockerfile` |
+| Clientes | `EUROPCAR_V2` | `microservices/Clientes/Dockerfile` |
+| Reservas | `EUROPCAR_V2` | `microservices/Reservas/Dockerfile` |
+
+**Middleware** (`Middleware.RedCar.Api`): contexto = raíz del repositorio. **Root Directory** vacío y **Dockerfile path** = `Dockerfile` (en la raíz del repo).
 
 Imagen escucha en **8080** (`ASPNETCORE_URLS`). Variables: `ConnectionStrings__Default`, `Jwt__*`, `ASPNETCORE_ENVIRONMENT=Production`.
 

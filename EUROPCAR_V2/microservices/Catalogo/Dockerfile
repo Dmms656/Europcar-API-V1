@@ -1,23 +1,23 @@
-# Build desde la raíz del repositorio (Render: Root Directory vacío, Dockerfile path = esta ruta).
+# Contexto Docker = carpeta EUROPCAR_V2 (Render: Root Directory "EUROPCAR_V2", Dockerfile "microservices/Catalogo/Dockerfile").
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-COPY ["EUROPCAR_V2/Directory.Build.props", "EUROPCAR_V2/"]
+COPY ["Directory.Build.props", "./"]
 
-COPY ["EUROPCAR_V2/shared/RedCar.Shared.Contracts/RedCar.Shared.Contracts.csproj", "EUROPCAR_V2/shared/RedCar.Shared.Contracts/"]
-COPY ["EUROPCAR_V2/shared/RedCar.Shared.Auth/RedCar.Shared.Auth.csproj", "EUROPCAR_V2/shared/RedCar.Shared.Auth/"]
-COPY ["EUROPCAR_V2/shared/RedCar.Shared.Protos/RedCar.Shared.Protos.csproj", "EUROPCAR_V2/shared/RedCar.Shared.Protos/"]
-COPY ["EUROPCAR_V2/microservices/Catalogo/RedCar.Catalogo.DataAccess/RedCar.Catalogo.DataAccess.csproj", "EUROPCAR_V2/microservices/Catalogo/RedCar.Catalogo.DataAccess/"]
-COPY ["EUROPCAR_V2/microservices/Catalogo/RedCar.Catalogo.DataManagement/RedCar.Catalogo.DataManagement.csproj", "EUROPCAR_V2/microservices/Catalogo/RedCar.Catalogo.DataManagement/"]
-COPY ["EUROPCAR_V2/microservices/Catalogo/RedCar.Catalogo.Business/RedCar.Catalogo.Business.csproj", "EUROPCAR_V2/microservices/Catalogo/RedCar.Catalogo.Business/"]
-COPY ["EUROPCAR_V2/microservices/Catalogo/RedCar.Catalogo.Api/RedCar.Catalogo.Api.csproj", "EUROPCAR_V2/microservices/Catalogo/RedCar.Catalogo.Api/"]
+COPY ["shared/RedCar.Shared.Contracts/RedCar.Shared.Contracts.csproj", "shared/RedCar.Shared.Contracts/"]
+COPY ["shared/RedCar.Shared.Auth/RedCar.Shared.Auth.csproj", "shared/RedCar.Shared.Auth/"]
+COPY ["shared/RedCar.Shared.Protos/RedCar.Shared.Protos.csproj", "shared/RedCar.Shared.Protos/"]
+COPY ["microservices/Catalogo/RedCar.Catalogo.DataAccess/RedCar.Catalogo.DataAccess.csproj", "microservices/Catalogo/RedCar.Catalogo.DataAccess/"]
+COPY ["microservices/Catalogo/RedCar.Catalogo.DataManagement/RedCar.Catalogo.DataManagement.csproj", "microservices/Catalogo/RedCar.Catalogo.DataManagement/"]
+COPY ["microservices/Catalogo/RedCar.Catalogo.Business/RedCar.Catalogo.Business.csproj", "microservices/Catalogo/RedCar.Catalogo.Business/"]
+COPY ["microservices/Catalogo/RedCar.Catalogo.Api/RedCar.Catalogo.Api.csproj", "microservices/Catalogo/RedCar.Catalogo.Api/"]
 
-RUN dotnet restore "EUROPCAR_V2/microservices/Catalogo/RedCar.Catalogo.Api/RedCar.Catalogo.Api.csproj"
+RUN dotnet restore "microservices/Catalogo/RedCar.Catalogo.Api/RedCar.Catalogo.Api.csproj"
 
-COPY ["EUROPCAR_V2/shared/", "EUROPCAR_V2/shared/"]
-COPY ["EUROPCAR_V2/microservices/Catalogo/", "EUROPCAR_V2/microservices/Catalogo/"]
+COPY ["shared/", "shared/"]
+COPY ["microservices/Catalogo/", "microservices/Catalogo/"]
 
-WORKDIR "/src/EUROPCAR_V2/microservices/Catalogo/RedCar.Catalogo.Api"
+WORKDIR "/src/microservices/Catalogo/RedCar.Catalogo.Api"
 RUN dotnet publish "RedCar.Catalogo.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
