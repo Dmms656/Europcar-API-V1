@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>RedCar.Seguridad.Api</RootNamespace>
+    <UserSecretsId>redcar-seguridad-dev-secrets</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RedCar.Seguridad.Business\RedCar.Seguridad.Business.csproj" />
+    <ProjectReference Include="..\RedCar.Seguridad.DataManagement\RedCar.Seguridad.DataManagement.csproj" />
+    <ProjectReference Include="..\RedCar.Seguridad.DataAccess\RedCar.Seguridad.DataAccess.csproj" />
+    <ProjectReference Include="..\..\..\shared\RedCar.Shared.Contracts\RedCar.Shared.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\shared\RedCar.Shared.Auth\RedCar.Shared.Auth.csproj" />
+    <ProjectReference Include="..\..\..\shared\RedCar.Shared.Protos\RedCar.Shared.Protos.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Grpc.AspNetCore" Version="2.70.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="9.0.4" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.3.1" />
+  </ItemGroup>
+
+</Project>

@@ -1,6 +1,12 @@
 using Npgsql;
 
-var cs = "Host=db.ufqzdzdkcqmwvapdaajx.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=eNbvTDIa2YJXRn1h;Ssl Mode=Require;Trust Server Certificate=true;Timeout=15;Command Timeout=15";
+// No incluir credenciales en el repositorio. Usar la misma cadena que la API, por ejemplo:
+//   $env:ConnectionStrings__RentalDb = "Host=...;Password=...;..."
+// o   set ConnectionStrings__RentalDb=...
+var cs = Environment.GetEnvironmentVariable("ConnectionStrings__RentalDb")
+    ?? Environment.GetEnvironmentVariable("RENTAL_DB_CONNECTION")
+    ?? throw new InvalidOperationException(
+        "Define ConnectionStrings__RentalDb o RENTAL_DB_CONNECTION con la cadena Npgsql.");
 
 try
 {

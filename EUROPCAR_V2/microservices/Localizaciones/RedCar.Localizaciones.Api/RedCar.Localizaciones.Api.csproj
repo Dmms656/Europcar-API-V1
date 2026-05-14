@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>RedCar.Localizaciones.Api</RootNamespace>
+    <UserSecretsId>redcar-localizaciones-dev-secrets</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RedCar.Localizaciones.Business\RedCar.Localizaciones.Business.csproj" />
+    <ProjectReference Include="..\RedCar.Localizaciones.DataManagement\RedCar.Localizaciones.DataManagement.csproj" />
+    <ProjectReference Include="..\RedCar.Localizaciones.DataAccess\RedCar.Localizaciones.DataAccess.csproj" />
+    <ProjectReference Include="..\..\..\shared\RedCar.Shared.Contracts\RedCar.Shared.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\shared\RedCar.Shared.Auth\RedCar.Shared.Auth.csproj" />
+    <ProjectReference Include="..\..\..\shared\RedCar.Shared.Protos\RedCar.Shared.Protos.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Grpc.AspNetCore" Version="2.70.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="9.0.4" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.3.1" />
+  </ItemGroup>
+
+</Project>

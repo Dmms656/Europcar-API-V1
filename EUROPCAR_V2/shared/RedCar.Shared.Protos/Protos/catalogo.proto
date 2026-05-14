@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+option csharp_namespace = "RedCar.Shared.Protos.Catalogo";
+
+package redcar.catalogo.v1;
+
+// Contrato gRPC de MS.Catalogo. Por ahora solo Ping.
+service CatalogoGrpc {
+  rpc Ping (PingRequest) returns (PingResponse);
+}
+
+message PingRequest {
+  string caller = 1;
+}
+
+message PingResponse {
+  string service = 1;
+  string version = 2;
+  string echo = 3;
+  string server_time_utc = 4;
+}

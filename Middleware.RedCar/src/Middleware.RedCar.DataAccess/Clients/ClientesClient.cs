@@ -1,0 +1,23 @@
+using Microsoft.Extensions.Logging;
+using Middleware.RedCar.DataAccess.Clients.Interfaces;
+
+namespace Middleware.RedCar.DataAccess.Clients;
+
+public sealed class ClientesClient : HttpClientBase, IClientesClient
+{
+    public ClientesClient(HttpClient http, ILogger<ClientesClient> logger) : base(http, logger) { }
+
+    public async Task<ClienteUpsertResult?> UpsertClienteAsync(ClienteUpsertRequest req, CancellationToken ct = default)
+    {
+        var envelope = await PostAsync<ClienteUpsertRequest, MsApiEnvelope<ClienteUpsertResult>>(
+            "/api/v1/clientes/upsert", req, ct);
+        return envelope?.Data;
+    }
+
+    public async Task<IReadOnlyList<ConductorUpsertResult>?> UpsertConductoresAsync(int idCliente, IReadOnlyList<ConductorUpsertRequest> conductores, CancellationToken ct = default)
+    {
+        var envelope = await PostAsync<IReadOnlyList<ConductorUpsertRequest>, MsApiEnvelope<IReadOnlyList<ConductorUpsertResult>>>(
+            $"/api/v1/clientes/{idCliente}/conductores/upsert", conductores, ct);
+        return envelope?.Data;
+    }
+}

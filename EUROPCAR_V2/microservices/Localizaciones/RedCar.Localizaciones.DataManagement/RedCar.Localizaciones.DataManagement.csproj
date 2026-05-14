@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>RedCar.Localizaciones.DataManagement</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RedCar.Localizaciones.DataAccess\RedCar.Localizaciones.DataAccess.csproj" />
+  </ItemGroup>
+
+</Project>

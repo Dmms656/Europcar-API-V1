@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>RedCar.Seguridad.Business</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RedCar.Seguridad.DataAccess\RedCar.Seguridad.DataAccess.csproj" />
+    <ProjectReference Include="..\RedCar.Seguridad.DataManagement\RedCar.Seguridad.DataManagement.csproj" />
+    <ProjectReference Include="..\..\..\shared\RedCar.Shared.Auth\RedCar.Shared.Auth.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.7" />
+    <PackageReference Include="Npgsql" Version="9.0.3" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.17.0" />
+  </ItemGroup>
+
+</Project>

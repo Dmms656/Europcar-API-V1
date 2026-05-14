@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>RedCar.Shared.Protos</RootNamespace>
+    <!-- Compila los .proto a clases servidor y cliente para que otros MS los reutilicen -->
+    <Protobuf_DefaultGrpcServices>Both</Protobuf_DefaultGrpcServices>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.29.3" />
+    <PackageReference Include="Grpc.Tools" Version="2.70.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Grpc.Net.ClientFactory" Version="2.70.0" />
+    <PackageReference Include="Grpc.AspNetCore" Version="2.70.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="Protos\seguridad.proto" />
+    <Protobuf Include="Protos\catalogo.proto" />
+    <Protobuf Include="Protos\localizaciones.proto" />
+    <Protobuf Include="Protos\clientes.proto" />
+    <Protobuf Include="Protos\reservas.proto" />
+  </ItemGroup>
+
+</Project>

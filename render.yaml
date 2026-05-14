@@ -24,6 +24,6 @@ services:
       # (Environment > Add). sync:false evita que Render lo borre o lo lea de aqui.
       - key: VITE_CLOUDINARY_UPLOAD_PRESET
         sync: false
-      # URL de la API en produccion. Cambiala si tu backend vive en otro host.
-      - key: VITE_API_BASE_URL
+      # URL del middleware (axios). Debe incluir /api/v1. Ver frontend/.env.example
+      - key: VITE_API_URL
         sync: false

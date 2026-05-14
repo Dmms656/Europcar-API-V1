@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { vehiculosApi } from '../../api/vehiculosApi';
 import { reservasApi } from '../../api/reservasApi';
 import { pagosApi } from '../../api/pagosApi';
 import DateTimePicker from '../../components/ui/DateTimePicker';
@@ -12,6 +11,7 @@ import {
   Minus, ShieldCheck, Loader2, CheckCircle2, X, AlertCircle, UserPlus
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { normalizeVehiculoDetalle } from '../../utils/bookingNormalize';
 
 const IVA_RATE = 0.15;
 const RECARGO_CONDUCTOR_ADICIONAL_DIA = 15;
@@ -86,15 +86,16 @@ export default function ReservarPage() {
     try {
       // Load vehicle from the working /disponibles endpoint
       const [vehRes, locRes, extRes] = await Promise.allSettled([
-        vehiculosApi.getDisponibles(),
-        bookingApi.getLocalizaciones({}),
+        bookingApi.getVehiculoDetalle(id),
+        bookingApi.getLocalizaciones({ page: 1, limit: 200 }),
         bookingApi.getExtras(),
       ]);
 
       if (vehRes.status === 'fulfilled') {
-        const allVehiculos = vehRes.value.data?.data || [];
-        const found = allVehiculos.find(v => String(v.idVehiculo) === String(id));
-        setVehiculo(found || null);
+        const payload = vehRes.value.data?.data ?? vehRes.value.data?.Data ?? {};
+        const raw = payload.vehiculo ?? payload.Vehiculo ?? null;
+        const found = normalizeVehiculoDetalle(raw);
+        setVehiculo(found);
         if (found?.idLocalizacion) {
           setForm(prev => ({
             ...prev,
@@ -292,7 +293,7 @@ export default function ReservarPage() {
 
       setCheckingDisponibilidad(true);
       try {
-        const res = await bookingApi.checkDisponibilidad(String(vehiculo.codigoInterno || vehiculo.idVehiculo || id), {
+        const res = await bookingApi.checkDisponibilidad(String(vehiculo.idVehiculo || id), {
           fechaRecogida: new Date(form.fechaRecogida).toISOString(),
           fechaDevolucion: new Date(form.fechaDevolucion).toISOString(),
           idLocalizacion: Number(form.idLocalizacionRecogida),
@@ -544,9 +545,10 @@ export default function ReservarPage() {
         const horaFin = `${String(fechaFin.getHours()).padStart(2, '0')}:${String(fechaFin.getMinutes()).padStart(2, '0')}:00`;
 
         const bookingPayload = {
-          idVehiculo: String(vehiculo?.codigoInterno || vehiculo?.idVehiculo || id),
+          idVehiculo: String(Number(vehiculo?.idVehiculo || id)),
           idLocalizacionRecogida: Number(form.idLocalizacionRecogida),
           idLocalizacionEntrega: Number(form.idLocalizacionDevolucion),
+          idLocalizacionDevolucion: Number(form.idLocalizacionDevolucion),
           fechaInicio: form.fechaRecogida.slice(0, 10),
           fechaFin: form.fechaDevolucion.slice(0, 10),
           horaInicio,

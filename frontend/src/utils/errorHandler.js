@@ -65,9 +65,11 @@ export function parseApiError(error) {
   const { status, data } = error.response;
   const apiPayload = data && typeof data === 'object' ? data : {};
 
-  // El backend envía .message; si no, usamos defaults o el statusText
+  // Monolito / middleware: message (inglés) o mensaje (español, envelope booking).
   const message =
     apiPayload.message ||
+    apiPayload.mensaje ||
+    apiPayload.Mensaje ||
     apiPayload.title ||
     DEFAULT_MESSAGES[status] ||
     error.message ||

@@ -1,0 +1,46 @@
+<Solution>
+  <Folder Name="/EUROPCAR_V2/" />
+  <Folder Name="/EUROPCAR_V2/microservices/" />
+  <Folder Name="/EUROPCAR_V2/microservices/Catalogo/">
+    <Project Path="EUROPCAR_V2/microservices/Catalogo/RedCar.Catalogo.Api/RedCar.Catalogo.Api.csproj" />
+    <Project Path="EUROPCAR_V2/microservices/Catalogo/RedCar.Catalogo.Business/RedCar.Catalogo.Business.csproj" />
+    <Project Path="EUROPCAR_V2/microservices/Catalogo/RedCar.Catalogo.DataAccess/RedCar.Catalogo.DataAccess.csproj" />
+    <Project Path="EUROPCAR_V2/microservices/Catalogo/RedCar.Catalogo.DataManagement/RedCar.Catalogo.DataManagement.csproj" />
+  </Folder>
+  <Folder Name="/EUROPCAR_V2/microservices/Clientes/">
+    <Project Path="EUROPCAR_V2/microservices/Clientes/RedCar.Clientes.Api/RedCar.Clientes.Api.csproj" />
+    <Project Path="EUROPCAR_V2/microservices/Clientes/RedCar.Clientes.Business/RedCar.Clientes.Business.csproj" />
+    <Project Path="EUROPCAR_V2/microservices/Clientes/RedCar.Clientes.DataAccess/RedCar.Clientes.DataAccess.csproj" />
+    <Project Path="EUROPCAR_V2/microservices/Clientes/RedCar.Clientes.DataManagement/RedCar.Clientes.DataManagement.csproj" />
+  </Folder>
+  <Folder Name="/EUROPCAR_V2/microservices/Localizaciones/">
+    <Project Path="EUROPCAR_V2/microservices/Localizaciones/RedCar.Localizaciones.Api/RedCar.Localizaciones.Api.csproj" />
+    <Project Path="EUROPCAR_V2/microservices/Localizaciones/RedCar.Localizaciones.Business/RedCar.Localizaciones.Business.csproj" />
+    <Project Path="EUROPCAR_V2/microservices/Localizaciones/RedCar.Localizaciones.DataAccess/RedCar.Localizaciones.DataAccess.csproj" />
+    <Project Path="EUROPCAR_V2/microservices/Localizaciones/RedCar.Localizaciones.DataManagement/RedCar.Localizaciones.DataManagement.csproj" />
+  </Folder>
+  <Folder Name="/EUROPCAR_V2/microservices/Reservas/">
+    <Project Path="EUROPCAR_V2/microservices/Reservas/RedCar.Reservas.Api/RedCar.Reservas.Api.csproj" />
+    <Project Path="EUROPCAR_V2/microservices/Reservas/RedCar.Reservas.Business/RedCar.Reservas.Business.csproj" />
+    <Project Path="EUROPCAR_V2/microservices/Reservas/RedCar.Reservas.DataAccess/RedCar.Reservas.DataAccess.csproj" />
+    <Project Path="EUROPCAR_V2/microservices/Reservas/RedCar.Reservas.DataManagement/RedCar.Reservas.DataManagement.csproj" />
+  </Folder>
+  <Folder Name="/EUROPCAR_V2/microservices/Seguridad/">
+    <Project Path="EUROPCAR_V2/microservices/Seguridad/RedCar.Seguridad.Api/RedCar.Seguridad.Api.csproj" />
+    <Project Path="EUROPCAR_V2/microservices/Seguridad/RedCar.Seguridad.Business/RedCar.Seguridad.Business.csproj" />
+    <Project Path="EUROPCAR_V2/microservices/Seguridad/RedCar.Seguridad.DataAccess/RedCar.Seguridad.DataAccess.csproj" />
+    <Project Path="EUROPCAR_V2/microservices/Seguridad/RedCar.Seguridad.DataManagement/RedCar.Seguridad.DataManagement.csproj" />
+  </Folder>
+  <Folder Name="/EUROPCAR_V2/shared/">
+    <Project Path="EUROPCAR_V2/shared/RedCar.Shared.Auth/RedCar.Shared.Auth.csproj" />
+    <Project Path="EUROPCAR_V2/shared/RedCar.Shared.Contracts/RedCar.Shared.Contracts.csproj" />
+    <Project Path="EUROPCAR_V2/shared/RedCar.Shared.Protos/RedCar.Shared.Protos.csproj" />
+  </Folder>
+  <Folder Name="/Middleware.RedCar/" />
+  <Folder Name="/Middleware.RedCar/src/">
+    <Project Path="Middleware.RedCar/src/Middleware.RedCar.Api/Middleware.RedCar.Api.csproj" />
+    <Project Path="Middleware.RedCar/src/Middleware.RedCar.Business/Middleware.RedCar.Business.csproj" />
+    <Project Path="Middleware.RedCar/src/Middleware.RedCar.DataAccess/Middleware.RedCar.DataAccess.csproj" />
+    <Project Path="Middleware.RedCar/src/Middleware.RedCar.DataManagement/Middleware.RedCar.DataManagement.csproj" />
+  </Folder>
+</Solution>

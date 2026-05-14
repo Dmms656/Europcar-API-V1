@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>RedCar.Clientes.Business</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RedCar.Clientes.DataManagement\RedCar.Clientes.DataManagement.csproj" />
+    <ProjectReference Include="..\..\..\shared\RedCar.Shared.Contracts\RedCar.Shared.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\shared\RedCar.Shared.Auth\RedCar.Shared.Auth.csproj" />
+  </ItemGroup>
+
+</Project>

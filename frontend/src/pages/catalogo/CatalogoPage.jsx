@@ -1,13 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { vehiculosApi } from '../../api/vehiculosApi';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { bookingApi } from '../../api/bookingApi';
-import { useAuthStore } from '../../store/useAuthStore';
 import {
   Car, Search, Users, Fuel, Settings2, MapPin,
-  SlidersHorizontal, X, Star, ShieldCheck, Zap, ArrowRight, LogIn, Home
+  SlidersHorizontal, X, Star, ShieldCheck, Zap, ArrowRight
 } from 'lucide-react';
 import PaginationControls from '../../components/ui/PaginationControls';
+import {
+  defaultRentalDateTimeLocalRange,
+  normalizeVehiculoFromBookingList,
+} from '../../utils/bookingNormalize';
 
 const isValidImageUrl = (url) => url && (url.startsWith('http://') || url.startsWith('https://'));
 const getPayload = (res) => res?.data?.data ?? res?.data?.Data ?? {};
@@ -43,7 +45,6 @@ export default function CatalogoPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [paginaActual, setPaginaActual] = useState(1);
   const [vehiculosPorPagina, setVehiculosPorPagina] = useState(10);
-  const { isAuthenticated, userType } = useAuthStore();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -86,15 +87,11 @@ export default function CatalogoPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [vehRes, catRes, ciuRes, locRes] = await Promise.allSettled([
-        vehiculosApi.getDisponibles(),
+      const [catRes, ciuRes, locRes] = await Promise.allSettled([
         bookingApi.getCategorias(),
         bookingApi.getCiudades(),
         bookingApi.getLocalizaciones({ page: 1, limit: 200 }),
       ]);
-      if (vehRes.status === 'fulfilled') {
-        setVehiculos(vehRes.value.data?.data || []);
-      }
       if (catRes.status === 'fulfilled') {
         const payload = getPayload(catRes.value);
         setCategorias(payload.categorias ?? payload.Categorias ?? []);
@@ -104,13 +101,32 @@ export default function CatalogoPage() {
         const items = payload.ciudades ?? payload.Ciudades ?? [];
         setCiudades(items.map(normalizeCiudad).filter((c) => c.idCiudad));
       }
+      let locsMapped = [];
       if (locRes.status === 'fulfilled') {
         const payload = getPayload(locRes.value);
         const items = payload.localizaciones ?? payload.Localizaciones ?? [];
-        setLocalizaciones(items.map(normalizeLocalizacion).filter((l) => l.idLocalizacion));
+        locsMapped = items.map(normalizeLocalizacion).filter((l) => l.idLocalizacion);
+        setLocalizaciones(locsMapped);
+      }
+
+      const firstLoc = locsMapped[0];
+      if (!firstLoc) {
+        setVehiculos([]);
+      } else {
+        const { fechaRecogida, fechaDevolucion } = defaultRentalDateTimeLocalRange();
+        const vehRes = await bookingApi.buscarVehiculos({
+          idLocalizacion: firstLoc.idLocalizacion,
+          fechaRecogida,
+          fechaDevolucion,
+          page: 1,
+          limit: 100,
+        });
+        const raw = vehRes.data?.data?.vehiculos ?? [];
+        setVehiculos(raw.map(normalizeVehiculoFromBookingList));
       }
     } catch (e) {
       console.error('Error loading catalog:', e);
+      setVehiculos([]);
     } finally {
       setLoading(false);
     }
@@ -153,8 +169,8 @@ export default function CatalogoPage() {
         (v.modelo || v.modeloVehiculo || '').toLowerCase().includes(search) ||
         (v.categoria || '').toLowerCase().includes(search);
 
-      const localizacionNombre = (v.localizacion || '').toString().trim().toLowerCase();
-      const localizacion = locationByNombre.get(localizacionNombre);
+      const locName = (v.nombreSucursal || '').toString().trim().toLowerCase();
+      const localizacion = locationByNombre.get(locName);
       const ciudad = ciudadById.get(String(localizacion?.idCiudad ?? ''));
 
       const matchPais = !filtros.pais || String(ciudad?.idPais ?? '') === String(filtros.pais);

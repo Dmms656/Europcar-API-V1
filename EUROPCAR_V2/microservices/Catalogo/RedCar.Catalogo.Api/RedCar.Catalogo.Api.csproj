@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>RedCar.Catalogo.Api</RootNamespace>
+    <UserSecretsId>redcar-catalogo-dev-secrets</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RedCar.Catalogo.Business\RedCar.Catalogo.Business.csproj" />
+    <ProjectReference Include="..\RedCar.Catalogo.DataManagement\RedCar.Catalogo.DataManagement.csproj" />
+    <ProjectReference Include="..\RedCar.Catalogo.DataAccess\RedCar.Catalogo.DataAccess.csproj" />
+    <ProjectReference Include="..\..\..\shared\RedCar.Shared.Contracts\RedCar.Shared.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\shared\RedCar.Shared.Auth\RedCar.Shared.Auth.csproj" />
+    <ProjectReference Include="..\..\..\shared\RedCar.Shared.Protos\RedCar.Shared.Protos.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Grpc.AspNetCore" Version="2.70.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="9.0.4" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.3.1" />
+  </ItemGroup>
+
+</Project>

@@ -550,16 +550,14 @@ def build_document() -> Document:
 
     # ============ 3. Estructura del sistema ============
     add_heading(doc, "3. Estructura del sistema", level=1)
-    add_paragraph(doc, "El repositorio se organiza en dos grandes piezas: backend (.NET) en src/ y frontend (React) en frontend/. Tambien incluye material de contexto, scripts y configuracion de despliegue.")
+    add_paragraph(doc, "El repositorio se organiza en: backend activo (`Middleware.RedCar/`, `EUROPCAR_V2/`), monolito de referencia en `_legacy/EuropcarRental/`, frontend (React) en `frontend/`, scripts y configuracion de despliegue.")
     estructura = [
-        ["src/Europcar.Rental.Api",
-         "Capa de presentacion (.NET 10). Controllers REST, middleware, configuracion de Swagger, JWT, versionado y health checks."],
-        ["src/Europcar.Rental.Business",
-         "Capa de negocio: servicios, validadores, DTOs, mappers y excepciones del dominio."],
-        ["src/Europcar.Rental.DataAccess",
-         "Acceso a datos con EF Core: DbContext, entidades por modulo, configuraciones y repositorios."],
-        ["src/Europcar.Rental.DataManagement",
-         "Servicios de datos auxiliares (modelos planos y operaciones de soporte)."],
+        ["Middleware.RedCar",
+         "Orquestador .NET 10: REST publico (compat /api/v1, contrato /api/v2), clientes HTTP/gRPC a microservicios."],
+        ["EUROPCAR_V2",
+         "Cinco microservicios RedCar (Api, Business, DataManagement, DataAccess) y proyectos shared/."],
+        ["_legacy/EuropcarRental",
+         "Monolito Europcar.Rental.* (referencia historica; admin/Auth hasta migracion completa)."],
         ["frontend",
          "SPA en React + Vite con paginas publicas, panel administrativo y portal del cliente."],
         ["scripts",
@@ -1001,21 +999,21 @@ def build_document() -> Document:
     add_bullet(doc, "PostgreSQL accesible (configurado para Supabase en appsettings.json)")
 
     add_heading(doc, "10.2. Configuracion del backend", level=2)
-    add_paragraph(doc, "Archivo principal: src/Europcar.Rental.Api/appsettings.json. Variables clave:")
-    add_bullet(doc, "ConnectionStrings:RentalDb")
-    add_bullet(doc, "JwtSettings:SecretKey, Issuer, Audience, ExpirationMinutes")
+    add_paragraph(doc, "Archivo principal del orquestador: Middleware.RedCar/src/Middleware.RedCar.Api/appsettings.json. Variables clave:")
+    add_bullet(doc, "Microservicios:BaseUrl (URLs de Seguridad, Catalogo, Localizaciones, Clientes, Reservas)")
+    add_bullet(doc, "Jwt:SecretKey, Issuer, Audience, ExpirationMinutes")
     add_bullet(doc, "Logging: niveles globales y por categoria")
-    add_paragraph(doc, "Recomendacion: mover secretos a variables de entorno o User Secrets (UserSecretsId 7f74ad0e-e0e5-4112-966e-57be085c77e1).")
+    add_paragraph(doc, "Recomendacion: mover secretos a variables de entorno o User Secrets del proyecto Api.")
 
     add_heading(doc, "10.3. Ejecucion local", level=2)
-    add_paragraph(doc, "Backend (desde la raiz del repositorio):", bold=True)
-    add_bullet(doc, "dotnet restore")
-    add_bullet(doc, "dotnet run --project src/Europcar.Rental.Api")
-    add_paragraph(doc, "URLs por defecto: http://localhost:5207 ; Swagger en /swagger ; Health: /health/live, /health/ready.")
+    add_paragraph(doc, "Backend activo (desde la raiz del repositorio):", bold=True)
+    add_bullet(doc, "dotnet restore RedCar.Platform.slnx")
+    add_bullet(doc, "dotnet run --project Middleware.RedCar/src/Middleware.RedCar.Api")
+    add_paragraph(doc, "URLs por defecto del middleware: http://localhost:5200 ; Swagger en /swagger ; Health: /health/live, /health/ready. Monolito legado: _legacy/EuropcarRental (puerto segun su launchSettings).")
     add_paragraph(doc, "Frontend (desde frontend/):", bold=True)
     add_bullet(doc, "npm ci")
     add_bullet(doc, "npm run dev")
-    add_paragraph(doc, "VITE_API_URL debe apuntar al backend (ej. http://localhost:5207). El cliente Axios usa esta variable como baseURL.")
+    add_paragraph(doc, "VITE_API_URL debe apuntar al backend con prefijo /api/v1 (ej. http://localhost:5200/api/v1). El cliente Axios usa esta variable como baseURL.")
 
     add_heading(doc, "10.4. Despliegue del frontend (Render)", level=2)
     add_paragraph(doc, "El archivo render.yaml define el blueprint para publicar el frontend como sitio estatico:")

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+option csharp_namespace = "RedCar.Shared.Protos.Seguridad";
+
+package redcar.seguridad.v1;
+
+// Servicio gRPC del microservicio MS.Seguridad.
+// Por ahora expone solo Ping (smoke test). En la Fase 3 anadimos
+// ValidarToken, ResolverPermisos, etc.
+service SeguridadGrpc {
+  rpc Ping (PingRequest) returns (PingResponse);
+}
+
+message PingRequest {
+  string caller = 1;
+}
+
+message PingResponse {
+  string service = 1;
+  string version = 2;
+  string echo = 3;
+  string server_time_utc = 4;
+}

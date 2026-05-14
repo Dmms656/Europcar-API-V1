@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+option csharp_namespace = "Middleware.RedCar.DataAccess.Protos.Reservas";
+
+package middleware.redcar.reservas.v1;
+
+// Contrato gRPC entre el Middleware y MS.Reservas para operaciones
+// transaccionales criticas: crear reserva y cancelar reserva.
+// (Las consultas siguen yendo por REST.)
+
+service ReservasGrpc {
+  rpc CrearReserva (CrearReservaRequest) returns (CrearReservaResponse);
+  rpc CancelarReserva (CancelarReservaRequest) returns (CancelarReservaResponse);
+  rpc Ping (PingRequest) returns (PingResponse);
+}
+
+message PingRequest {
+  string caller = 1;
+}
+
+message PingResponse {
+  string service = 1;
+  string echo = 2;
+  string server_time_utc = 3;
+}
+
+message ConductorDto {
+  string nombres = 1;
+  string apellidos = 2;
+  string tipo_identificacion = 3;
+  string numero_identificacion = 4;
+  string fecha_vencimiento_licencia = 5;  // ISO date
+  int32 edad_conductor = 6;
+  string correo = 7;
+  string telefono = 8;
+  bool es_principal = 9;
+}
+
+message ExtraDto {
+  int32 id_extra = 1;
+  int32 cantidad = 2;
+}
+
+message ClienteDto {
+  string nombres = 1;
+  string apellidos = 2;
+  string tipo_identificacion = 3;
+  string numero_identificacion = 4;
+  string correo = 5;
+  string telefono = 6;
+}
+
+message CrearReservaRequest {
+  int32 id_vehiculo = 1;
+  int32 id_localizacion_recogida = 2;
+  int32 id_localizacion_devolucion = 3;
+  string fecha_inicio = 4;            // YYYY-MM-DD
+  string fecha_fin = 5;
+  string hora_inicio = 6;             // HH:MM:SS
+  string hora_fin = 7;
+  string observaciones = 8;
+  string origen_canal_reserva = 9;    // siempre "BOOKING"
+  ClienteDto cliente = 10;
+  repeated ConductorDto conductores = 11;
+  repeated ExtraDto extras = 12;
+}
+
+message CrearReservaResponse {
+  string codigo_reserva = 1;
+  string estado_reserva = 2;          // CON | PEN | CAN
+  string fecha_reserva_utc = 3;
+  int32 cantidad_dias = 4;
+  double subtotal_vehiculo = 5;
+  double subtotal_extras = 6;
+  double subtotal = 7;
+  double iva = 8;
+  double total = 9;
+}
+
+message CancelarReservaRequest {
+  string codigo_reserva = 1;
+  string motivo_cancelacion = 2;
+  string usuario_cancelacion = 3;
+}
+
+message CancelarReservaResponse {
+  string codigo_reserva = 1;
+  string estado_reserva = 2;          // CAN
+  string fecha_cancelacion_utc = 3;
+}

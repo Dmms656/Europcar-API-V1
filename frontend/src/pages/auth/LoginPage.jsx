@@ -43,7 +43,7 @@ export default function LoginPage() {
     try {
       const response = await authApi.login({ username, password }, { suppressErrorToast: true });
       const data = response.data.data;
-      const isAdmin = data.roles?.some(r => ['ADMIN', 'AGENTE_POS'].includes(r));
+      const isAdmin = data.roles?.some(r => ['ADMIN', 'AGENTE', 'AGENTE_POS'].includes(r));
 
       if (tab === 'admin' && !isAdmin) {
         setError('Este usuario no tiene permisos de administración');
