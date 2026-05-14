@@ -132,3 +132,107 @@ Usa **Web Service → Environment: Docker** (no “Native” ni solo runtime .NE
 Imagen escucha en **8080** (`ASPNETCORE_URLS`). Variables: `ConnectionStrings__Default`, `Jwt__*`, `ASPNETCORE_ENVIRONMENT=Production`. Para **Swagger** en producción (tanto microservicios como `Middleware.RedCar.Api`), define `Swagger__Enabled=true` en el Web Service de Render; en local con `Development` no hace falta.
 
 El monolito historico vive en `_legacy/EuropcarRental/` (referencia; el desarrollo activo es middleware + MS).
+
+---
+
+## 7. Paso a paso en Render (por servicio)
+
+**Antes (una sola vez, Supabase):** sigue `db/microservices/SUPABASE.md`: DDLs, seeds, `99_supabase_grants.sql` con tus 5 contraseñas, extensión **pgcrypto** y `search_path` de `ms_seguridad` con schema `extensions` si aplica.
+
+### Común a los cuatro microservicios con Docker
+
+Cada uno es un **Web Service** distinto en Render.
+
+1. **New → Web Service** → conecta el repo de GitHub.
+2. **Environment:** **Docker** (no Native .NET).
+3. **Root Directory:** `EUROPCAR_V2`
+4. **Dockerfile path:** el de la tabla de abajo (relativo a `EUROPCAR_V2`).
+5. **Region / plan:** los que prefieras.
+6. **Build / Start:** no los rellenes; Docker ya define build y arranque.
+7. **Health check path (opcional):** `/health/live`
+8. **Variables de entorno** del servicio (mínimo):
+
+| Variable | Valor |
+|----------|--------|
+| `ASPNETCORE_ENVIRONMENT` | `Production` |
+| `ASPNETCORE_URLS` | `http://+:8080` (suele venir ya en la imagen; puedes omitir si el health pasa) |
+| `ConnectionStrings__Default` | Cadena Npgsql completa del **rol** de ese MS (ver fila en la tabla por MS). Usa host `*.pooler.supabase.com`, puerto **6543**, `Username=ms_<rol>.<PROJECT_REF>`, `SSL Mode=Require`, `Trust Server Certificate=true`, y: `Pooling=true;Maximum Pool Size=10;Multiplexing=false;Max Auto Prepare=0;No Reset On Close=true` |
+| `Jwt__SecretKey` | Mismo secreto que uses en el middleware (≥32 caracteres recomendado) |
+| `Jwt__Issuer` | Ej. `redcar-v2` |
+| `Jwt__Audience` | Ej. `redcar-v2-clients` |
+| `Swagger__Enabled` | `true` si quieres `/swagger` en producción |
+
+9. **Deploy** y prueba `https://<tu-servicio>.onrender.com/health/live` y `/info`.
+
+**Plantilla de cadena** (sustituye host del **Transaction pooler** que copie Supabase, `PROJECT_REF`, `PASSWORD`, y el prefijo de usuario `ms_*`):
+
+`Host=<POOLER_HOST>;Port=6543;Database=postgres;Username=ms_<nombre>.<PROJECT_REF>;Password=<PASSWORD>;SSL Mode=Require;Trust Server Certificate=true;Pooling=true;Maximum Pool Size=10;Multiplexing=false;Max Auto Prepare=0;No Reset On Close=true;`
+
+---
+
+### Catálogo (`RedCar.Catalogo.Api`)
+
+| Campo Render | Valor |
+|---------------|--------|
+| Root Directory | `EUROPCAR_V2` |
+| Dockerfile path | `microservices/Catalogo/Dockerfile` |
+| `ConnectionStrings__Default` | Usuario PostgreSQL **`ms_catalogo.<PROJECT_REF>`** y contraseña del role catálogo |
+
+---
+
+### Localizaciones (`RedCar.Localizaciones.Api`)
+
+| Campo Render | Valor |
+|---------------|--------|
+| Root Directory | `EUROPCAR_V2` |
+| Dockerfile path | `microservices/Localizaciones/Dockerfile` |
+| `ConnectionStrings__Default` | Usuario **`ms_localizaciones.<PROJECT_REF>`** |
+
+---
+
+### Clientes (`RedCar.Clientes.Api`)
+
+| Campo Render | Valor |
+|---------------|--------|
+| Root Directory | `EUROPCAR_V2` |
+| Dockerfile path | `microservices/Clientes/Dockerfile` |
+| `ConnectionStrings__Default` | Usuario **`ms_clientes.<PROJECT_REF>`** |
+
+---
+
+### Reservas (`RedCar.Reservas.Api`)
+
+| Campo Render | Valor |
+|---------------|--------|
+| Root Directory | `EUROPCAR_V2` |
+| Dockerfile path | `microservices/Reservas/Dockerfile` |
+| `ConnectionStrings__Default` | Usuario **`ms_reservas.<PROJECT_REF>`** |
+
+---
+
+### Seguridad (`RedCar.Seguridad.Api`)
+
+En este repo **no hay Dockerfile** bajo `microservices/Seguridad/`; el login y la BD de seguridad van **embebidos en el middleware** (`Middleware.RedCar.Api`) en producción típica.
+
+- **Solo local / laboratorio:** `dotnet run` sobre `RedCar.Seguridad.Api` y variable `ConnectionStrings__Default__Seguridad` (o `ConnectionStrings__Default` en `appsettings`/env).
+- **Si más adelante** quisieras Seguridad como contenedor en Render, habría que añadir un `Dockerfile` análogo a los otros cuatro y desplegarlo igual (Root `EUROPCAR_V2`, cadena con **`ms_seguridad.<PROJECT_REF>`**).
+
+---
+
+### Middleware (orquestador + auth)
+
+No está bajo `EUROPCAR_V2/` en el árbol de despliegue.
+
+| Campo Render | Valor |
+|---------------|--------|
+| Root Directory | *(vacío = raíz del repositorio)* |
+| Dockerfile path | `Dockerfile` (en la raíz del repo, junto a `Middleware.RedCar/`) |
+| `ConnectionStrings__Default` | Cadena de **`ms_seguridad`** (misma BD Supabase que el seed de seguridad). El middleware aplica ajustes extra si el host es `pooler.supabase.com`. |
+| `Microservicios__Catalogo__BaseUrl` | URL pública HTTPS del Web Service Catálogo (sin barra final) |
+| `Microservicios__Localizaciones__BaseUrl` | URL de Localizaciones |
+| `Microservicios__Clientes__BaseUrl` | URL de Clientes |
+| `Microservicios__Reservas__BaseUrl` | URL de Reservas |
+| `Jwt__SecretKey` (y Issuer/Audience) | Igual que en los MS para que los tokens emitidos en login se validen al llamar a los MS |
+| `Cors__AllowedOrigins__0` | Origen del front (ej. `https://tu-front.onrender.com`) si el navegador llama al middleware |
+
+Tras desplegar los cuatro MS, pega sus URLs públicas en estas variables y redeploy del middleware.
