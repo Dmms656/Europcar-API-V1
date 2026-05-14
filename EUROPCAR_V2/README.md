@@ -116,7 +116,7 @@ Endpoints disponibles por MS:
 
 ### Render sin runtime .NET nativo
 
-Usa **Web Service → Language: Docker**.
+Usa **Web Service → Environment: Docker** (no “Native” ni solo runtime .NET). Con Docker, Render **no** pide *Build Command* ni *Start Command*: el build es `docker build` con tu Dockerfile y el arranque es el `ENTRYPOINT`/`CMD` de la imagen (en nuestros MS: `dotnet …Api.dll` en el puerto **8080**).
 
 **Microservicios RedCar** (Catálogo, Localizaciones, Clientes, Reservas): el contexto de build es la carpeta `EUROPCAR_V2`. En Render, **Root Directory** = `EUROPCAR_V2` y el **Dockerfile path** relativo a esa raíz:
 
