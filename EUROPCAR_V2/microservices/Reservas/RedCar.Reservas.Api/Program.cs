@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using RedCar.Reservas.Api.Extensions;
 using RedCar.Reservas.Api.Grpc;
+using RedCar.Reservas.Api.Services;
 using RedCar.Reservas.DataAccess.Context;
 using RedCar.Shared.Auth;
 using RedCar.Shared.Contracts.Common;
@@ -29,6 +30,12 @@ builder.Services.AddDbContext<ReservasDbContext>(options =>
 });
 
 builder.Services.AddRedCarJwt(builder.Configuration);
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ReservasReadService>();
+builder.Services.AddHttpClient("DownstreamCatalogo").ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(25));
+builder.Services.AddHttpClient("DownstreamLocalizaciones").ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(25));
+builder.Services.AddHttpClient("DownstreamClientes").ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(25));
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
