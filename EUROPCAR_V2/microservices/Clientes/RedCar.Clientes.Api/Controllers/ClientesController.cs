@@ -122,7 +122,7 @@ public sealed class ClientesController : ControllerBase
 
         foreach (var req in conductores)
         {
-            var tipoDb = ClientesApiMapper.ToDbTipoIdentificacion(req.TipoIdentificacion);
+            var tipoDb = ClientesApiMapper.ToDbTipoIdentificacionConductor(req.TipoIdentificacion);
             var numero = (req.NumeroIdentificacion ?? string.Empty).Trim();
 
             var existing = await _db.Conductores.FirstOrDefaultAsync(
@@ -138,7 +138,7 @@ public sealed class ClientesController : ControllerBase
                 existing.ConApellido1 = a1;
                 existing.ConApellido2 = a2;
                 existing.FechaVencimientoLicencia = req.FechaVencimientoLicencia;
-                existing.EdadConductor = (short)Math.Clamp(req.EdadConductor, 18, 120);
+                existing.EdadConductor = (short)Math.Clamp(req.EdadConductor, 21, 120);
                 existing.ConCorreo = req.Correo.Trim();
                 existing.ConTelefono = req.Telefono.Trim();
                 await _db.SaveChangesAsync(ct);
@@ -170,7 +170,7 @@ public sealed class ClientesController : ControllerBase
                 ConApellido2 = aa2,
                 NumeroLicencia = licencia,
                 FechaVencimientoLicencia = req.FechaVencimientoLicencia,
-                EdadConductor = (short)Math.Clamp(req.EdadConductor, 18, 120),
+                EdadConductor = (short)Math.Clamp(req.EdadConductor, 21, 120),
                 ConTelefono = req.Telefono.Trim(),
                 ConCorreo = req.Correo.Trim(),
                 EstadoConductor = "ACT",

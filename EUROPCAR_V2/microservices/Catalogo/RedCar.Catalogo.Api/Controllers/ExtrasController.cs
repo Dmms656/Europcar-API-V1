@@ -32,7 +32,7 @@ public sealed class ExtrasController : ControllerBase
         {
             var rows = await _db.Extras
                 .AsNoTracking()
-                .Where(e => !e.EsEliminado && e.EstadoExtra == "ACT")
+                .Where(e => !e.EsEliminado)
                 .OrderBy(e => e.IdExtra)
                 .Skip((page - 1) * limit)
                 .Take(limit + 1)
@@ -74,7 +74,7 @@ public sealed class ExtrasController : ControllerBase
 
         var rows = await _db.Extras
             .AsNoTracking()
-            .Where(e => idList.Contains(e.IdExtra) && !e.EsEliminado && e.EstadoExtra == "ACT")
+            .Where(e => idList.Contains(e.IdExtra) && !e.EsEliminado)
             .OrderBy(e => e.IdExtra)
             .ToListAsync(ct);
 

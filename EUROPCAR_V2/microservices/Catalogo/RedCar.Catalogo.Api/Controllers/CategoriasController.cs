@@ -31,7 +31,7 @@ public sealed class CategoriasController : ControllerBase
         {
             var rows = await _db.Categorias
                 .AsNoTracking()
-                .Where(c => !c.EsEliminado && c.EstadoCategoria == "ACT")
+                .Where(c => !c.EsEliminado)
                 .OrderBy(c => c.IdCategoria)
                 .Skip((page - 1) * limit)
                 .Take(limit + 1)

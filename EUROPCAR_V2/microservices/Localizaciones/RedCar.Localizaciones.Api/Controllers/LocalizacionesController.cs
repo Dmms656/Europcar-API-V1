@@ -32,7 +32,7 @@ public sealed class LocalizacionesController : ControllerBase
         {
             var q = _db.Localizaciones
             .AsNoTracking()
-            .Where(l => !l.EsEliminado && l.EstadoLocalizacion == "ACT");
+            .Where(l => !l.EsEliminado);
 
             if (idCiudad is > 0)
             {
@@ -79,7 +79,7 @@ public sealed class LocalizacionesController : ControllerBase
     {
         var dto = await _db.Localizaciones
             .AsNoTracking()
-            .Where(x => x.IdLocalizacion == id && !x.EsEliminado && x.EstadoLocalizacion == "ACT")
+            .Where(x => x.IdLocalizacion == id && !x.EsEliminado)
             .Select(l => new LocalizacionDto
             {
                 IdLocalizacion = l.IdLocalizacion,

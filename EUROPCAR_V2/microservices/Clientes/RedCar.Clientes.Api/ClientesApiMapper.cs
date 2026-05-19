@@ -16,6 +16,12 @@ internal static class ClientesApiMapper
         };
     }
 
+    public static string ToDbTipoIdentificacionConductor(string t)
+    {
+        var db = ToDbTipoIdentificacion(t);
+        return db == "RUC" ? "CED" : db;
+    }
+
     public static string ToApiTipoIdentificacion(string db)
     {
         var x = (db ?? string.Empty).Trim().ToUpperInvariant();

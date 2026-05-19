@@ -39,7 +39,7 @@ public sealed class VehiculosController : ControllerBase
             .AsNoTracking()
             .Include(v => v.Marca)
             .Include(v => v.Categoria)
-            .Where(v => !v.EsEliminado && v.EstadoVehiculo == "ACT" && v.EstadoOperativo == "DISPONIBLE")
+            .Where(v => !v.EsEliminado && v.EstadoOperativo == "DISPONIBLE")
             .Where(v => v.LocalizacionActual == idLocalizacion);
 
         if (!string.IsNullOrWhiteSpace(nombreCategoria))
@@ -102,7 +102,7 @@ public sealed class VehiculosController : ControllerBase
             .AsNoTracking()
             .Include(x => x.Marca)
             .Include(x => x.Categoria)
-            .FirstOrDefaultAsync(x => x.IdVehiculo == id && !x.EsEliminado && x.EstadoVehiculo == "ACT", ct);
+            .FirstOrDefaultAsync(x => x.IdVehiculo == id && !x.EsEliminado, ct);
 
         if (v is null)
         {
