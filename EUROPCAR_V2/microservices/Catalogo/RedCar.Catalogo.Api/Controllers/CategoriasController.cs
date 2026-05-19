@@ -10,6 +10,7 @@ namespace RedCar.Catalogo.Api.Controllers;
 [Route("api/v1/categorias")]
 public sealed class CategoriasController : ControllerBase
 {
+    private static readonly TimeSpan QueryTimeout = TimeSpan.FromSeconds(8);
     private readonly CatalogoDbContext _db;
 
     public CategoriasController(CatalogoDbContext db) => _db = db;
@@ -23,34 +24,54 @@ public sealed class CategoriasController : ControllerBase
         limit = limit is < 1 or > 100 ? 50 : limit;
         page = page < 1 ? 1 : page;
 
-        var q = _db.Categorias
-            .AsNoTracking()
-            .Where(c => !c.EsEliminado && c.EstadoCategoria == "ACT")
-            .OrderBy(c => c.IdCategoria);
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(QueryTimeout);
 
-        var total = await q.CountAsync(ct);
-        var rows = await q.Skip((page - 1) * limit).Take(limit).ToListAsync(ct);
-
-        var items = rows.Select(c => new CategoriaDto
+        try
         {
-            IdCategoria = c.IdCategoria,
-            Codigo = c.CodigoCategoria,
-            Nombre = c.NombreCategoria,
-            Descripcion = c.DescripcionCategoria ?? string.Empty,
-            Estado = c.EstadoCategoria
-        }).ToList();
+            var rows = await _db.Categorias
+                .AsNoTracking()
+                .Where(c => !c.EsEliminado && c.EstadoCategoria == "ACT")
+                .OrderBy(c => c.IdCategoria)
+                .Skip((page - 1) * limit)
+                .Take(limit + 1)
+                .Select(c => new CategoriaDto
+                {
+                    IdCategoria = c.IdCategoria,
+                    Codigo = c.CodigoCategoria,
+                    Nombre = c.NombreCategoria,
+                    Descripcion = c.DescripcionCategoria ?? string.Empty,
+                    Estado = c.EstadoCategoria
+                })
+                .ToListAsync(timeoutCts.Token);
 
-        var totalPaginas = total == 0 ? 0 : (int)Math.Ceiling(total / (double)limit);
+            var hasNext = rows.Count > limit;
+            var items = hasNext ? rows.Take(limit).ToList() : rows;
+            var paged = BuildPaged(items, page, limit, hasNext);
 
-        var paged = new PagedDto<CategoriaDto>
+            return Ok(ApiResponse<PagedDto<CategoriaDto>>.Ok(paged, traceId: HttpContext.TraceIdentifier));
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return StatusCode(504, ApiResponse<PagedDto<CategoriaDto>>.Fail(
+                504,
+                "Timeout consultando categorias.",
+                HttpContext.TraceIdentifier));
+        }
+    }
+
+    private static PagedDto<CategoriaDto> BuildPaged(IReadOnlyList<CategoriaDto> items, int page, int limit, bool hasNext)
+    {
+        var minimumTotal = ((page - 1) * limit) + items.Count + (hasNext ? 1 : 0);
+        var totalPaginas = hasNext ? page + 1 : items.Count == 0 ? Math.Max(0, page - 1) : page;
+
+        return new PagedDto<CategoriaDto>
         {
             Items = items,
             PaginaActual = page,
             TotalPaginas = totalPaginas,
-            TotalElementos = total,
+            TotalElementos = minimumTotal,
             ElementosPorPagina = limit
         };
-
-        return Ok(ApiResponse<PagedDto<CategoriaDto>>.Ok(paged, traceId: HttpContext.TraceIdentifier));
     }
 }

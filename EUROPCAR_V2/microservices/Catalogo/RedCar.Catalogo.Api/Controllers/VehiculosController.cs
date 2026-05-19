@@ -11,6 +11,7 @@ namespace RedCar.Catalogo.Api.Controllers;
 [Route("api/v1/vehiculos")]
 public sealed class VehiculosController : ControllerBase
 {
+    private static readonly TimeSpan QueryTimeout = TimeSpan.FromSeconds(8);
     private readonly CatalogoDbContext _db;
 
     public VehiculosController(CatalogoDbContext db) => _db = db;
@@ -68,25 +69,30 @@ public sealed class VehiculosController : ControllerBase
             _ => q.OrderBy(v => v.IdVehiculo)
         };
 
-        var total = await q.CountAsync(ct);
-        var items = await q
-            .Skip((page - 1) * limit)
-            .Take(limit)
-            .ToListAsync(ct);
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(QueryTimeout);
 
-        var dtoItems = items.Select(Map).ToList();
-        var totalPaginas = total == 0 ? 0 : (int)Math.Ceiling(total / (double)limit);
-
-        var paged = new PagedDto<VehiculoCatalogoDto>
+        try
         {
-            Items = dtoItems,
-            PaginaActual = page,
-            TotalPaginas = totalPaginas,
-            TotalElementos = total,
-            ElementosPorPagina = limit
-        };
+            var rows = await q
+                .Skip((page - 1) * limit)
+                .Take(limit + 1)
+                .ToListAsync(timeoutCts.Token);
 
-        return Ok(ApiResponse<PagedDto<VehiculoCatalogoDto>>.Ok(paged, traceId: HttpContext.TraceIdentifier));
+            var hasNext = rows.Count > limit;
+            var items = hasNext ? rows.Take(limit).ToList() : rows;
+            var dtoItems = items.Select(Map).ToList();
+            var paged = BuildPaged(dtoItems, page, limit, hasNext);
+
+            return Ok(ApiResponse<PagedDto<VehiculoCatalogoDto>>.Ok(paged, traceId: HttpContext.TraceIdentifier));
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return StatusCode(504, ApiResponse<PagedDto<VehiculoCatalogoDto>>.Fail(
+                504,
+                "Timeout consultando vehiculos.",
+                HttpContext.TraceIdentifier));
+        }
     }
 
     [HttpGet("{id:int}")]
@@ -129,4 +135,19 @@ public sealed class VehiculosController : ControllerBase
         IdLocalizacion = v.LocalizacionActual,
         PrecioBaseDia = v.PrecioBaseDia
     };
+
+    private static PagedDto<VehiculoCatalogoDto> BuildPaged(IReadOnlyList<VehiculoCatalogoDto> items, int page, int limit, bool hasNext)
+    {
+        var minimumTotal = ((page - 1) * limit) + items.Count + (hasNext ? 1 : 0);
+        var totalPaginas = hasNext ? page + 1 : items.Count == 0 ? Math.Max(0, page - 1) : page;
+
+        return new PagedDto<VehiculoCatalogoDto>
+        {
+            Items = items,
+            PaginaActual = page,
+            TotalPaginas = totalPaginas,
+            TotalElementos = minimumTotal,
+            ElementosPorPagina = limit
+        };
+    }
 }

@@ -19,5 +19,11 @@ public sealed class Cliente
     public bool EsEliminado { get; set; }
     public DateTimeOffset FechaRegistroUtc { get; set; }
     public string CreadoPorUsuario { get; set; } = string.Empty;
+    public string? ModificadoPorUsuario { get; set; }
+    public DateTimeOffset? FechaModificacionUtc { get; set; }
+    public string? ModificadoDesdeIp { get; set; }
+    public DateTimeOffset? FechaInhabilitacionUtc { get; set; }
+    public string? MotivoInhabilitacion { get; set; }
     public string OrigenRegistro { get; set; } = string.Empty;
+    public long RowVersion { get; set; }
 }

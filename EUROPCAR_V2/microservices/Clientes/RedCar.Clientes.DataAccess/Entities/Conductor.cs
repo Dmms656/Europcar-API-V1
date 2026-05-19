@@ -17,9 +17,16 @@ public sealed class Conductor
     public short EdadConductor { get; set; }
     public string ConTelefono { get; set; } = string.Empty;
     public string ConCorreo { get; set; } = string.Empty;
+    public bool EsConductorJoven { get; set; }
     public string EstadoConductor { get; set; } = "ACT";
     public bool EsEliminado { get; set; }
     public DateTimeOffset FechaRegistroUtc { get; set; }
     public string CreadoPorUsuario { get; set; } = string.Empty;
+    public string? ModificadoPorUsuario { get; set; }
+    public DateTimeOffset? FechaModificacionUtc { get; set; }
+    public string? ModificadoDesdeIp { get; set; }
+    public DateTimeOffset? FechaInhabilitacionUtc { get; set; }
+    public string? MotivoInhabilitacion { get; set; }
     public string OrigenRegistro { get; set; } = string.Empty;
+    public long RowVersion { get; set; }
 }

@@ -47,6 +47,10 @@ public abstract class HttpClientBase
                 var body = await resp.Content.ReadAsStringAsync(ct);
                 Logger.LogWarning("HTTP {Status} desde {Service} {Uri}: {Body}",
                     (int)resp.StatusCode, Http.BaseAddress, relativeUri, body);
+                if (resp.StatusCode is HttpStatusCode.RequestTimeout or HttpStatusCode.GatewayTimeout)
+                {
+                    throw new TimeoutException($"Timeout downstream {Http.BaseAddress}{relativeUri} respondio {(int)resp.StatusCode}.");
+                }
                 throw new HttpRequestException($"Downstream {Http.BaseAddress}{relativeUri} respondio {(int)resp.StatusCode}.");
             }
 
@@ -77,6 +81,10 @@ public abstract class HttpClientBase
                 var responseBody = await resp.Content.ReadAsStringAsync(ct);
                 Logger.LogWarning("HTTP {Status} desde {Service} POST {Uri}: {Body}",
                     (int)resp.StatusCode, Http.BaseAddress, relativeUri, responseBody);
+                if (resp.StatusCode is HttpStatusCode.RequestTimeout or HttpStatusCode.GatewayTimeout)
+                {
+                    throw new TimeoutException($"Timeout downstream POST {Http.BaseAddress}{relativeUri} respondio {(int)resp.StatusCode}.");
+                }
                 throw new HttpRequestException($"Downstream POST {Http.BaseAddress}{relativeUri} respondio {(int)resp.StatusCode}.");
             }
 
@@ -108,6 +116,10 @@ public abstract class HttpClientBase
             var responseBody = await resp.Content.ReadAsStringAsync(ct);
             Logger.LogWarning("HTTP {Status} desde {Service} PATCH {Uri}: {Body}",
                 (int)resp.StatusCode, Http.BaseAddress, relativeUri, responseBody);
+            if (resp.StatusCode is HttpStatusCode.RequestTimeout or HttpStatusCode.GatewayTimeout)
+            {
+                throw new TimeoutException($"Timeout downstream PATCH {Http.BaseAddress}{relativeUri} respondio {(int)resp.StatusCode}.");
+            }
             throw new HttpRequestException($"Downstream PATCH {Http.BaseAddress}{relativeUri} respondio {(int)resp.StatusCode}.");
         }
 

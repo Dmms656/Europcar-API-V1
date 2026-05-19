@@ -11,6 +11,7 @@ namespace RedCar.Catalogo.Api.Controllers;
 [Route("api/v1/extras")]
 public sealed class ExtrasController : ControllerBase
 {
+    private static readonly TimeSpan QueryTimeout = TimeSpan.FromSeconds(8);
     private readonly CatalogoDbContext _db;
 
     public ExtrasController(CatalogoDbContext db) => _db = db;
@@ -24,27 +25,32 @@ public sealed class ExtrasController : ControllerBase
         limit = limit is < 1 or > 100 ? 50 : limit;
         page = page < 1 ? 1 : page;
 
-        var q = _db.Extras
-            .AsNoTracking()
-            .Where(e => !e.EsEliminado && e.EstadoExtra == "ACT")
-            .OrderBy(e => e.IdExtra);
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(QueryTimeout);
 
-        var total = await q.CountAsync(ct);
-        var rows = await q.Skip((page - 1) * limit).Take(limit).ToListAsync(ct);
-
-        var items = rows.Select(Map).ToList();
-        var totalPaginas = total == 0 ? 0 : (int)Math.Ceiling(total / (double)limit);
-
-        var paged = new PagedDto<ExtraDto>
+        try
         {
-            Items = items,
-            PaginaActual = page,
-            TotalPaginas = totalPaginas,
-            TotalElementos = total,
-            ElementosPorPagina = limit
-        };
+            var rows = await _db.Extras
+                .AsNoTracking()
+                .Where(e => !e.EsEliminado && e.EstadoExtra == "ACT")
+                .OrderBy(e => e.IdExtra)
+                .Skip((page - 1) * limit)
+                .Take(limit + 1)
+                .ToListAsync(timeoutCts.Token);
 
-        return Ok(ApiResponse<PagedDto<ExtraDto>>.Ok(paged, traceId: HttpContext.TraceIdentifier));
+            var hasNext = rows.Count > limit;
+            var items = (hasNext ? rows.Take(limit) : rows).Select(Map).ToList();
+            var paged = BuildPaged(items, page, limit, hasNext);
+
+            return Ok(ApiResponse<PagedDto<ExtraDto>>.Ok(paged, traceId: HttpContext.TraceIdentifier));
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return StatusCode(504, ApiResponse<PagedDto<ExtraDto>>.Fail(
+                504,
+                "Timeout consultando extras.",
+                HttpContext.TraceIdentifier));
+        }
     }
 
     [HttpGet("by-ids")]
@@ -90,4 +96,19 @@ public sealed class ExtrasController : ControllerBase
         ValorFijo = e.ValorFijo,
         Estado = e.EstadoExtra
     };
+
+    private static PagedDto<ExtraDto> BuildPaged(IReadOnlyList<ExtraDto> items, int page, int limit, bool hasNext)
+    {
+        var minimumTotal = ((page - 1) * limit) + items.Count + (hasNext ? 1 : 0);
+        var totalPaginas = hasNext ? page + 1 : items.Count == 0 ? Math.Max(0, page - 1) : page;
+
+        return new PagedDto<ExtraDto>
+        {
+            Items = items,
+            PaginaActual = page,
+            TotalPaginas = totalPaginas,
+            TotalElementos = minimumTotal,
+            ElementosPorPagina = limit
+        };
+    }
 }
