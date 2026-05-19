@@ -12,9 +12,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.ConfigureKestrelForRestAndGrpc();
 
-var connectionString = builder.Configuration.GetConnectionString("Default")
-    ?? Environment.GetEnvironmentVariable("ConnectionStrings__Default__Catalogo")
-    ?? string.Empty;
+var connectionString = builder.Configuration.GetConnectionString("Default");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Default__Catalogo");
+}
+connectionString ??= string.Empty;
 
 builder.Services.AddDbContext<CatalogoDbContext>(options =>
 {

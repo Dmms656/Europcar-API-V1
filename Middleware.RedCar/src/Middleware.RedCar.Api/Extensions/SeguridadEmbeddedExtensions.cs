@@ -44,11 +44,16 @@ public static class SeguridadEmbeddedExtensions
 
     public static IServiceCollection AddEmbeddedSeguridadAuth(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString =
-            configuration.GetConnectionString("Default")
-            ?? configuration.GetConnectionString("Seguridad")
-            ?? Environment.GetEnvironmentVariable("ConnectionStrings__Default__Seguridad")
-            ?? string.Empty;
+        var connectionString = configuration.GetConnectionString("Default");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            connectionString = configuration.GetConnectionString("Seguridad");
+        }
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Default__Seguridad");
+        }
+        connectionString ??= string.Empty;
 
         connectionString = ApplySupabasePoolerDefaults(connectionString);
 

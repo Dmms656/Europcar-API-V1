@@ -13,9 +13,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.ConfigureKestrelForRestAndGrpc();
 
-var connectionString = builder.Configuration.GetConnectionString("Default")
-    ?? Environment.GetEnvironmentVariable("ConnectionStrings__Default__Seguridad")
-    ?? string.Empty;
+var connectionString = builder.Configuration.GetConnectionString("Default");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Default__Seguridad");
+}
+connectionString ??= string.Empty;
 
 builder.Services.AddDbContext<SeguridadDbContext>(options =>
 {

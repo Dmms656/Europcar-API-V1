@@ -13,9 +13,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.ConfigureKestrelForRestAndGrpc();
 
-var connectionString = builder.Configuration.GetConnectionString("Default")
-    ?? Environment.GetEnvironmentVariable("ConnectionStrings__Default__Reservas")
-    ?? string.Empty;
+var connectionString = builder.Configuration.GetConnectionString("Default");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Default__Reservas");
+}
+connectionString ??= string.Empty;
 
 builder.Services.AddDbContext<ReservasDbContext>(options =>
 {

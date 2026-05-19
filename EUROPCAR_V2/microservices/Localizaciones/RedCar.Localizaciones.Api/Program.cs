@@ -12,9 +12,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.ConfigureKestrelForRestAndGrpc();
 
-var connectionString = builder.Configuration.GetConnectionString("Default")
-    ?? Environment.GetEnvironmentVariable("ConnectionStrings__Default__Localizaciones")
-    ?? string.Empty;
+var connectionString = builder.Configuration.GetConnectionString("Default");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Default__Localizaciones");
+}
+connectionString ??= string.Empty;
 
 builder.Services.AddDbContext<LocalizacionesDbContext>(options =>
 {
