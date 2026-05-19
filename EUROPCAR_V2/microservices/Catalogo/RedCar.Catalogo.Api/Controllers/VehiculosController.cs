@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RedCar.Catalogo.Api.Contracts;
 using RedCar.Catalogo.DataAccess.Context;
-using RedCar.Catalogo.DataAccess.Entities;
 using RedCar.Shared.Contracts.Common;
 
 namespace RedCar.Catalogo.Api.Controllers;
@@ -37,8 +36,6 @@ public sealed class VehiculosController : ControllerBase
 
         var q = _db.Vehiculos
             .AsNoTracking()
-            .Include(v => v.Marca)
-            .Include(v => v.Categoria)
             .Where(v => !v.EsEliminado && v.EstadoOperativo == "DISPONIBLE")
             .Where(v => v.LocalizacionActual == idLocalizacion);
 
@@ -77,12 +74,34 @@ public sealed class VehiculosController : ControllerBase
             var rows = await q
                 .Skip((page - 1) * limit)
                 .Take(limit + 1)
+                .Select(v => new VehiculoCatalogoDto
+                {
+                    IdVehiculo = v.IdVehiculo,
+                    CodigoInterno = v.CodigoInternoVehiculo,
+                    IdMarca = v.IdMarca,
+                    Marca = v.Marca != null ? v.Marca.NombreMarca : string.Empty,
+                    IdCategoria = v.IdCategoria,
+                    CategoriaCodigo = v.Categoria != null ? v.Categoria.CodigoCategoria : string.Empty,
+                    CategoriaNombre = v.Categoria != null ? v.Categoria.NombreCategoria : string.Empty,
+                    Modelo = v.ModeloVehiculo,
+                    Anio = v.AnioFabricacion,
+                    Color = v.ColorVehiculo,
+                    ImagenUrl = v.ImagenReferencialUrl ?? string.Empty,
+                    Transmision = v.TipoTransmision,
+                    Combustible = v.TipoCombustible,
+                    CapacidadPasajeros = v.CapacidadPasajeros,
+                    CapacidadMaletas = v.CapacidadMaletas,
+                    NumeroPuertas = v.NumeroPuertas,
+                    AireAcondicionado = v.AireAcondicionado,
+                    Estado = v.EstadoOperativo,
+                    IdLocalizacion = v.LocalizacionActual,
+                    PrecioBaseDia = v.PrecioBaseDia
+                })
                 .ToListAsync(timeoutCts.Token);
 
             var hasNext = rows.Count > limit;
             var items = hasNext ? rows.Take(limit).ToList() : rows;
-            var dtoItems = items.Select(Map).ToList();
-            var paged = BuildPaged(dtoItems, page, limit, hasNext);
+            var paged = BuildPaged(items, page, limit, hasNext);
 
             return Ok(ApiResponse<PagedDto<VehiculoCatalogoDto>>.Ok(paged, traceId: HttpContext.TraceIdentifier));
         }
@@ -98,43 +117,41 @@ public sealed class VehiculosController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ApiResponse<VehiculoCatalogoDto>>> GetById(int id, CancellationToken ct)
     {
-        var v = await _db.Vehiculos
+        var dto = await _db.Vehiculos
             .AsNoTracking()
-            .Include(x => x.Marca)
-            .Include(x => x.Categoria)
-            .FirstOrDefaultAsync(x => x.IdVehiculo == id && !x.EsEliminado, ct);
+            .Where(x => x.IdVehiculo == id && !x.EsEliminado)
+            .Select(v => new VehiculoCatalogoDto
+            {
+                IdVehiculo = v.IdVehiculo,
+                CodigoInterno = v.CodigoInternoVehiculo,
+                IdMarca = v.IdMarca,
+                Marca = v.Marca != null ? v.Marca.NombreMarca : string.Empty,
+                IdCategoria = v.IdCategoria,
+                CategoriaCodigo = v.Categoria != null ? v.Categoria.CodigoCategoria : string.Empty,
+                CategoriaNombre = v.Categoria != null ? v.Categoria.NombreCategoria : string.Empty,
+                Modelo = v.ModeloVehiculo,
+                Anio = v.AnioFabricacion,
+                Color = v.ColorVehiculo,
+                ImagenUrl = v.ImagenReferencialUrl ?? string.Empty,
+                Transmision = v.TipoTransmision,
+                Combustible = v.TipoCombustible,
+                CapacidadPasajeros = v.CapacidadPasajeros,
+                CapacidadMaletas = v.CapacidadMaletas,
+                NumeroPuertas = v.NumeroPuertas,
+                AireAcondicionado = v.AireAcondicionado,
+                Estado = v.EstadoOperativo,
+                IdLocalizacion = v.LocalizacionActual,
+                PrecioBaseDia = v.PrecioBaseDia
+            })
+            .FirstOrDefaultAsync(ct);
 
-        if (v is null)
+        if (dto is null)
         {
             return NotFound(ApiResponse<VehiculoCatalogoDto>.Fail(404, "Vehiculo no encontrado.", HttpContext.TraceIdentifier));
         }
 
-        return Ok(ApiResponse<VehiculoCatalogoDto>.Ok(Map(v), traceId: HttpContext.TraceIdentifier));
+        return Ok(ApiResponse<VehiculoCatalogoDto>.Ok(dto, traceId: HttpContext.TraceIdentifier));
     }
-
-    private static VehiculoCatalogoDto Map(Vehiculo v) => new()
-    {
-        IdVehiculo = v.IdVehiculo,
-        CodigoInterno = v.CodigoInternoVehiculo,
-        IdMarca = v.IdMarca,
-        Marca = v.Marca?.NombreMarca ?? string.Empty,
-        IdCategoria = v.IdCategoria,
-        CategoriaCodigo = v.Categoria?.CodigoCategoria ?? string.Empty,
-        CategoriaNombre = v.Categoria?.NombreCategoria ?? string.Empty,
-        Modelo = v.ModeloVehiculo,
-        Anio = v.AnioFabricacion,
-        Color = v.ColorVehiculo,
-        ImagenUrl = v.ImagenReferencialUrl ?? string.Empty,
-        Transmision = v.TipoTransmision,
-        Combustible = v.TipoCombustible,
-        CapacidadPasajeros = v.CapacidadPasajeros,
-        CapacidadMaletas = v.CapacidadMaletas,
-        NumeroPuertas = v.NumeroPuertas,
-        AireAcondicionado = v.AireAcondicionado,
-        Estado = v.EstadoOperativo,
-        IdLocalizacion = v.LocalizacionActual,
-        PrecioBaseDia = v.PrecioBaseDia
-    };
 
     private static PagedDto<VehiculoCatalogoDto> BuildPaged(IReadOnlyList<VehiculoCatalogoDto> items, int page, int limit, bool hasNext)
     {

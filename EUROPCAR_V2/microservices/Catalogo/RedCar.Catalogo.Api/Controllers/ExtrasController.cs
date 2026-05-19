@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RedCar.Catalogo.Api.Contracts;
 using RedCar.Catalogo.DataAccess.Context;
-using RedCar.Catalogo.DataAccess.Entities;
 using RedCar.Shared.Contracts.Common;
 
 namespace RedCar.Catalogo.Api.Controllers;
@@ -36,10 +35,19 @@ public sealed class ExtrasController : ControllerBase
                 .OrderBy(e => e.IdExtra)
                 .Skip((page - 1) * limit)
                 .Take(limit + 1)
+                .Select(e => new ExtraDto
+                {
+                    IdExtra = e.IdExtra,
+                    Codigo = e.CodigoExtra,
+                    Nombre = e.NombreExtra,
+                    Descripcion = e.DescripcionExtra,
+                    ValorFijo = e.ValorFijo,
+                    Estado = e.EstadoExtra
+                })
                 .ToListAsync(timeoutCts.Token);
 
             var hasNext = rows.Count > limit;
-            var items = (hasNext ? rows.Take(limit) : rows).Select(Map).ToList();
+            var items = hasNext ? rows.Take(limit).ToList() : rows;
             var paged = BuildPaged(items, page, limit, hasNext);
 
             return Ok(ApiResponse<PagedDto<ExtraDto>>.Ok(paged, traceId: HttpContext.TraceIdentifier));
@@ -76,26 +84,25 @@ public sealed class ExtrasController : ControllerBase
             .AsNoTracking()
             .Where(e => idList.Contains(e.IdExtra) && !e.EsEliminado)
             .OrderBy(e => e.IdExtra)
+            .Select(e => new ExtraDto
+            {
+                IdExtra = e.IdExtra,
+                Codigo = e.CodigoExtra,
+                Nombre = e.NombreExtra,
+                Descripcion = e.DescripcionExtra,
+                ValorFijo = e.ValorFijo,
+                Estado = e.EstadoExtra
+            })
             .ToListAsync(ct);
 
         var order = idList
             .Select(id => rows.FirstOrDefault(r => r.IdExtra == id))
             .Where(r => r is not null)
-            .Select(r => Map(r!))
+            .Select(r => r!)
             .ToList();
 
         return Ok(ApiResponse<IReadOnlyList<ExtraDto>>.Ok(order, traceId: HttpContext.TraceIdentifier));
     }
-
-    private static ExtraDto Map(Extra e) => new()
-    {
-        IdExtra = e.IdExtra,
-        Codigo = e.CodigoExtra,
-        Nombre = e.NombreExtra,
-        Descripcion = e.DescripcionExtra,
-        ValorFijo = e.ValorFijo,
-        Estado = e.EstadoExtra
-    };
 
     private static PagedDto<ExtraDto> BuildPaged(IReadOnlyList<ExtraDto> items, int page, int limit, bool hasNext)
     {
