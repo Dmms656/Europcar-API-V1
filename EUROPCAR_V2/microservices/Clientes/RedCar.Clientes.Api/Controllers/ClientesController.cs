@@ -138,11 +138,7 @@ public sealed class ClientesController : ControllerBase
                 return NotFound(ApiResponse<IReadOnlyList<ConductorUpsertResult>>.Fail(404, "Cliente no encontrado.", HttpContext.TraceIdentifier));
             }
 
-            var existingConductores = await _db.Conductores
-                .Where(c => c.IdCliente == idCliente && !c.EsEliminado)
-                .ToListAsync(ct);
-
-            var byKey = existingConductores.ToDictionary(c => c.NumeroIdentificacion, StringComparer.Ordinal);
+            var saved = new Dictionary<string, Conductor>(conductores.Count, StringComparer.Ordinal);
             var changed = false;
 
             foreach (var req in conductores)
@@ -153,8 +149,19 @@ public sealed class ClientesController : ControllerBase
                 var (a1, a2) = ClientesApiMapper.SplitTwo(req.Apellidos);
                 var edad = (short)Math.Clamp(req.EdadConductor, 21, 120);
 
-                if (byKey.TryGetValue(numero, out var existing))
+                var existing = await _db.Conductores
+                    .FirstOrDefaultAsync(c => c.NumeroIdentificacion == numero && !c.EsEliminado, ct);
+
+                if (existing is not null)
                 {
+                    if (existing.IdCliente != idCliente)
+                    {
+                        return BadRequest(ApiResponse<IReadOnlyList<ConductorUpsertResult>>.Fail(
+                            400,
+                            $"El conductor {numero} pertenece a otro cliente.",
+                            HttpContext.TraceIdentifier));
+                    }
+
                     existing.ConNombre1 = n1;
                     existing.ConNombre2 = n2;
                     existing.ConApellido1 = a1;
@@ -163,6 +170,7 @@ public sealed class ClientesController : ControllerBase
                     existing.EdadConductor = edad;
                     existing.ConCorreo = req.Correo.Trim();
                     existing.ConTelefono = req.Telefono.Trim();
+                    saved[numero] = existing;
                     changed = true;
                     continue;
                 }
@@ -191,7 +199,7 @@ public sealed class ClientesController : ControllerBase
                 };
 
                 _db.Conductores.Add(entity);
-                byKey[numero] = entity;
+                saved[numero] = entity;
                 changed = true;
             }
 
@@ -204,13 +212,13 @@ public sealed class ClientesController : ControllerBase
             foreach (var req in conductores)
             {
                 var numero = (req.NumeroIdentificacion ?? string.Empty).Trim();
-                var saved = byKey[numero];
+                var row = saved[numero];
 
                 results.Add(new ConductorUpsertResult
                 {
-                    IdConductor = saved.IdConductor,
-                    ConductorGuid = saved.ConductorGuid,
-                    NumeroIdentificacion = saved.NumeroIdentificacion,
+                    IdConductor = row.IdConductor,
+                    ConductorGuid = row.ConductorGuid,
+                    NumeroIdentificacion = row.NumeroIdentificacion,
                     EsPrincipal = req.EsPrincipal
                 });
             }
