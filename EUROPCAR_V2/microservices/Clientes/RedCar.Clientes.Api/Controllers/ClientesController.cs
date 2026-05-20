@@ -69,7 +69,7 @@ public sealed class ClientesController : ControllerBase
         {
             var existing = await _db.Clientes
                 .AsNoTracking()
-                .Where(c => c.TipoIdentificacion == tipoDb && c.NumeroIdentificacion == numero && !c.EsEliminado)
+                .Where(c => c.NumeroIdentificacion == numero && !c.EsEliminado)
                 .Select(c => new { c.IdCliente, c.ClienteGuid })
                 .FirstOrDefaultAsync(timeoutCts.Token);
 
@@ -154,19 +154,18 @@ public sealed class ClientesController : ControllerBase
                 .Where(c => c.IdCliente == idCliente && !c.EsEliminado)
                 .ToListAsync(timeoutCts.Token);
 
-            var byKey = existingConductores.ToDictionary(c => (c.TipoIdentificacion, c.NumeroIdentificacion));
+            var byKey = existingConductores.ToDictionary(c => c.NumeroIdentificacion, StringComparer.Ordinal);
             var changed = false;
 
             foreach (var req in conductores)
             {
                 var tipoDb = ClientesApiMapper.ToDbTipoIdentificacionConductor(req.TipoIdentificacion);
                 var numero = (req.NumeroIdentificacion ?? string.Empty).Trim();
-                var key = (tipoDb, numero);
                 var (n1, n2) = ClientesApiMapper.SplitTwo(req.Nombres);
                 var (a1, a2) = ClientesApiMapper.SplitTwo(req.Apellidos);
                 var edad = (short)Math.Clamp(req.EdadConductor, 21, 120);
 
-                if (byKey.TryGetValue(key, out var existing))
+                if (byKey.TryGetValue(numero, out var existing))
                 {
                     existing.ConNombre1 = n1;
                     existing.ConNombre2 = n2;
@@ -204,7 +203,7 @@ public sealed class ClientesController : ControllerBase
                 };
 
                 _db.Conductores.Add(entity);
-                byKey[key] = entity;
+                byKey[numero] = entity;
                 changed = true;
             }
 
@@ -216,9 +215,8 @@ public sealed class ClientesController : ControllerBase
             var results = new List<ConductorUpsertResult>(conductores.Count);
             foreach (var req in conductores)
             {
-                var tipoDb = ClientesApiMapper.ToDbTipoIdentificacionConductor(req.TipoIdentificacion);
                 var numero = (req.NumeroIdentificacion ?? string.Empty).Trim();
-                var saved = byKey[(tipoDb, numero)];
+                var saved = byKey[numero];
 
                 results.Add(new ConductorUpsertResult
                 {
