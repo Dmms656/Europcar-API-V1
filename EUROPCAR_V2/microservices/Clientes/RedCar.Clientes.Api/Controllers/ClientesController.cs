@@ -62,29 +62,20 @@ public sealed class ClientesController : ControllerBase
         var correo = req.Correo.Trim();
         var telefono = req.Telefono.Trim();
 
-        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeoutCts.CancelAfter(QueryTimeout);
-
         try
         {
             var existing = await _db.Clientes
-                .AsNoTracking()
-                .Where(c => c.NumeroIdentificacion == numero && !c.EsEliminado)
-                .Select(c => new { c.IdCliente, c.ClienteGuid })
-                .FirstOrDefaultAsync(timeoutCts.Token);
+                .FirstOrDefaultAsync(c => c.NumeroIdentificacion == numero && !c.EsEliminado, ct);
 
             if (existing is not null)
             {
-                await _db.Clientes
-                    .Where(c => c.IdCliente == existing.IdCliente)
-                    .ExecuteUpdateAsync(setters => setters
-                        .SetProperty(c => c.CliNombre1, n1)
-                        .SetProperty(c => c.CliNombre2, n2)
-                        .SetProperty(c => c.CliApellido1, a1)
-                        .SetProperty(c => c.CliApellido2, a2)
-                        .SetProperty(c => c.CliCorreo, correo)
-                        .SetProperty(c => c.CliTelefono, telefono),
-                        timeoutCts.Token);
+                existing.CliNombre1 = n1;
+                existing.CliNombre2 = n2;
+                existing.CliApellido1 = a1;
+                existing.CliApellido2 = a2;
+                existing.CliCorreo = correo;
+                existing.CliTelefono = telefono;
+                await _db.SaveChangesAsync(ct);
 
                 return Ok(ApiResponse<ClienteUpsertResult>.Ok(
                     new ClienteUpsertResult { IdCliente = existing.IdCliente, ClienteGuid = existing.ClienteGuid, Created = false },
@@ -113,15 +104,15 @@ public sealed class ClientesController : ControllerBase
             };
 
             _db.Clientes.Add(entity);
-            await _db.SaveChangesAsync(timeoutCts.Token);
+            await _db.SaveChangesAsync(ct);
 
             return Ok(ApiResponse<ClienteUpsertResult>.Ok(
                 new ClienteUpsertResult { IdCliente = entity.IdCliente, ClienteGuid = entity.ClienteGuid, Created = true },
                 traceId: HttpContext.TraceIdentifier));
         }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        catch (DbUpdateException ex)
         {
-            return StatusCode(504, ApiResponse<ClienteUpsertResult>.Fail(504, "Timeout en upsert de cliente.", HttpContext.TraceIdentifier));
+            return StatusCode(500, ApiResponse<ClienteUpsertResult>.Fail(500, ex.InnerException?.Message ?? ex.Message, HttpContext.TraceIdentifier));
         }
     }
 
@@ -136,14 +127,11 @@ public sealed class ClientesController : ControllerBase
             return Ok(ApiResponse<IReadOnlyList<ConductorUpsertResult>>.Ok(Array.Empty<ConductorUpsertResult>(), traceId: HttpContext.TraceIdentifier));
         }
 
-        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeoutCts.CancelAfter(QueryTimeout);
-
         try
         {
             var clienteExists = await _db.Clientes
                 .AsNoTracking()
-                .AnyAsync(c => c.IdCliente == idCliente && !c.EsEliminado, timeoutCts.Token);
+                .AnyAsync(c => c.IdCliente == idCliente && !c.EsEliminado, ct);
 
             if (!clienteExists)
             {
@@ -152,7 +140,7 @@ public sealed class ClientesController : ControllerBase
 
             var existingConductores = await _db.Conductores
                 .Where(c => c.IdCliente == idCliente && !c.EsEliminado)
-                .ToListAsync(timeoutCts.Token);
+                .ToListAsync(ct);
 
             var byKey = existingConductores.ToDictionary(c => c.NumeroIdentificacion, StringComparer.Ordinal);
             var changed = false;
@@ -209,7 +197,7 @@ public sealed class ClientesController : ControllerBase
 
             if (changed)
             {
-                await _db.SaveChangesAsync(timeoutCts.Token);
+                await _db.SaveChangesAsync(ct);
             }
 
             var results = new List<ConductorUpsertResult>(conductores.Count);
@@ -229,11 +217,11 @@ public sealed class ClientesController : ControllerBase
 
             return Ok(ApiResponse<IReadOnlyList<ConductorUpsertResult>>.Ok(results, traceId: HttpContext.TraceIdentifier));
         }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        catch (DbUpdateException ex)
         {
-            return StatusCode(504, ApiResponse<IReadOnlyList<ConductorUpsertResult>>.Fail(
-                504,
-                "Timeout en upsert de conductores.",
+            return StatusCode(500, ApiResponse<IReadOnlyList<ConductorUpsertResult>>.Fail(
+                500,
+                ex.InnerException?.Message ?? ex.Message,
                 HttpContext.TraceIdentifier));
         }
     }
