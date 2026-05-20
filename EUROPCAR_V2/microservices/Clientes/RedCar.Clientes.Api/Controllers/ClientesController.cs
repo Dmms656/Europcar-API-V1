@@ -150,18 +150,12 @@ public sealed class ClientesController : ControllerBase
                 var edad = (short)Math.Clamp(req.EdadConductor, 21, 120);
 
                 var existing = await _db.Conductores
+                    .AsNoTracking()
                     .FirstOrDefaultAsync(c => c.IdCliente == idCliente && c.NumeroIdentificacion == numero && !c.EsEliminado, ct);
 
                 if (existing is not null)
                 {
-                    if (existing.IdCliente != idCliente)
-                    {
-                        return BadRequest(ApiResponse<IReadOnlyList<ConductorUpsertResult>>.Fail(
-                            400,
-                            $"El conductor {numero} pertenece a otro cliente.",
-                            HttpContext.TraceIdentifier));
-                    }
-
+                    _db.Conductores.Attach(existing);
                     existing.ConNombre1 = n1;
                     existing.ConNombre2 = n2;
                     existing.ConApellido1 = a1;
@@ -225,7 +219,7 @@ public sealed class ClientesController : ControllerBase
 
             return Ok(ApiResponse<IReadOnlyList<ConductorUpsertResult>>.Ok(results, traceId: HttpContext.TraceIdentifier));
         }
-        catch (DbUpdateException ex)
+        catch (Exception ex)
         {
             return StatusCode(500, ApiResponse<IReadOnlyList<ConductorUpsertResult>>.Fail(
                 500,

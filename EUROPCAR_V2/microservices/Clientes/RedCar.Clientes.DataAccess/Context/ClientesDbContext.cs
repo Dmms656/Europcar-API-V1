@@ -67,7 +67,8 @@ public class ClientesDbContext : DbContext
             e.Property(x => x.ConCorreo).HasColumnName("con_correo").HasMaxLength(120);
             e.Property(x => x.EsConductorJoven)
                 .HasColumnName("es_conductor_joven")
-                .HasComputedColumnSql("edad_conductor BETWEEN 21 AND 24", stored: true);
+                .HasComputedColumnSql("edad_conductor BETWEEN 21 AND 24", stored: true)
+                .ValueGeneratedOnAddOrUpdate();
             e.Property(x => x.EstadoConductor).HasColumnName("estado_conductor").HasMaxLength(3);
             e.Property(x => x.EsEliminado).HasColumnName("es_eliminado");
             e.Property(x => x.FechaRegistroUtc).HasColumnName("fecha_registro_utc");

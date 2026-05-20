@@ -44,7 +44,8 @@ public static class HttpClientExtensions
                 throw new InvalidOperationException(
                     $"BaseUrl no configurada para microservicio de {typeof(TClient).Name}. Revisa appsettings + .env.");
             }
-            http.BaseAddress = new Uri(endpoint.BaseUrl);
+            var baseUrl = endpoint.BaseUrl.Trim().TrimEnd('/');
+            http.BaseAddress = new Uri(baseUrl + "/", UriKind.Absolute);
             http.Timeout = TimeSpan.FromSeconds(endpoint.TimeoutSeconds <= 0 ? 10 : endpoint.TimeoutSeconds);
         };
 }
