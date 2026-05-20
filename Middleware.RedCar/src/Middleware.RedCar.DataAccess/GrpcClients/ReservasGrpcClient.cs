@@ -33,6 +33,7 @@ public sealed class ReservasGrpcClient : IReservasGrpcClient
             HoraFin = request.HoraFin.ToString("HH:mm:ss", CultureInfo.InvariantCulture),
             Observaciones = request.Observaciones ?? string.Empty,
             OrigenCanalReserva = request.OrigenCanalReserva,
+            IdCliente = request.IdCliente,
             Cliente = new ClienteDto
             {
                 Nombres = request.Cliente.Nombres,
@@ -48,6 +49,7 @@ public sealed class ReservasGrpcClient : IReservasGrpcClient
         {
             proto.Conductores.Add(new ConductorDto
             {
+                IdConductor = c.IdConductor,
                 Nombres = c.Nombres,
                 Apellidos = c.Apellidos,
                 TipoIdentificacion = c.TipoIdentificacion,

@@ -91,11 +91,13 @@ public sealed class ReservaOrchestrator : IReservaOrchestrator
             HoraFin: request.HoraFin,
             Observaciones: request.Observaciones,
             OrigenCanalReserva: _negocio.OrigenCanalReserva,
+            IdCliente: cliente.IdCliente,
             Cliente: new CrearReservaGrpcCliente(
                 cliente.Nombres, cliente.Apellidos,
                 cliente.TipoIdentificacion, cliente.NumeroIdentificacion,
                 cliente.Correo, cliente.Telefono),
             Conductores: conductores.Select(c => new CrearReservaGrpcConductor(
+                c.IdConductor,
                 c.Nombres, c.Apellidos,
                 c.TipoIdentificacion, c.NumeroIdentificacion,
                 c.FechaVencimientoLicencia, c.EdadConductor,

@@ -20,7 +20,12 @@ public static class GrpcExtensions
             {
                 throw new InvalidOperationException("BaseUrl de Reservas no configurada para gRPC.");
             }
-            options.Address = new Uri(settings.Reservas.BaseUrl);
+            var baseUrl = settings.Reservas.BaseUrl.Trim().TrimEnd('/');
+            options.Address = new Uri(baseUrl + "/", UriKind.Absolute);
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            EnableMultipleHttp2Connections = true
         });
 
         services.AddScoped<IReservasGrpcClient, ReservasGrpcClient>();

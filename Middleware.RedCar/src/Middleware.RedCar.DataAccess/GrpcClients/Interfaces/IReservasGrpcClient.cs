@@ -21,6 +21,7 @@ public sealed record CrearReservaGrpcRequest(
     TimeOnly HoraFin,
     string? Observaciones,
     string OrigenCanalReserva,
+    int IdCliente,
     CrearReservaGrpcCliente Cliente,
     IReadOnlyList<CrearReservaGrpcConductor> Conductores,
     IReadOnlyList<CrearReservaGrpcExtra> Extras);
@@ -34,6 +35,7 @@ public sealed record CrearReservaGrpcCliente(
     string Telefono);
 
 public sealed record CrearReservaGrpcConductor(
+    int IdConductor,
     string Nombres,
     string Apellidos,
     string TipoIdentificacion,

@@ -22,7 +22,7 @@ public class ReservasDbContext : DbContext
         {
             e.ToTable("reservas");
             e.HasKey(x => x.IdReserva);
-            e.Property(x => x.IdReserva).HasColumnName("id_reserva");
+            e.Property(x => x.IdReserva).HasColumnName("id_reserva").ValueGeneratedOnAdd();
             e.Property(x => x.ReservaGuid).HasColumnName("reserva_guid").HasDefaultValueSql("gen_random_uuid()");
             e.Property(x => x.CodigoReserva).HasColumnName("codigo_reserva").HasMaxLength(20);
             e.Property(x => x.IdCliente).HasColumnName("id_cliente");
@@ -68,7 +68,7 @@ public class ReservasDbContext : DbContext
         {
             e.ToTable("reserva_conductores");
             e.HasKey(x => x.IdReservaConductor);
-            e.Property(x => x.IdReservaConductor).HasColumnName("id_reserva_conductor");
+            e.Property(x => x.IdReservaConductor).HasColumnName("id_reserva_conductor").ValueGeneratedOnAdd();
             e.Property(x => x.ReservaConductorGuid).HasColumnName("reserva_conductor_guid").HasDefaultValueSql("gen_random_uuid()");
             e.Property(x => x.IdReserva).HasColumnName("id_reserva");
             e.Property(x => x.IdConductor).HasColumnName("id_conductor");
@@ -91,7 +91,7 @@ public class ReservasDbContext : DbContext
         {
             e.ToTable("reserva_extras");
             e.HasKey(x => x.IdReservaExtra);
-            e.Property(x => x.IdReservaExtra).HasColumnName("id_reserva_extra");
+            e.Property(x => x.IdReservaExtra).HasColumnName("id_reserva_extra").ValueGeneratedOnAdd();
             e.Property(x => x.ReservaExtraGuid).HasColumnName("reserva_extra_guid").HasDefaultValueSql("gen_random_uuid()");
             e.Property(x => x.IdReserva).HasColumnName("id_reserva");
             e.Property(x => x.IdExtra).HasColumnName("id_extra");

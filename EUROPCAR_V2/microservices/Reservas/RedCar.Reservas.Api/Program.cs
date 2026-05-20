@@ -18,13 +18,17 @@ if (string.IsNullOrWhiteSpace(connectionString))
 {
     connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Default__Reservas");
 }
-connectionString ??= string.Empty;
+connectionString = NormalizeSupabaseConnectionString(connectionString ?? string.Empty);
 
 builder.Services.AddDbContext<ReservasDbContext>(options =>
 {
     if (!string.IsNullOrWhiteSpace(connectionString))
     {
-        options.UseNpgsql(connectionString, npg => npg.EnableRetryOnFailure(3));
+        options.UseNpgsql(connectionString, npg =>
+        {
+            npg.EnableRetryOnFailure(2);
+            npg.CommandTimeout(30);
+        });
     }
     else
     {
@@ -36,6 +40,7 @@ builder.Services.AddRedCarJwt(builder.Configuration);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ReservasReadService>();
+builder.Services.AddScoped<ReservasWriteService>();
 builder.Services.AddHttpClient("DownstreamCatalogo").ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(25));
 builder.Services.AddHttpClient("DownstreamLocalizaciones").ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(25));
 builder.Services.AddHttpClient("DownstreamClientes").ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(25));
@@ -89,6 +94,13 @@ app.MapGet("/", () => Results.Redirect("/info"));
 app.Logger.LogInformation("RedCar.Reservas iniciado en {Urls}", string.Join(",", app.Urls));
 app.Run();
 
+static string NormalizeSupabaseConnectionString(string cs)
+{
+    if (string.IsNullOrWhiteSpace(cs)) return cs;
+    if (!cs.Contains("No Reset On Close", StringComparison.OrdinalIgnoreCase))
+        cs = cs.TrimEnd(';') + ";No Reset On Close=true";
+    return cs;
+}
 
 static Task WriteHealthResponseAsync(HttpContext context, HealthReport report)
 {

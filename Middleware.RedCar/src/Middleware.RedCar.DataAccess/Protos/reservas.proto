@@ -4,10 +4,6 @@ option csharp_namespace = "Middleware.RedCar.DataAccess.Protos.Reservas";
 
 package middleware.redcar.reservas.v1;
 
-// Contrato gRPC entre el Middleware y MS.Reservas para operaciones
-// transaccionales criticas: crear reserva y cancelar reserva.
-// (Las consultas siguen yendo por REST.)
-
 service ReservasGrpc {
   rpc CrearReserva (CrearReservaRequest) returns (CrearReservaResponse);
   rpc CancelarReserva (CancelarReservaRequest) returns (CancelarReservaResponse);
@@ -29,11 +25,12 @@ message ConductorDto {
   string apellidos = 2;
   string tipo_identificacion = 3;
   string numero_identificacion = 4;
-  string fecha_vencimiento_licencia = 5;  // ISO date
+  string fecha_vencimiento_licencia = 5;
   int32 edad_conductor = 6;
   string correo = 7;
   string telefono = 8;
   bool es_principal = 9;
+  int32 id_conductor = 10;
 }
 
 message ExtraDto {
@@ -54,20 +51,21 @@ message CrearReservaRequest {
   int32 id_vehiculo = 1;
   int32 id_localizacion_recogida = 2;
   int32 id_localizacion_devolucion = 3;
-  string fecha_inicio = 4;            // YYYY-MM-DD
+  string fecha_inicio = 4;
   string fecha_fin = 5;
-  string hora_inicio = 6;             // HH:MM:SS
+  string hora_inicio = 6;
   string hora_fin = 7;
   string observaciones = 8;
-  string origen_canal_reserva = 9;    // siempre "BOOKING"
+  string origen_canal_reserva = 9;
   ClienteDto cliente = 10;
   repeated ConductorDto conductores = 11;
   repeated ExtraDto extras = 12;
+  int32 id_cliente = 13;
 }
 
 message CrearReservaResponse {
   string codigo_reserva = 1;
-  string estado_reserva = 2;          // CON | PEN | CAN
+  string estado_reserva = 2;
   string fecha_reserva_utc = 3;
   int32 cantidad_dias = 4;
   double subtotal_vehiculo = 5;
@@ -85,6 +83,6 @@ message CancelarReservaRequest {
 
 message CancelarReservaResponse {
   string codigo_reserva = 1;
-  string estado_reserva = 2;          // CAN
+  string estado_reserva = 2;
   string fecha_cancelacion_utc = 3;
 }
