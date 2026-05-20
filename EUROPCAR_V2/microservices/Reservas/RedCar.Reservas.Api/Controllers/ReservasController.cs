@@ -1,5 +1,8 @@
+using Grpc.Core;
 using Microsoft.AspNetCore.Mvc;
 using RedCar.Reservas.Api.Contracts;
+using RedCar.Reservas.Api.Extensions;
+using RedCar.Reservas.Api.Mapping;
 using RedCar.Reservas.Api.Services;
 using RedCar.Shared.Contracts.Common;
 
@@ -10,8 +13,50 @@ namespace RedCar.Reservas.Api.Controllers;
 public sealed class ReservasController : ControllerBase
 {
     private readonly ReservasReadService _read;
+    private readonly ReservasWriteService _write;
 
-    public ReservasController(ReservasReadService read) => _read = read;
+    public ReservasController(ReservasReadService read, ReservasWriteService write)
+    {
+        _read = read;
+        _write = write;
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<ApiResponse<CrearReservaRestResponse>>> Crear(
+        [FromBody] CrearReservaRestRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            var proto = ReservasWriteMapper.ToProto(request);
+            var result = await _write.CrearReservaAsync(proto, ct);
+            return Ok(ApiResponse<CrearReservaRestResponse>.Ok(
+                ReservasWriteMapper.ToRest(result), traceId: HttpContext.TraceIdentifier));
+        }
+        catch (RpcException ex)
+        {
+            return RpcExceptionMapper.ToActionResult<CrearReservaRestResponse>(ex, HttpContext);
+        }
+    }
+
+    [HttpPatch("{codigoReserva}/cancelar")]
+    public async Task<ActionResult<ApiResponse<CancelarReservaRestResponse>>> Cancelar(
+        [FromRoute] string codigoReserva,
+        [FromBody] CancelarReservaRestRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            var proto = ReservasWriteMapper.ToProto(codigoReserva, request);
+            var result = await _write.CancelarReservaAsync(proto, ct);
+            return Ok(ApiResponse<CancelarReservaRestResponse>.Ok(
+                ReservasWriteMapper.ToRest(result), traceId: HttpContext.TraceIdentifier));
+        }
+        catch (RpcException ex)
+        {
+            return RpcExceptionMapper.ToActionResult<CancelarReservaRestResponse>(ex, HttpContext);
+        }
+    }
 
     [HttpGet("disponibilidad")]
     public async Task<ActionResult<ApiResponse<DisponibilidadDto>>> Disponibilidad(

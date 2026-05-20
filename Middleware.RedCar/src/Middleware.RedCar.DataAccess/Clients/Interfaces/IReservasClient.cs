@@ -1,17 +1,51 @@
 namespace Middleware.RedCar.DataAccess.Clients.Interfaces;
 
 /// <summary>
-/// Cliente REST hacia MS.Reservas (esquema "reservas").
-/// Las queries (consultar reserva, factura, disponibilidad) van por REST.
-/// La operacion de crear reserva, por su naturaleza transaccional, viaja por gRPC
-/// (ver IReservasGrpcClient).
+/// Cliente REST hacia MS.Reservas (lecturas y escrituras transaccionales).
+/// En Render el proxy publico no expone gRPC/HTTP2; crear/cancelar usan REST.
 /// </summary>
 public interface IReservasClient
 {
     Task<DisponibilidadDto?> VerificarDisponibilidadAsync(int idVehiculo, int idLocalizacion, DateTimeOffset fechaRecogida, DateTimeOffset fechaDevolucion, CancellationToken ct = default);
     Task<ReservaDto?> GetReservaAsync(string codigoReserva, CancellationToken ct = default);
     Task<FacturaDto?> GetFacturaAsync(string codigoReserva, CancellationToken ct = default);
+    Task<CrearReservaWriteResult> CrearReservaAsync(CrearReservaWriteRequest request, CancellationToken ct = default);
+    Task<CancelarReservaWriteResult> CancelarReservaAsync(string codigoReserva, string motivo, string usuario, CancellationToken ct = default);
 }
+
+public sealed record CrearReservaWriteRequest(
+    int IdVehiculo,
+    int IdLocalizacionRecogida,
+    int IdLocalizacionDevolucion,
+    DateOnly FechaInicio,
+    DateOnly FechaFin,
+    TimeOnly HoraInicio,
+    TimeOnly HoraFin,
+    string? Observaciones,
+    string OrigenCanalReserva,
+    int IdCliente,
+    CrearReservaWriteCliente Cliente,
+    IReadOnlyList<CrearReservaWriteConductor> Conductores,
+    IReadOnlyList<CrearReservaWriteExtra> Extras);
+
+public sealed record CrearReservaWriteCliente(
+    string Nombres, string Apellidos, string TipoIdentificacion,
+    string NumeroIdentificacion, string Correo, string Telefono);
+
+public sealed record CrearReservaWriteConductor(
+    int IdConductor, string Nombres, string Apellidos, string TipoIdentificacion,
+    string NumeroIdentificacion, DateOnly FechaVencimientoLicencia, int EdadConductor,
+    string Correo, string Telefono, bool EsPrincipal);
+
+public sealed record CrearReservaWriteExtra(int IdExtra, int Cantidad);
+
+public sealed record CrearReservaWriteResult(
+    string CodigoReserva, string EstadoReserva, DateTimeOffset FechaReservaUtc,
+    int CantidadDias, decimal SubtotalVehiculo, decimal SubtotalExtras,
+    decimal Subtotal, decimal Iva, decimal Total);
+
+public sealed record CancelarReservaWriteResult(
+    string CodigoReserva, string EstadoReserva, DateTimeOffset FechaCancelacionUtc);
 
 public sealed record DisponibilidadDto(
     int IdVehiculo,

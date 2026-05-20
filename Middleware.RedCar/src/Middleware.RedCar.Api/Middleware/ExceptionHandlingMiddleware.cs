@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Middleware.RedCar.Api.Models.Common;
 using Middleware.RedCar.Business.Exceptions;
+using Middleware.RedCar.DataAccess.Clients;
 
 namespace Middleware.RedCar.Api.Middleware;
 
@@ -61,6 +62,13 @@ public sealed class ExceptionHandlingMiddleware
         {
             _logger.LogError(tex, "Timeout llamando a un microservicio.");
             await WriteAsync(context, 504, "Timeout llamando al servicio downstream.");
+        }
+        catch (MicroserviceClientException mex)
+        {
+            var code = (int)mex.StatusCode;
+            if (code is < 400 or > 599) code = 502;
+            _logger.LogWarning("Downstream {Code}: {Msg}", code, mex.Message);
+            await WriteAsync(context, code, mex.Message);
         }
         catch (HttpRequestException hex)
         {

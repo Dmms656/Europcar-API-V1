@@ -9,13 +9,8 @@ namespace Middleware.RedCar.DataManagement.Services;
 public sealed class ReservasDataService : IReservasDataService
 {
     private readonly IReservasClient _restClient;
-    private readonly IReservasGrpcClient _grpcClient;
 
-    public ReservasDataService(IReservasClient restClient, IReservasGrpcClient grpcClient)
-    {
-        _restClient = restClient;
-        _grpcClient = grpcClient;
-    }
+    public ReservasDataService(IReservasClient restClient) => _restClient = restClient;
 
     public async Task<bool> VerificarDisponibilidadAsync(int idVehiculo, int idLocalizacion, DateTimeOffset fechaRecogida, DateTimeOffset fechaDevolucion, CancellationToken ct = default)
     {
@@ -35,9 +30,37 @@ public sealed class ReservasDataService : IReservasDataService
         return dto is null ? null : ReservasDataMapper.ToData(dto);
     }
 
-    public Task<CrearReservaGrpcResult> CrearReservaAsync(CrearReservaGrpcRequest request, CancellationToken ct = default)
-        => _grpcClient.CrearReservaAsync(request, ct);
+    public async Task<CrearReservaGrpcResult> CrearReservaAsync(CrearReservaGrpcRequest request, CancellationToken ct = default)
+    {
+        var writeReq = new CrearReservaWriteRequest(
+            request.IdVehiculo,
+            request.IdLocalizacionRecogida,
+            request.IdLocalizacionDevolucion,
+            request.FechaInicio,
+            request.FechaFin,
+            request.HoraInicio,
+            request.HoraFin,
+            request.Observaciones,
+            request.OrigenCanalReserva,
+            request.IdCliente,
+            new CrearReservaWriteCliente(
+                request.Cliente.Nombres, request.Cliente.Apellidos,
+                request.Cliente.TipoIdentificacion, request.Cliente.NumeroIdentificacion,
+                request.Cliente.Correo, request.Cliente.Telefono),
+            request.Conductores.Select(c => new CrearReservaWriteConductor(
+                c.IdConductor, c.Nombres, c.Apellidos, c.TipoIdentificacion, c.NumeroIdentificacion,
+                c.FechaVencimientoLicencia, c.EdadConductor, c.Correo, c.Telefono, c.EsPrincipal)).ToList(),
+            request.Extras.Select(e => new CrearReservaWriteExtra(e.IdExtra, e.Cantidad)).ToList());
 
-    public Task<CancelarReservaGrpcResult> CancelarReservaAsync(string codigoReserva, string motivo, string usuario, CancellationToken ct = default)
-        => _grpcClient.CancelarReservaAsync(codigoReserva, motivo, usuario, ct);
+        var r = await _restClient.CrearReservaAsync(writeReq, ct);
+        return new CrearReservaGrpcResult(
+            r.CodigoReserva, r.EstadoReserva, r.FechaReservaUtc, r.CantidadDias,
+            r.SubtotalVehiculo, r.SubtotalExtras, r.Subtotal, r.Iva, r.Total);
+    }
+
+    public async Task<CancelarReservaGrpcResult> CancelarReservaAsync(string codigoReserva, string motivo, string usuario, CancellationToken ct = default)
+    {
+        var r = await _restClient.CancelarReservaAsync(codigoReserva, motivo, usuario, ct);
+        return new CancelarReservaGrpcResult(r.CodigoReserva, r.EstadoReserva, r.FechaCancelacionUtc);
+    }
 }
