@@ -17,13 +17,13 @@ if (string.IsNullOrWhiteSpace(connectionString))
 {
     connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Default__Clientes");
 }
-connectionString ??= string.Empty;
+connectionString = NormalizeSupabaseConnectionString(connectionString ?? string.Empty);
 
-builder.Services.AddDbContextPool<ClientesDbContext>(options =>
+builder.Services.AddDbContext<ClientesDbContext>(options =>
 {
     if (!string.IsNullOrWhiteSpace(connectionString))
     {
-        options.UseNpgsql(connectionString, npg => npg.CommandTimeout(20));
+        options.UseNpgsql(connectionString, npg => npg.CommandTimeout(30));
     }
     else
     {
@@ -82,6 +82,17 @@ app.MapGet("/", () => Results.Redirect("/info"));
 app.Logger.LogInformation("RedCar.Clientes iniciado en {Urls}", string.Join(",", app.Urls));
 app.Run();
 
+/// <summary>
+/// Supabase/PgBouncer (transaction mode) + EF: evita "Exception while reading from stream".
+/// Preferir connection string "Session mode" (puerto 5432) en Render si es posible.
+/// </summary>
+static string NormalizeSupabaseConnectionString(string cs)
+{
+    if (string.IsNullOrWhiteSpace(cs)) return cs;
+    if (!cs.Contains("No Reset On Close", StringComparison.OrdinalIgnoreCase))
+        cs = cs.TrimEnd(';') + ";No Reset On Close=true";
+    return cs;
+}
 
 static Task WriteHealthResponseAsync(HttpContext context, HealthReport report)
 {
