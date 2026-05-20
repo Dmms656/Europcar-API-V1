@@ -138,34 +138,47 @@ public sealed class ClientesController : ControllerBase
                 return NotFound(ApiResponse<IReadOnlyList<ConductorUpsertResult>>.Fail(404, "Cliente no encontrado.", HttpContext.TraceIdentifier));
             }
 
-            var saved = new Dictionary<string, Conductor>(conductores.Count, StringComparer.Ordinal);
-            var changed = false;
+            var saved = new Dictionary<string, ConductorUpsertResult>(conductores.Count, StringComparer.Ordinal);
+            var pendingInsert = new List<Conductor>();
 
             foreach (var req in conductores)
             {
                 var tipoDb = ClientesApiMapper.ToDbTipoIdentificacionConductor(req.TipoIdentificacion);
                 var numero = (req.NumeroIdentificacion ?? string.Empty).Trim();
+                var correo = req.Correo.Trim();
+                var telefono = req.Telefono.Trim();
                 var (n1, n2) = ClientesApiMapper.SplitTwo(req.Nombres);
                 var (a1, a2) = ClientesApiMapper.SplitTwo(req.Apellidos);
                 var edad = (short)Math.Clamp(req.EdadConductor, 21, 120);
 
                 var existing = await _db.Conductores
                     .AsNoTracking()
-                    .FirstOrDefaultAsync(c => c.IdCliente == idCliente && c.NumeroIdentificacion == numero && !c.EsEliminado, ct);
+                    .Where(c => c.IdCliente == idCliente && c.NumeroIdentificacion == numero && !c.EsEliminado)
+                    .Select(c => new { c.IdConductor, c.ConductorGuid })
+                    .FirstOrDefaultAsync(ct);
 
                 if (existing is not null)
                 {
-                    _db.Conductores.Attach(existing);
-                    existing.ConNombre1 = n1;
-                    existing.ConNombre2 = n2;
-                    existing.ConApellido1 = a1;
-                    existing.ConApellido2 = a2;
-                    existing.FechaVencimientoLicencia = req.FechaVencimientoLicencia;
-                    existing.EdadConductor = edad;
-                    existing.ConCorreo = req.Correo.Trim();
-                    existing.ConTelefono = req.Telefono.Trim();
-                    saved[numero] = existing;
-                    changed = true;
+                    await _db.Conductores
+                        .Where(c => c.IdConductor == existing.IdConductor)
+                        .ExecuteUpdateAsync(setters => setters
+                            .SetProperty(c => c.ConNombre1, n1)
+                            .SetProperty(c => c.ConNombre2, n2)
+                            .SetProperty(c => c.ConApellido1, a1)
+                            .SetProperty(c => c.ConApellido2, a2)
+                            .SetProperty(c => c.FechaVencimientoLicencia, req.FechaVencimientoLicencia)
+                            .SetProperty(c => c.EdadConductor, edad)
+                            .SetProperty(c => c.ConCorreo, correo)
+                            .SetProperty(c => c.ConTelefono, telefono),
+                            ct);
+
+                    saved[numero] = new ConductorUpsertResult
+                    {
+                        IdConductor = existing.IdConductor,
+                        ConductorGuid = existing.ConductorGuid,
+                        NumeroIdentificacion = numero,
+                        EsPrincipal = req.EsPrincipal
+                    };
                     continue;
                 }
 
@@ -183,8 +196,8 @@ public sealed class ClientesController : ControllerBase
                     NumeroLicencia = BuildNumeroLicencia(numero),
                     FechaVencimientoLicencia = req.FechaVencimientoLicencia,
                     EdadConductor = edad,
-                    ConTelefono = req.Telefono.Trim(),
-                    ConCorreo = req.Correo.Trim(),
+                    ConTelefono = telefono,
+                    ConCorreo = correo,
                     EstadoConductor = "ACT",
                     EsEliminado = false,
                     FechaRegistroUtc = DateTimeOffset.UtcNow,
@@ -192,30 +205,29 @@ public sealed class ClientesController : ControllerBase
                     OrigenRegistro = "API"
                 };
 
-                _db.Conductores.Add(entity);
-                saved[numero] = entity;
-                changed = true;
+                pendingInsert.Add(entity);
             }
 
-            if (changed)
+            if (pendingInsert.Count > 0)
             {
+                _db.Conductores.AddRange(pendingInsert);
                 await _db.SaveChangesAsync(ct);
-            }
 
-            var results = new List<ConductorUpsertResult>(conductores.Count);
-            foreach (var req in conductores)
-            {
-                var numero = (req.NumeroIdentificacion ?? string.Empty).Trim();
-                var row = saved[numero];
-
-                results.Add(new ConductorUpsertResult
+                foreach (var entity in pendingInsert)
                 {
-                    IdConductor = row.IdConductor,
-                    ConductorGuid = row.ConductorGuid,
-                    NumeroIdentificacion = row.NumeroIdentificacion,
-                    EsPrincipal = req.EsPrincipal
-                });
+                    saved[entity.NumeroIdentificacion] = new ConductorUpsertResult
+                    {
+                        IdConductor = entity.IdConductor,
+                        ConductorGuid = entity.ConductorGuid,
+                        NumeroIdentificacion = entity.NumeroIdentificacion,
+                        EsPrincipal = conductores.First(c => (c.NumeroIdentificacion ?? string.Empty).Trim() == entity.NumeroIdentificacion).EsPrincipal
+                    };
+                }
             }
+
+            var results = conductores
+                .Select(req => saved[(req.NumeroIdentificacion ?? string.Empty).Trim()])
+                .ToList();
 
             return Ok(ApiResponse<IReadOnlyList<ConductorUpsertResult>>.Ok(results, traceId: HttpContext.TraceIdentifier));
         }
