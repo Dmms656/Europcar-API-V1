@@ -11,7 +11,7 @@ namespace RedCar.Clientes.Api.Controllers;
 [Route("api/v1/clientes")]
 public sealed class ClientesController : ControllerBase
 {
-    private static readonly TimeSpan QueryTimeout = TimeSpan.FromSeconds(8);
+    private static readonly TimeSpan QueryTimeout = TimeSpan.FromSeconds(20);
     private readonly ClientesDbContext _db;
 
     public ClientesController(ClientesDbContext db) => _db = db;

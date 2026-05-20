@@ -19,15 +19,11 @@ if (string.IsNullOrWhiteSpace(connectionString))
 }
 connectionString ??= string.Empty;
 
-builder.Services.AddDbContext<ClientesDbContext>(options =>
+builder.Services.AddDbContextPool<ClientesDbContext>(options =>
 {
     if (!string.IsNullOrWhiteSpace(connectionString))
     {
-        options.UseNpgsql(connectionString, npg =>
-        {
-            npg.EnableRetryOnFailure(2);
-            npg.CommandTimeout(15);
-        });
+        options.UseNpgsql(connectionString, npg => npg.CommandTimeout(20));
     }
     else
     {
