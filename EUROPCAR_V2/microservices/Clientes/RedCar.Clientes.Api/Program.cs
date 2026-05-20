@@ -23,7 +23,11 @@ builder.Services.AddDbContext<ClientesDbContext>(options =>
 {
     if (!string.IsNullOrWhiteSpace(connectionString))
     {
-        options.UseNpgsql(connectionString, npg => npg.EnableRetryOnFailure(3));
+        options.UseNpgsql(connectionString, npg =>
+        {
+            npg.EnableRetryOnFailure(2);
+            npg.CommandTimeout(15);
+        });
     }
     else
     {

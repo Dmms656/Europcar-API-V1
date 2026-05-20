@@ -16,5 +16,5 @@ public sealed class MicroserviciosSettings
 public sealed class MicroservicioEndpoint
 {
     public string BaseUrl { get; set; } = string.Empty;
-    public int TimeoutSeconds { get; set; } = 10;
+    public int TimeoutSeconds { get; set; } = 60;
 }

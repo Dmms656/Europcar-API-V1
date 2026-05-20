@@ -20,7 +20,7 @@ public class ClientesDbContext : DbContext
         {
             e.ToTable("clientes");
             e.HasKey(x => x.IdCliente);
-            e.Property(x => x.IdCliente).HasColumnName("id_cliente");
+            e.Property(x => x.IdCliente).HasColumnName("id_cliente").ValueGeneratedOnAdd();
             e.Property(x => x.ClienteGuid).HasColumnName("cliente_guid").HasDefaultValueSql("gen_random_uuid()");
             e.Property(x => x.CodigoCliente).HasColumnName("codigo_cliente").HasMaxLength(20);
             e.Property(x => x.TipoIdentificacion).HasColumnName("tipo_identificacion").HasMaxLength(10);
@@ -50,7 +50,7 @@ public class ClientesDbContext : DbContext
         {
             e.ToTable("conductores");
             e.HasKey(x => x.IdConductor);
-            e.Property(x => x.IdConductor).HasColumnName("id_conductor");
+            e.Property(x => x.IdConductor).HasColumnName("id_conductor").ValueGeneratedOnAdd();
             e.Property(x => x.ConductorGuid).HasColumnName("conductor_guid").HasDefaultValueSql("gen_random_uuid()");
             e.Property(x => x.CodigoConductor).HasColumnName("codigo_conductor").HasMaxLength(20);
             e.Property(x => x.IdCliente).HasColumnName("id_cliente");
