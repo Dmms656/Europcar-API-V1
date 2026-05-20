@@ -150,7 +150,7 @@ public sealed class ClientesController : ControllerBase
                 var edad = (short)Math.Clamp(req.EdadConductor, 21, 120);
 
                 var existing = await _db.Conductores
-                    .FirstOrDefaultAsync(c => c.NumeroIdentificacion == numero && !c.EsEliminado, ct);
+                    .FirstOrDefaultAsync(c => c.IdCliente == idCliente && c.NumeroIdentificacion == numero && !c.EsEliminado, ct);
 
                 if (existing is not null)
                 {
