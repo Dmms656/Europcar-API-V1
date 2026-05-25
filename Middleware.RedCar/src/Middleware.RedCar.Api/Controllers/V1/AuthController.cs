@@ -25,7 +25,7 @@ public sealed class AuthController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>Login: JWT en cookie HttpOnly; el cuerpo no incluye el token.</summary>
+    /// <summary>Login: cookie HttpOnly + token en JSON (solo memoria en el SPA, no localStorage).</summary>
     [HttpPost("login")]
     [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct)
@@ -33,7 +33,7 @@ public sealed class AuthController : ControllerBase
         try
         {
             var data = await _auth.LoginAsync(request, ct);
-            AuthCookieExtensions.SetAuthCookie(Response, data.Token, data.Expiration, Request.IsHttps);
+            AuthCookieExtensions.SetAuthCookie(Request, Response, data.Token, data.Expiration);
 
             return Ok(ApiResponse<object>.Ok(new
             {
@@ -42,7 +42,8 @@ public sealed class AuthController : ControllerBase
                 data.Roles,
                 data.Expiration,
                 data.IdCliente,
-                data.NombreCompleto
+                data.NombreCompleto,
+                data.Token
             }, "Login exitoso", HttpContext.TraceIdentifier));
         }
         catch (UnauthorizedAccessException ex)
@@ -108,7 +109,7 @@ public sealed class AuthController : ControllerBase
     [Authorize]
     public IActionResult Logout()
     {
-        AuthCookieExtensions.ClearAuthCookie(Response, Request.IsHttps);
+        AuthCookieExtensions.ClearAuthCookie(Request, Response);
         return Ok(ApiResponse<object>.Ok(new { }, "Sesión cerrada", HttpContext.TraceIdentifier));
     }
 

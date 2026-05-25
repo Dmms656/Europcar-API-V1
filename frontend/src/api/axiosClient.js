@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { toast } from 'sonner';
 import { resolveApiBaseUrl, isApiConfigured } from '../config/api';
+import { useAuthStore } from '../store/useAuthStore';
 import { parseApiError } from '../utils/errorHandler';
 
 /**
@@ -28,6 +29,10 @@ api.interceptors.request.use((config) => {
       })
     );
   }
+  const token = useAuthStore.getState().accessToken;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   if (config.__retryCount == null) config.__retryCount = 0;
   return config;
 });
@@ -47,7 +52,7 @@ api.interceptors.response.use(
       return api(config);
     }
 
-    if (status === 401) {
+    if (status === 401 && !config.suppressAuthRedirect) {
       handleUnauthorized();
     }
 
@@ -78,12 +83,7 @@ function wait(ms) {
 }
 
 function handleUnauthorized() {
-  try {
-    sessionStorage.removeItem('user');
-    sessionStorage.removeItem('userType');
-  } catch {
-    /* ignore */
-  }
+  useAuthStore.getState().clearAuth();
 
   const path = window.location.pathname;
   const isPublic = PUBLIC_PATHS.some((p) =>

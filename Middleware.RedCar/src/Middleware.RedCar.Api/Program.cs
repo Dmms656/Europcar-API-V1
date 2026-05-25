@@ -1,11 +1,19 @@
 using System.Text.Json;
 using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Middleware.RedCar.Api.Extensions;
 using Middleware.RedCar.Api.Middleware;
 using Middleware.RedCar.Api.Models.Common;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // Las variables de entorno con __ se mapean a secciones de configuracion
 // (ya viene activado por defecto via AddEnvironmentVariables()).
@@ -112,6 +120,7 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 var enableSwagger = app.Environment.IsDevelopment()

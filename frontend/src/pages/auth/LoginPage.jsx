@@ -73,7 +73,7 @@ export default function LoginPage() {
       }
 
       const userType = isAdmin && tab === 'admin' ? 'admin' : 'cliente';
-      login(data, userType);
+      login({ ...data, token: data.token }, userType);
 
       const fromQuery = searchParams.get('from');
       const fromState = location.state?.from?.pathname;

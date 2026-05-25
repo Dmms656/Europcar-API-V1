@@ -21,31 +21,12 @@ const writeSession = (key, value) => {
   }
 };
 
-const deriveUserType = () => {
-  const stored = readSession(USER_TYPE_KEY);
-  if (stored) return stored;
-  try {
-    const user = JSON.parse(readSession(USER_KEY) || 'null');
-    if (user?.roles?.some((r) => ['ADMIN', 'AGENTE_POS'].includes(r))) return 'admin';
-    if (user) return 'cliente';
-  } catch {
-    /* ignore */
-  }
-  return null;
-};
-
-const initialUser = (() => {
-  try {
-    return JSON.parse(readSession(USER_KEY) || 'null');
-  } catch {
-    return null;
-  }
-})();
-
 export const useAuthStore = create((set, get) => ({
-  user: initialUser,
-  isAuthenticated: !!initialUser,
-  userType: deriveUserType(),
+  user: null,
+  /** JWT solo en memoria (tab); no localStorage. Respaldo si la cookie cross-origin falla. */
+  accessToken: null,
+  isAuthenticated: false,
+  userType: null,
   sessionChecked: false,
 
   login: (loginResponse, type = 'admin') => {
@@ -59,26 +40,38 @@ export const useAuthStore = create((set, get) => ({
     };
     writeSession(USER_KEY, JSON.stringify(userData));
     writeSession(USER_TYPE_KEY, type);
-    set({ user: userData, isAuthenticated: true, userType: type, sessionChecked: true });
+    set({
+      user: userData,
+      accessToken: loginResponse.token || null,
+      isAuthenticated: true,
+      userType: type,
+      sessionChecked: true,
+    });
   },
 
   logout: async () => {
     try {
-      await authApi.logout({ suppressErrorToast: true });
+      await authApi.logout({ suppressErrorToast: true, suppressAuthRedirect: true });
     } catch {
       /* cookie puede ya estar ausente */
     }
     writeSession(USER_KEY, null);
     writeSession(USER_TYPE_KEY, null);
-    set({ user: null, isAuthenticated: false, userType: null, sessionChecked: true });
+    set({
+      user: null,
+      accessToken: null,
+      isAuthenticated: false,
+      userType: null,
+      sessionChecked: true,
+    });
   },
 
   restoreSession: async () => {
     try {
-      const res = await authApi.me({ suppressErrorToast: true });
+      const res = await authApi.me({ suppressErrorToast: true, suppressAuthRedirect: true });
       const data = res.data?.data;
       if (!data) {
-        set({ user: null, isAuthenticated: false, userType: null, sessionChecked: true });
+        set({ user: null, accessToken: null, isAuthenticated: false, userType: null, sessionChecked: true });
         return;
       }
       const isAdmin = data.roles?.some((r) => ['ADMIN', 'AGENTE', 'AGENTE_POS'].includes(r));
@@ -92,12 +85,36 @@ export const useAuthStore = create((set, get) => ({
       };
       writeSession(USER_KEY, JSON.stringify(userData));
       writeSession(USER_TYPE_KEY, userType);
-      set({ user: userData, isAuthenticated: true, userType, sessionChecked: true });
+      set({
+        user: userData,
+        accessToken: get().accessToken,
+        isAuthenticated: true,
+        userType,
+        sessionChecked: true,
+      });
     } catch {
       writeSession(USER_KEY, null);
       writeSession(USER_TYPE_KEY, null);
-      set({ user: null, isAuthenticated: false, userType: null, sessionChecked: true });
+      set({
+        user: null,
+        accessToken: null,
+        isAuthenticated: false,
+        userType: null,
+        sessionChecked: true,
+      });
     }
+  },
+
+  clearAuth: () => {
+    writeSession(USER_KEY, null);
+    writeSession(USER_TYPE_KEY, null);
+    set({
+      user: null,
+      accessToken: null,
+      isAuthenticated: false,
+      userType: null,
+      sessionChecked: true,
+    });
   },
 
   isAdmin: () => get().userType === 'admin',
