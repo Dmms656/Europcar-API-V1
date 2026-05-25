@@ -41,7 +41,17 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const response = await authApi.login({ username, password }, { suppressErrorToast: true });
+      let response;
+      try {
+        response = await authApi.login({ username, password }, { suppressErrorToast: true });
+      } catch (firstErr) {
+        if (!firstErr.response && firstErr.code !== 'ERR_CANCELED') {
+          await new Promise((r) => setTimeout(r, 4000));
+          response = await authApi.login({ username, password }, { suppressErrorToast: true });
+        } else {
+          throw firstErr;
+        }
+      }
       const body = response.data;
       if (body?.success === false) {
         setError(body.message || 'Credenciales inválidas');

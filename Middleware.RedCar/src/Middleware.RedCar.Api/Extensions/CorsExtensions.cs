@@ -10,7 +10,11 @@ public static class CorsExtensions
     {
         services.Configure<CorsSettings>(configuration.GetSection(CorsSettings.SectionName));
 
-        var origins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+        var origins = (configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())
+            .Select(NormalizeOrigin)
+            .Where(o => !string.IsNullOrWhiteSpace(o))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
         services.AddCors(o =>
         {
@@ -30,5 +34,12 @@ public static class CorsExtensions
         });
 
         return services;
+    }
+
+    /// <summary>El navegador envía Origin sin barra final; Render a veces la configura con /.</summary>
+    private static string NormalizeOrigin(string? origin)
+    {
+        if (string.IsNullOrWhiteSpace(origin)) return string.Empty;
+        return origin.Trim().TrimEnd('/');
     }
 }

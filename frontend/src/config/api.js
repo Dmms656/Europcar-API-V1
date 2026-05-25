@@ -4,6 +4,8 @@
  * - Directo a middleware local: http://localhost:5200/api/v1
  * - Producción Render: https://europcar-api-v2.onrender.com/api/v1
  */
+const PRODUCTION_API_DEFAULT = 'https://europcar-api-v2.onrender.com/api/v1';
+
 export function resolveApiBaseUrl() {
   const fromEnv = import.meta.env.VITE_API_URL?.trim();
   if (fromEnv) return fromEnv.replace(/\/$/, '');
@@ -12,7 +14,8 @@ export function resolveApiBaseUrl() {
     return '/api/v1';
   }
 
-  return '';
+  // Build de producción sin VITE_API_URL en Render (evita baseURL vacía).
+  return PRODUCTION_API_DEFAULT;
 }
 
 export function isApiConfigured() {

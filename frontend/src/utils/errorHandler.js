@@ -16,6 +16,10 @@ const DEFAULT_MESSAGES = {
     'La URL de la API no está configurada. Crea frontend/.env con VITE_API_URL o usa npm run dev (proxy /api/v1).',
   CORS_HINT:
     'No se pudo conectar con la API. En desarrollo usa npm run dev (proxy) o define VITE_API_URL. Si apuntas a Render, revisa CORS en el middleware.',
+  CORS_LOCAL_TO_RENDER:
+    'Abriste el frontend en local pero la API está en Render. Usa npm run dev con proxy, o añade http://localhost:5173 en Cors__AllowedOrigins del middleware.',
+  RENDER_COLD_START:
+    'La API en Render puede estar iniciando. Espera 30–60 s y vuelve a intentar. Si sigue fallando, revisa que Cors__AllowedOrigins__0 sea https://europcar-frontend.onrender.com (sin / al final).',
   400: 'La petición no es válida.',
   401: 'Tu sesión expiró. Inicia sesión nuevamente.',
   403: 'No tienes permisos para realizar esta acción.',
@@ -67,10 +71,7 @@ export function parseApiError(error) {
 
   // Caso 4: Sin response (error de red, CORS, DNS, servidor caído)
   if (!error.response) {
-    const hint =
-      import.meta.env?.DEV && !import.meta.env?.VITE_API_URL
-        ? DEFAULT_MESSAGES.CORS_HINT
-        : DEFAULT_MESSAGES[0];
+    const hint = networkErrorMessage();
     return baseResult({
       status: 0,
       message: hint,
@@ -122,6 +123,29 @@ export function getFieldErrors(error) {
 // ----------------------------------------------------------------------------
 // Helpers privados
 // ----------------------------------------------------------------------------
+
+function networkErrorMessage() {
+  if (typeof window !== 'undefined') {
+    const apiBase = (import.meta.env.VITE_API_URL || '').trim();
+    const isLocalHost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(window.location.origin);
+    const apiIsRemote =
+      apiBase.includes('onrender.com') ||
+      apiBase.includes('europcar-api');
+    if (isLocalHost && apiIsRemote) {
+      return DEFAULT_MESSAGES.CORS_LOCAL_TO_RENDER;
+    }
+  }
+
+  if (import.meta.env?.DEV && !import.meta.env?.VITE_API_URL) {
+    return DEFAULT_MESSAGES.CORS_HINT;
+  }
+
+  if (import.meta.env?.PROD) {
+    return DEFAULT_MESSAGES.RENDER_COLD_START;
+  }
+
+  return DEFAULT_MESSAGES[0];
+}
 
 function baseResult(partial) {
   return {
