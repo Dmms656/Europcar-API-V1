@@ -15,6 +15,32 @@ import { normalizeVehiculoDetalle, defaultRentalDateTimeLocalRange } from '../..
 
 const guestClientStorageKey = (vehiculoId) => `reservar_guest_client_${vehiculoId}`;
 
+/** Datos de cliente para booking público: formulario invitado o perfil de sesión. */
+function resolveClienteReserva(user, guestForm) {
+  if (guestForm.nombre?.trim()) {
+    return {
+      nombre: guestForm.nombre.trim(),
+      apellido: (guestForm.apellido || '').trim(),
+      cedula: (guestForm.cedula || '').trim(),
+      correo: (guestForm.correo || '').trim(),
+      telefono: (guestForm.telefono || '').trim(),
+    };
+  }
+  if (!user) return null;
+  const full = (user.nombreCompleto || user.username || '').trim();
+  const parts = full.split(/\s+/).filter(Boolean);
+  const nombre = parts[0] || user.username || 'Cliente';
+  const apellido = parts.length > 1 ? parts.slice(1).join(' ') : 'N/A';
+  const cedula = (guestForm.cedula || '').trim() || `WEB-${String(user.username || 'user').replace(/\W/g, '').slice(0, 12)}`;
+  return {
+    nombre,
+    apellido,
+    cedula,
+    correo: (user.correo || guestForm.correo || '').trim(),
+    telefono: (guestForm.telefono || '').trim(),
+  };
+}
+
 const IVA_RATE = 0.15;
 const RECARGO_CONDUCTOR_ADICIONAL_DIA = 15;
 const EXTRA_CONDUCTOR_ADICIONAL_CODE = 'COND-ADIC';
@@ -37,8 +63,7 @@ export default function ReservarPage() {
     }
   });
 
-  const effectiveClientId = user?.idCliente || guestClientId;
-  const STEPS = effectiveClientId
+  const STEPS = isAuthenticated
     ? ['Fechas', 'Conductores', 'Extras', 'Resumen', 'Pago']
     : ['Identificación', 'Fechas', 'Conductores', 'Extras', 'Resumen', 'Pago'];
 
@@ -95,7 +120,17 @@ export default function ReservarPage() {
     if (user?.idCliente) {
       setGuestClientId(user.idCliente);
     }
-  }, [user?.idCliente]);
+    if (user && isAuthenticated) {
+      const full = (user.nombreCompleto || user.username || '').trim();
+      const parts = full.split(/\s+/).filter(Boolean);
+      setGuestForm((prev) => ({
+        ...prev,
+        nombre: prev.nombre || parts[0] || user.username || '',
+        apellido: prev.apellido || (parts.length > 1 ? parts.slice(1).join(' ') : ''),
+        correo: prev.correo || user.correo || '',
+      }));
+    }
+  }, [user, isAuthenticated]);
 
   useEffect(() => {
     if (!guestClientId || !id) return;
@@ -578,9 +613,11 @@ export default function ReservarPage() {
       return;
     }
 
-    if (usePublicBooking && !guestForm.nombre?.trim()) {
+    const clienteReserva = resolveClienteReserva(user, guestForm);
+    if (usePublicBooking && !clienteReserva?.nombre) {
       toast.error('Completa tus datos en el paso de identificación antes de pagar.');
-      setStep(STEPS.indexOf('Identificación'));
+      const idStep = STEPS.indexOf('Identificación');
+      if (idStep >= 0) setStep(idStep);
       setProcessing(false);
       return;
     }
@@ -621,20 +658,20 @@ export default function ReservarPage() {
           horaFin,
           origenCanalReserva: 'WEB',
           cliente: {
-            nombres: guestForm.nombre.trim(),
-            apellidos: guestForm.apellido.trim() || 'N/A',
+            nombres: clienteReserva.nombre,
+            apellidos: clienteReserva.apellido || 'N/A',
             tipoIdentificacion: 'CED',
-            numeroIdentificacion: guestForm.cedula.trim(),
-            correo: guestForm.correo.trim(),
-            telefono: guestForm.telefono.trim(),
+            numeroIdentificacion: clienteReserva.cedula,
+            correo: clienteReserva.correo,
+            telefono: clienteReserva.telefono,
           },
           conductorPrincipal: {
-            nombres: principalNames.nombres || guestForm.nombre.trim(),
-            apellidos: principalNames.apellidos || guestForm.apellido.trim() || 'N/A',
+            nombres: principalNames.nombres || clienteReserva.nombre,
+            apellidos: principalNames.apellidos || clienteReserva.apellido || 'N/A',
             tipoIdentificacion: 'CED',
-            numeroIdentificacion: principal.esCliente ? guestForm.cedula.trim() : `${guestForm.cedula.trim()}-A`,
-            correo: guestForm.correo.trim(),
-            telefono: principal.telefono?.trim() || guestForm.telefono.trim(),
+            numeroIdentificacion: principal.esCliente ? clienteReserva.cedula : `${clienteReserva.cedula}-A`,
+            correo: clienteReserva.correo,
+            telefono: principal.telefono?.trim() || clienteReserva.telefono,
             numeroLicencia: principal.licencia?.trim() || 'PENDIENTE',
             edadConductor: Number(principal.edad) || 25,
           },
@@ -642,9 +679,9 @@ export default function ReservarPage() {
             nombres: secondaryNames.nombres,
             apellidos: secondaryNames.apellidos,
             tipoIdentificacion: 'PAS',
-            numeroIdentificacion: `${guestForm.cedula.trim()}-B`,
-            correo: guestForm.correo.trim(),
-            telefono: secundario?.telefono?.trim() || guestForm.telefono.trim(),
+            numeroIdentificacion: `${clienteReserva.cedula}-B`,
+            correo: clienteReserva.correo,
+            telefono: secundario?.telefono?.trim() || clienteReserva.telefono,
             numeroLicencia: secundario?.licencia?.trim() || 'PENDIENTE',
             edadConductor: Number(secundario?.edad) || 25,
           } : null,

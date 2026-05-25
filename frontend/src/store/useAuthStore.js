@@ -3,6 +3,8 @@ import { authApi } from '../api/authApi';
 
 const USER_KEY = 'user';
 const USER_TYPE_KEY = 'userType';
+/** JWT en sessionStorage (solo esta pestaña; sobrevive F5, no localStorage). */
+const TOKEN_KEY = 'rc_access_token';
 
 const readSession = (key) => {
   try {
@@ -21,13 +23,33 @@ const writeSession = (key, value) => {
   }
 };
 
+const parseCachedUser = () => {
+  const raw = readSession(USER_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+
+/** Estado inicial desde sessionStorage para no perder sesión al recargar. */
+const hydrateInitialAuth = () => {
+  const token = readSession(TOKEN_KEY);
+  const user = parseCachedUser();
+  const userType = readSession(USER_TYPE_KEY);
+  const hasSession = Boolean(token && user);
+  return {
+    user: hasSession ? user : null,
+    accessToken: token || null,
+    isAuthenticated: hasSession,
+    userType: hasSession ? userType : null,
+    sessionChecked: false,
+  };
+};
+
 export const useAuthStore = create((set, get) => ({
-  user: null,
-  /** JWT solo en memoria (tab); no localStorage. Respaldo si la cookie cross-origin falla. */
-  accessToken: null,
-  isAuthenticated: false,
-  userType: null,
-  sessionChecked: false,
+  ...hydrateInitialAuth(),
 
   login: (loginResponse, type = 'admin') => {
     const userData = {
@@ -38,11 +60,14 @@ export const useAuthStore = create((set, get) => ({
       idCliente: loginResponse.idCliente,
       nombreCompleto: loginResponse.nombreCompleto,
     };
+    const token = loginResponse.token || null;
     writeSession(USER_KEY, JSON.stringify(userData));
     writeSession(USER_TYPE_KEY, type);
+    if (token) writeSession(TOKEN_KEY, token);
+    else writeSession(TOKEN_KEY, null);
     set({
       user: userData,
-      accessToken: loginResponse.token || null,
+      accessToken: token,
       isAuthenticated: true,
       userType: type,
       sessionChecked: true,
@@ -57,6 +82,7 @@ export const useAuthStore = create((set, get) => ({
     }
     writeSession(USER_KEY, null);
     writeSession(USER_TYPE_KEY, null);
+    writeSession(TOKEN_KEY, null);
     set({
       user: null,
       accessToken: null,
@@ -67,10 +93,27 @@ export const useAuthStore = create((set, get) => ({
   },
 
   restoreSession: async () => {
+    const cachedToken = readSession(TOKEN_KEY);
+    const cachedUser = parseCachedUser();
+    const cachedType = readSession(USER_TYPE_KEY);
+
+    if (cachedToken && cachedUser) {
+      set({
+        user: cachedUser,
+        accessToken: cachedToken,
+        isAuthenticated: true,
+        userType: cachedType,
+      });
+    }
+
     try {
       const res = await authApi.me({ suppressErrorToast: true, suppressAuthRedirect: true });
       const data = res.data?.data;
       if (!data) {
+        if (cachedToken && cachedUser) {
+          set({ sessionChecked: true });
+          return;
+        }
         set({ user: null, accessToken: null, isAuthenticated: false, userType: null, sessionChecked: true });
         return;
       }
@@ -87,14 +130,33 @@ export const useAuthStore = create((set, get) => ({
       writeSession(USER_TYPE_KEY, userType);
       set({
         user: userData,
-        accessToken: get().accessToken,
+        accessToken: cachedToken || get().accessToken,
         isAuthenticated: true,
         userType,
         sessionChecked: true,
       });
-    } catch {
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 401) {
+        writeSession(USER_KEY, null);
+        writeSession(USER_TYPE_KEY, null);
+        writeSession(TOKEN_KEY, null);
+        set({
+          user: null,
+          accessToken: null,
+          isAuthenticated: false,
+          userType: null,
+          sessionChecked: true,
+        });
+        return;
+      }
+      if (cachedToken && cachedUser) {
+        set({ sessionChecked: true });
+        return;
+      }
       writeSession(USER_KEY, null);
       writeSession(USER_TYPE_KEY, null);
+      writeSession(TOKEN_KEY, null);
       set({
         user: null,
         accessToken: null,
@@ -108,6 +170,7 @@ export const useAuthStore = create((set, get) => ({
   clearAuth: () => {
     writeSession(USER_KEY, null);
     writeSession(USER_TYPE_KEY, null);
+    writeSession(TOKEN_KEY, null);
     set({
       user: null,
       accessToken: null,
