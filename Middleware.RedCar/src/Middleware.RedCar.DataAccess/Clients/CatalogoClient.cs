@@ -48,6 +48,19 @@ public sealed class CatalogoClient : HttpClientBase, ICatalogoClient
         return envelope?.Data;
     }
 
+    public async Task<IReadOnlyList<MarcaDto>?> ListMarcasAsync(CancellationToken ct = default)
+    {
+        var envelope = await GetAsync<MsApiEnvelope<IReadOnlyList<MarcaDto>>>("/api/v1/marcas", ct);
+        return envelope?.Data;
+    }
+
+    public async Task<IReadOnlyList<VehiculoAdminDto>?> ListInventarioAsync(int page = 1, int limit = 500, CancellationToken ct = default)
+    {
+        var envelope = await GetAsync<MsApiEnvelope<IReadOnlyList<VehiculoAdminDto>>>(
+            $"/api/v1/vehiculos/inventario?page={page}&limit={limit}", ct);
+        return envelope?.Data;
+    }
+
     public async Task<IReadOnlyList<ExtraDto>?> GetExtrasByIdsAsync(IEnumerable<int> idExtras, CancellationToken ct = default)
     {
         var ids = string.Join(',', idExtras.Select(i => i.ToString(CultureInfo.InvariantCulture)));

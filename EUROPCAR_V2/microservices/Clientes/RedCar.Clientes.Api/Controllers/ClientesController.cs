@@ -16,6 +16,27 @@ public sealed class ClientesController : ControllerBase
 
     public ClientesController(ClientesDbContext db) => _db = db;
 
+    [HttpGet]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<ClienteListItemDto>>>> GetList(
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 500,
+        CancellationToken ct = default)
+    {
+        limit = limit is < 1 or > 1000 ? 500 : limit;
+        page = page < 1 ? 1 : page;
+
+        var rows = await _db.Clientes
+            .AsNoTracking()
+            .Where(c => !c.EsEliminado)
+            .OrderBy(c => c.IdCliente)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .ToListAsync(ct);
+
+        var items = rows.Select(MapListItem).ToList();
+        return Ok(ApiResponse<IReadOnlyList<ClienteListItemDto>>.Ok(items, traceId: HttpContext.TraceIdentifier));
+    }
+
     [HttpGet("by-identificacion/{numero}")]
     public async Task<ActionResult<ApiResponse<ClienteDetalleDto>>> GetByIdentificacion(
         [FromRoute] string numero,
@@ -247,6 +268,28 @@ public sealed class ClientesController : ControllerBase
                 HttpContext.TraceIdentifier));
         }
     }
+
+    private static ClienteListItemDto MapListItem(Cliente c) => new()
+    {
+        IdCliente = c.IdCliente,
+        ClienteGuid = c.ClienteGuid,
+        CodigoCliente = c.CodigoCliente,
+        TipoIdentificacion = ClientesApiMapper.ToApiTipoIdentificacion(c.TipoIdentificacion),
+        NumeroIdentificacion = c.NumeroIdentificacion,
+        Nombre1 = c.CliNombre1,
+        Nombre2 = c.CliNombre2,
+        Apellido1 = c.CliApellido1,
+        Apellido2 = c.CliApellido2,
+        NombreCompleto = ClientesApiMapper.JoinNames(
+            ClientesApiMapper.JoinNames(c.CliNombre1, c.CliNombre2 ?? string.Empty),
+            ClientesApiMapper.JoinNames(c.CliApellido1, c.CliApellido2 ?? string.Empty)),
+        FechaNacimiento = c.FechaNacimiento,
+        Telefono = c.CliTelefono,
+        Correo = c.CliCorreo,
+        DireccionPrincipal = c.DireccionPrincipal,
+        EstadoCliente = c.EstadoCliente,
+        RowVersion = c.RowVersion
+    };
 
     private static ClienteDetalleDto MapDetalle(Cliente c) => new()
     {

@@ -38,6 +38,26 @@ public sealed class ConductorUpsertResult
     public bool EsPrincipal { get; set; }
 }
 
+public sealed class ClienteListItemDto
+{
+    public int IdCliente { get; set; }
+    public Guid ClienteGuid { get; set; }
+    public string CodigoCliente { get; set; } = string.Empty;
+    public string TipoIdentificacion { get; set; } = string.Empty;
+    public string NumeroIdentificacion { get; set; } = string.Empty;
+    public string NombreCompleto { get; set; } = string.Empty;
+    public string Nombre1 { get; set; } = string.Empty;
+    public string? Nombre2 { get; set; }
+    public string Apellido1 { get; set; } = string.Empty;
+    public string? Apellido2 { get; set; }
+    public DateOnly FechaNacimiento { get; set; }
+    public string Telefono { get; set; } = string.Empty;
+    public string Correo { get; set; } = string.Empty;
+    public string? DireccionPrincipal { get; set; }
+    public string EstadoCliente { get; set; } = string.Empty;
+    public long RowVersion { get; set; }
+}
+
 /// <summary>Respuesta de GET interno para MS.Reservas (nombres ya combinados).</summary>
 public sealed class ClienteDetalleDto
 {

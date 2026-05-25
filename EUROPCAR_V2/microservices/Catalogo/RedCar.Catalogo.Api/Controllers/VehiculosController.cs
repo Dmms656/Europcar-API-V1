@@ -114,6 +114,54 @@ public sealed class VehiculosController : ControllerBase
         }
     }
 
+    [HttpGet("inventario")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<VehiculoAdminDto>>>> GetInventario(
+        [FromQuery] int page = 1,
+        [FromQuery] int limit = 500,
+        CancellationToken ct = default)
+    {
+        limit = limit is < 1 or > 1000 ? 500 : limit;
+        page = page < 1 ? 1 : page;
+
+        var rows = await _db.Vehiculos
+            .AsNoTracking()
+            .Where(v => !v.EsEliminado)
+            .OrderBy(v => v.IdVehiculo)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .Select(v => new VehiculoAdminDto
+            {
+                IdVehiculo = v.IdVehiculo,
+                VehiculoGuid = v.VehiculoGuid,
+                CodigoInterno = v.CodigoInternoVehiculo,
+                Placa = v.PlacaVehiculo,
+                IdMarca = v.IdMarca,
+                Marca = v.Marca != null ? v.Marca.NombreMarca : string.Empty,
+                IdCategoria = v.IdCategoria,
+                Categoria = v.Categoria != null ? v.Categoria.NombreCategoria : string.Empty,
+                Modelo = v.ModeloVehiculo,
+                AnioFabricacion = v.AnioFabricacion,
+                Color = v.ColorVehiculo,
+                TipoCombustible = v.TipoCombustible,
+                TipoTransmision = v.TipoTransmision,
+                CapacidadPasajeros = v.CapacidadPasajeros,
+                CapacidadMaletas = v.CapacidadMaletas,
+                NumeroPuertas = v.NumeroPuertas,
+                PrecioBaseDia = v.PrecioBaseDia,
+                KilometrajeActual = v.KilometrajeActual,
+                AireAcondicionado = v.AireAcondicionado,
+                EstadoOperativo = v.EstadoOperativo,
+                ObservacionesGenerales = v.ObservacionesGenerales,
+                ImagenReferencialUrl = v.ImagenReferencialUrl,
+                IdLocalizacion = v.LocalizacionActual,
+                EstadoVehiculo = v.EstadoVehiculo,
+                RowVersion = v.RowVersion
+            })
+            .ToListAsync(ct);
+
+        return Ok(ApiResponse<IReadOnlyList<VehiculoAdminDto>>.Ok(rows, traceId: HttpContext.TraceIdentifier));
+    }
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ApiResponse<VehiculoCatalogoDto>>> GetById(int id, CancellationToken ct)
     {

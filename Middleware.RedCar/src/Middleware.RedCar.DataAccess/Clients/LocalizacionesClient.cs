@@ -23,4 +23,16 @@ public sealed class LocalizacionesClient : HttpClientBase, ILocalizacionesClient
             $"/api/v1/localizaciones/{idLocalizacion}", ct);
         return envelope?.Data;
     }
+
+    public async Task<IReadOnlyList<CiudadDto>?> ListCiudadesAsync(CancellationToken ct = default)
+    {
+        var envelope = await GetAsync<MsApiEnvelope<IReadOnlyList<CiudadDto>>>("/api/v1/ciudades", ct);
+        return envelope?.Data;
+    }
+
+    public async Task<IReadOnlyList<PaisDto>?> ListPaisesAsync(CancellationToken ct = default)
+    {
+        var envelope = await GetAsync<MsApiEnvelope<IReadOnlyList<PaisDto>>>("/api/v1/ciudades/paises", ct);
+        return envelope?.Data;
+    }
 }

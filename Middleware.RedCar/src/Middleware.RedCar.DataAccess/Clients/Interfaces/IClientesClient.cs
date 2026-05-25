@@ -15,11 +15,31 @@ public interface IClientesClient
 
     Task<ClienteDetalleDto?> GetByIdentificacionAsync(string numeroIdentificacion, CancellationToken ct = default);
 
+    Task<IReadOnlyList<ClienteListItemDto>?> ListAllAsync(int page = 1, int limit = 500, CancellationToken ct = default);
+
     /// <summary>
     /// Upsert masivo de conductores asociados a un cliente.
     /// </summary>
     Task<IReadOnlyList<ConductorUpsertResult>?> UpsertConductoresAsync(int idCliente, IReadOnlyList<ConductorUpsertRequest> conductores, CancellationToken ct = default);
 }
+
+public sealed record ClienteListItemDto(
+    int IdCliente,
+    Guid ClienteGuid,
+    string CodigoCliente,
+    string TipoIdentificacion,
+    string NumeroIdentificacion,
+    string NombreCompleto,
+    string Nombre1,
+    string? Nombre2,
+    string Apellido1,
+    string? Apellido2,
+    DateOnly FechaNacimiento,
+    string Telefono,
+    string Correo,
+    string? DireccionPrincipal,
+    string EstadoCliente,
+    long RowVersion);
 
 public sealed record ClienteDetalleDto(
     int IdCliente,

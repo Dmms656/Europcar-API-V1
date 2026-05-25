@@ -24,6 +24,35 @@ public sealed class LegacyAdminReservasController : ControllerBase
 
     public LegacyAdminReservasController(IReservasClient reservas) => _reservas = reservas;
 
+    [HttpGet("{codigo}")]
+    public async Task<IActionResult> GetByCodigo([FromRoute] string codigo, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(codigo))
+            return BadRequest(ApiResponse<object>.Fail(400, "Código de reserva requerido"));
+
+        try
+        {
+            var r = await _reservas.GetReservaAsync(codigo.Trim(), ct);
+            if (r is null)
+                return NotFound(ApiResponse<object>.Fail(404, "Reserva no encontrada"));
+
+            return Ok(ApiResponse<object>.Ok(new
+            {
+                codigoReserva = r.CodigoReserva,
+                estadoReserva = r.EstadoReserva,
+                r.FechaReservaUtc,
+                r.Total,
+                r.Subtotal,
+                vehiculo = r.Vehiculo,
+                cliente = r.Cliente
+            }, traceId: HttpContext.TraceIdentifier));
+        }
+        catch (MicroserviceClientException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return NotFound(ApiResponse<object>.Fail(404, "Reserva no encontrada"));
+        }
+    }
+
     [HttpGet("cliente/{idCliente:int}")]
     public async Task<IActionResult> GetByCliente([FromRoute] int idCliente, CancellationToken ct)
     {
@@ -33,6 +62,12 @@ public sealed class LegacyAdminReservasController : ControllerBase
         var items = await _reservas.ListByClienteAsync(idCliente, ct) ?? Array.Empty<ClienteReservaListItemDto>();
         return Ok(ApiResponse<IReadOnlyList<ClienteReservaListItemDto>>.Ok(items, traceId: HttpContext.TraceIdentifier));
     }
+
+    [HttpPost]
+    [HttpPut("{id:int}")]
+    [HttpPut("{id:int}/confirmar")]
+    public IActionResult NotImplementedWrite()
+        => StatusCode(501, ApiResponse<object>.Fail(501, "Alta/edición de reservas admin no implementada; use el flujo público /reservas.", HttpContext.TraceIdentifier));
 
     [HttpPut("{id:int}/cancelar")]
     public async Task<IActionResult> Cancelar([FromRoute] int id, [FromBody] LegacyCancelarReservaRequest? request, CancellationToken ct)

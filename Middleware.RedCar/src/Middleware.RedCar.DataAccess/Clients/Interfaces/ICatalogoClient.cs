@@ -11,6 +11,10 @@ public interface ICatalogoClient
     Task<PagedDto<CategoriaDto>?> ListCategoriasAsync(int page, int limit, CancellationToken ct = default);
     Task<PagedDto<ExtraDto>?> ListExtrasAsync(int page, int limit, CancellationToken ct = default);
     Task<IReadOnlyList<ExtraDto>?> GetExtrasByIdsAsync(IEnumerable<int> idExtras, CancellationToken ct = default);
+
+    Task<IReadOnlyList<MarcaDto>?> ListMarcasAsync(CancellationToken ct = default);
+
+    Task<IReadOnlyList<VehiculoAdminDto>?> ListInventarioAsync(int page = 1, int limit = 500, CancellationToken ct = default);
 }
 
 public sealed record VehiculoQuery(
@@ -60,5 +64,34 @@ public sealed record ExtraDto(
     string Descripcion,
     decimal ValorFijo,
     string Estado);
+
+public sealed record MarcaDto(int IdMarca, string Codigo, string Nombre, string Estado);
+
+public sealed record VehiculoAdminDto(
+    int IdVehiculo,
+    Guid VehiculoGuid,
+    string CodigoInterno,
+    string Placa,
+    int IdMarca,
+    string Marca,
+    int IdCategoria,
+    string Categoria,
+    string Modelo,
+    short AnioFabricacion,
+    string Color,
+    string TipoCombustible,
+    string TipoTransmision,
+    short CapacidadPasajeros,
+    short CapacidadMaletas,
+    short NumeroPuertas,
+    decimal PrecioBaseDia,
+    int KilometrajeActual,
+    bool AireAcondicionado,
+    string EstadoOperativo,
+    string? ObservacionesGenerales,
+    string? ImagenReferencialUrl,
+    int IdLocalizacion,
+    string EstadoVehiculo,
+    long RowVersion);
 
 public sealed record PagedDto<T>(IReadOnlyList<T> Items, int PaginaActual, int TotalPaginas, int TotalElementos, int ElementosPorPagina);
