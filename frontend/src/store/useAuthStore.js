@@ -98,6 +98,30 @@ export const useAuthStore = create((set, get) => ({
     });
   },
 
+  /** Actualiza perfil (incl. cédula/nombres) desde GET /Auth/me. */
+  refreshProfile: async () => {
+    try {
+      const res = await authApi.me({ suppressErrorToast: true, suppressAuthRedirect: true });
+      const data = res.data?.data;
+      if (!data) return get().user;
+
+      const isAdmin = data.roles?.some((r) => ['ADMIN', 'AGENTE', 'AGENTE_POS'].includes(r));
+      const userType = isAdmin ? 'admin' : 'cliente';
+      const userData = get().mergeUserProfile(get().user, data);
+      writeSession(USER_KEY, JSON.stringify(userData));
+      writeSession(USER_TYPE_KEY, userType);
+      set({
+        user: userData,
+        userType,
+        isAuthenticated: true,
+        accessToken: get().accessToken,
+      });
+      return userData;
+    } catch {
+      return get().user;
+    }
+  },
+
   restoreSession: async () => {
     const cachedToken = readSession(TOKEN_KEY);
     const cachedUser = parseCachedUser();

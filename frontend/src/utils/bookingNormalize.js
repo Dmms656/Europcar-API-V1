@@ -65,6 +65,38 @@ export function normalizeVehiculoFromBookingList(v) {
 }
 
 /**
+ * Rellena el paso «Datos del Cliente» desde el perfil de sesión (/Auth/me + MS Clientes).
+ * Nunca usa username como nombre.
+ */
+export function guestFormFromUserProfile(user) {
+  if (!user) return null;
+
+  const nombres = (user.nombres || '').trim();
+  const apellidos = (user.apellidos || '').trim();
+  let nombre = nombres;
+  let apellido = apellidos;
+
+  if (!nombre && user.nombreCompleto) {
+    const parts = user.nombreCompleto.trim().split(/\s+/).filter(Boolean);
+    nombre = parts[0] || '';
+    apellido = apellido || (parts.length > 1 ? parts.slice(1).join(' ') : '');
+  }
+
+  const cedula = (user.numeroIdentificacion || '').trim();
+  const correo = (user.correo || '').trim();
+  const telefono = (user.telefono || '').trim();
+
+  return {
+    nombre,
+    apellido,
+    cedula,
+    correo,
+    telefono,
+    direccion: '',
+  };
+}
+
+/**
  * Correo y teléfono válidos para POST /reservas (FluentValidation exige ambos).
  */
 export function normalizeContactoReserva(user, guestForm = {}) {

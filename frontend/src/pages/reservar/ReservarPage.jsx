@@ -15,6 +15,7 @@ import {
   normalizeVehiculoDetalle,
   defaultRentalDateTimeLocalRange,
   normalizeContactoReserva,
+  guestFormFromUserProfile,
 } from '../../utils/bookingNormalize';
 import { getErrorMessage, getFieldErrors } from '../../utils/errorHandler';
 
@@ -105,6 +106,7 @@ export default function ReservarPage() {
     telefono: '', direccion: '',
   });
   const [guestProcessing, setGuestProcessing] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   const STEPS = useMemo(
     () => ((isAuthenticated && hasIdentificacionCliente(user, guestForm))
@@ -142,22 +144,31 @@ export default function ReservarPage() {
   }, [id]);
 
   useEffect(() => {
-    if (user?.idCliente) {
-      setGuestClientId(user.idCliente);
-    }
-    if (user && isAuthenticated) {
-      const full = (user.nombreCompleto || user.username || '').trim();
-      const parts = full.split(/\s+/).filter(Boolean);
-      setGuestForm((prev) => ({
-        ...prev,
-        nombre: prev.nombre || user.nombres || parts[0] || user.username || '',
-        apellido: prev.apellido || user.apellidos || (parts.length > 1 ? parts.slice(1).join(' ') : ''),
-        cedula: prev.cedula || user.numeroIdentificacion || '',
-        correo: prev.correo || user.correo || '',
-        telefono: prev.telefono || user.telefono || '',
-      }));
-    }
-  }, [user, isAuthenticated]);
+    if (!isAuthenticated) return undefined;
+
+    let cancelled = false;
+    (async () => {
+      setProfileLoading(true);
+      try {
+        await useAuthStore.getState().refreshProfile();
+        if (cancelled) return;
+
+        const currentUser = useAuthStore.getState().user;
+        if (currentUser?.idCliente) {
+          setGuestClientId(currentUser.idCliente);
+        }
+
+        const profile = guestFormFromUserProfile(currentUser);
+        if (profile) {
+          setGuestForm(profile);
+        }
+      } finally {
+        if (!cancelled) setProfileLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [isAuthenticated, id]);
 
   useEffect(() => {
     if (!guestClientId || !id) return;
@@ -961,6 +972,12 @@ export default function ReservarPage() {
             {STEPS[step] === 'Identificación' && (
               <div className="reservar-step-content">
                 <h2><UserPlus size={24} /> Datos del Cliente</h2>
+                {profileLoading && (
+                  <p className="form-helper" style={{ marginBottom: '1rem' }}>
+                    <Loader2 size={14} className="spin" style={{ display: 'inline', marginRight: 6 }} />
+                    Cargando tu perfil de cliente…
+                  </p>
+                )}
                 <p style={{color:'var(--color-text-secondary)', marginBottom:'1.5rem'}}>
                   Ingresa tus datos para continuar. Si ya tienes una cuenta, <a href="/login" style={{color:'var(--color-primary)'}}>inicia sesión aquí</a>.
                   <br /><small>Si tu cédula ya está registrada, se reutilizará tu perfil existente.</small>
