@@ -23,21 +23,44 @@ const guestClientStorageKey = (vehiculoId) => `reservar_guest_client_${vehiculoI
 /** Datos de cliente para booking público: formulario invitado o perfil de sesión. */
 function resolveClienteReserva(user, guestForm) {
   const contacto = normalizeContactoReserva(user, guestForm);
-  if (guestForm.nombre?.trim()) {
+  const cedulaPerfil = (user?.numeroIdentificacion || '').trim();
+  const cedulaForm = (guestForm.cedula || '').trim();
+  const cedula = cedulaForm || cedulaPerfil;
+
+  if (guestForm.nombre?.trim() && cedula) {
     return {
       nombre: guestForm.nombre.trim(),
-      apellido: (guestForm.apellido || '').trim(),
-      cedula: (guestForm.cedula || '').trim(),
+      apellido: (guestForm.apellido || user?.apellidos || '').trim() || 'N/A',
+      cedula,
       ...contacto,
     };
   }
   if (!user) return null;
+
+  const nombres = (user.nombres || '').trim();
+  const apellidos = (user.apellidos || '').trim();
+  if (nombres && cedula) {
+    return {
+      nombre: nombres,
+      apellido: apellidos || 'N/A',
+      cedula,
+      ...contacto,
+    };
+  }
+
   const full = (user.nombreCompleto || user.username || '').trim();
   const parts = full.split(/\s+/).filter(Boolean);
   const nombre = parts[0] || user.username || 'Cliente';
-  const apellido = parts.length > 1 ? parts.slice(1).join(' ') : 'N/A';
-  const cedula = (guestForm.cedula || '').trim() || `WEB-${String(user.username || 'user').replace(/\W/g, '').slice(0, 12)}`;
+  const apellido = apellidos || (parts.length > 1 ? parts.slice(1).join(' ') : 'N/A');
+  if (!cedula) return { nombre, apellido, cedula: '', ...contacto };
   return { nombre, apellido, cedula, ...contacto };
+}
+
+function hasIdentificacionCliente(user, guestForm) {
+  return Boolean(
+    (guestForm.cedula || '').trim()
+    || (user?.numeroIdentificacion || '').trim(),
+  );
 }
 
 const IVA_RATE = 0.15;
@@ -62,7 +85,7 @@ export default function ReservarPage() {
     }
   });
 
-  const STEPS = isAuthenticated
+  const STEPS = (isAuthenticated && hasIdentificacionCliente(user, guestForm))
     ? ['Fechas', 'Conductores', 'Extras', 'Resumen', 'Pago']
     : ['Identificación', 'Fechas', 'Conductores', 'Extras', 'Resumen', 'Pago'];
 
@@ -124,9 +147,11 @@ export default function ReservarPage() {
       const parts = full.split(/\s+/).filter(Boolean);
       setGuestForm((prev) => ({
         ...prev,
-        nombre: prev.nombre || parts[0] || user.username || '',
-        apellido: prev.apellido || (parts.length > 1 ? parts.slice(1).join(' ') : ''),
+        nombre: prev.nombre || user.nombres || parts[0] || user.username || '',
+        apellido: prev.apellido || user.apellidos || (parts.length > 1 ? parts.slice(1).join(' ') : ''),
+        cedula: prev.cedula || user.numeroIdentificacion || '',
         correo: prev.correo || user.correo || '',
+        telefono: prev.telefono || user.telefono || '',
       }));
     }
   }, [user, isAuthenticated]);
@@ -613,8 +638,8 @@ export default function ReservarPage() {
     }
 
     const clienteReserva = resolveClienteReserva(user, guestForm);
-    if (usePublicBooking && !clienteReserva?.nombre) {
-      toast.error('Completa tus datos en el paso de identificación antes de pagar.');
+    if (usePublicBooking && (!clienteReserva?.nombre || !clienteReserva?.cedula)) {
+      toast.error('Indica tu cédula o pasaporte en el paso de identificación antes de pagar.');
       const idStep = STEPS.indexOf('Identificación');
       if (idStep >= 0) setStep(idStep);
       setProcessing(false);

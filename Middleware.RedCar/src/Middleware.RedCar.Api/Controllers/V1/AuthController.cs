@@ -3,6 +3,7 @@ using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Middleware.RedCar.Api.Extensions;
+using Middleware.RedCar.DataAccess.Clients.Interfaces;
 using Npgsql;
 using RedCar.Seguridad.Business.Auth;
 using RedCar.Shared.Contracts.Common;
@@ -17,11 +18,13 @@ namespace Middleware.RedCar.Api.Controllers.V1;
 public sealed class AuthController : ControllerBase
 {
     private readonly IAuthService _auth;
+    private readonly IClientesClient _clientes;
     private readonly ILogger<AuthController> _logger;
 
-    public AuthController(IAuthService auth, ILogger<AuthController> logger)
+    public AuthController(IAuthService auth, IClientesClient clientes, ILogger<AuthController> logger)
     {
         _auth = auth;
+        _clientes = clientes;
         _logger = logger;
     }
 
@@ -115,7 +118,7 @@ public sealed class AuthController : ControllerBase
 
     [HttpGet("me")]
     [Authorize]
-    public IActionResult Me()
+    public async Task<IActionResult> Me(CancellationToken ct)
     {
         var username = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue("unique_name");
         var correo = User.FindFirstValue(ClaimTypes.Email);
@@ -123,13 +126,43 @@ public sealed class AuthController : ControllerBase
         var idClienteClaim = User.FindFirstValue("idCliente");
         int? idCliente = int.TryParse(idClienteClaim, out var id) ? id : null;
 
+        string? nombreCompleto = User.FindFirstValue("nombre_completo");
+        string? numeroIdentificacion = null;
+        string? nombres = null;
+        string? apellidos = null;
+        string? telefono = null;
+
+        if (idCliente.HasValue)
+        {
+            try
+            {
+                var perfil = await _clientes.GetByIdAsync(idCliente.Value, ct);
+                if (perfil is not null)
+                {
+                    nombres = perfil.Nombres;
+                    apellidos = perfil.Apellidos;
+                    numeroIdentificacion = perfil.NumeroIdentificacion;
+                    telefono = perfil.Telefono;
+                    nombreCompleto ??= $"{perfil.Nombres} {perfil.Apellidos}".Trim();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "No se pudo cargar perfil de cliente {IdCliente} en /me", idCliente);
+            }
+        }
+
         return Ok(ApiResponse<object>.Ok(new
         {
             username,
             correo,
             roles,
             idCliente,
-            nombreCompleto = User.FindFirstValue("nombre_completo")
+            nombreCompleto,
+            numeroIdentificacion,
+            nombres,
+            apellidos,
+            telefono
         }, "OK", HttpContext.TraceIdentifier));
     }
 

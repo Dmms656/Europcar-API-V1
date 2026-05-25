@@ -51,15 +51,21 @@ const hydrateInitialAuth = () => {
 export const useAuthStore = create((set, get) => ({
   ...hydrateInitialAuth(),
 
+  mergeUserProfile: (base, profile = {}) => ({
+    username: profile.username ?? base?.username,
+    correo: profile.correo ?? base?.correo,
+    roles: profile.roles ?? base?.roles,
+    expiration: profile.expiration ?? base?.expiration,
+    idCliente: profile.idCliente ?? base?.idCliente,
+    nombreCompleto: profile.nombreCompleto ?? base?.nombreCompleto,
+    numeroIdentificacion: profile.numeroIdentificacion ?? base?.numeroIdentificacion,
+    nombres: profile.nombres ?? base?.nombres,
+    apellidos: profile.apellidos ?? base?.apellidos,
+    telefono: profile.telefono ?? base?.telefono,
+  }),
+
   login: (loginResponse, type = 'admin') => {
-    const userData = {
-      username: loginResponse.username,
-      correo: loginResponse.correo,
-      roles: loginResponse.roles,
-      expiration: loginResponse.expiration,
-      idCliente: loginResponse.idCliente,
-      nombreCompleto: loginResponse.nombreCompleto,
-    };
+    const userData = get().mergeUserProfile(null, loginResponse);
     const token = loginResponse.token || null;
     writeSession(USER_KEY, JSON.stringify(userData));
     writeSession(USER_TYPE_KEY, type);
@@ -119,13 +125,7 @@ export const useAuthStore = create((set, get) => ({
       }
       const isAdmin = data.roles?.some((r) => ['ADMIN', 'AGENTE', 'AGENTE_POS'].includes(r));
       const userType = isAdmin ? 'admin' : 'cliente';
-      const userData = {
-        username: data.username,
-        correo: data.correo,
-        roles: data.roles,
-        idCliente: data.idCliente,
-        nombreCompleto: data.nombreCompleto,
-      };
+      const userData = get().mergeUserProfile(get().user, data);
       writeSession(USER_KEY, JSON.stringify(userData));
       writeSession(USER_TYPE_KEY, userType);
       set({

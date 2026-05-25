@@ -11,11 +11,22 @@ public interface IClientesClient
     /// </summary>
     Task<ClienteUpsertResult?> UpsertClienteAsync(ClienteUpsertRequest req, CancellationToken ct = default);
 
+    Task<ClienteDetalleDto?> GetByIdAsync(int idCliente, CancellationToken ct = default);
+
     /// <summary>
     /// Upsert masivo de conductores asociados a un cliente.
     /// </summary>
     Task<IReadOnlyList<ConductorUpsertResult>?> UpsertConductoresAsync(int idCliente, IReadOnlyList<ConductorUpsertRequest> conductores, CancellationToken ct = default);
 }
+
+public sealed record ClienteDetalleDto(
+    int IdCliente,
+    string Nombres,
+    string Apellidos,
+    string TipoIdentificacion,
+    string NumeroIdentificacion,
+    string Correo,
+    string Telefono);
 
 public sealed record ClienteUpsertRequest(
     string Nombres,
