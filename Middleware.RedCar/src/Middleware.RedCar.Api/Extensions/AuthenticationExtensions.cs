@@ -40,6 +40,20 @@ public static class AuthenticationExtensions
                     IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
                     ClockSkew = TimeSpan.FromSeconds(30)
                 };
+
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        if (!string.IsNullOrEmpty(context.Token))
+                            return Task.CompletedTask;
+
+                        if (context.Request.Cookies.TryGetValue(AuthCookieExtensions.CookieName, out var cookieToken))
+                            context.Token = cookieToken;
+
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
         services.AddAuthorization();

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Middleware.RedCar.Business.DTOs.Booking;
 using Middleware.RedCar.DataManagement.Models.Catalogo;
 
@@ -64,8 +65,8 @@ public static class CatalogoBusinessMapper
             _Links = new Dictionary<string, LinkHref>
             {
                 ["self"] = new() { Href = $"/api/v2/booking/vehiculos/{v.IdVehiculo}" },
-                // Contrato (tabla Endpoint 3): GET .../reservas/{idVehiculo}/disponibilidad
-                ["disponibilidad"] = new() { Href = $"/api/v2/booking/reservas/{v.IdVehiculo}/disponibilidad" }
+                // Endpoint 3: mismos query params que exige ReservasBookingController.VerificarDisponibilidad
+                ["disponibilidad"] = new() { Href = BuildDisponibilidadHref(v.IdVehiculo, v.IdLocalizacion, fechaRecogida, fechaDevolucion) }
             }
         };
     }
@@ -133,5 +134,16 @@ public static class CatalogoBusinessMapper
         if (hasta <= desde) return 1;
         var span = hasta - desde;
         return Math.Max(1, (int)Math.Ceiling(span.TotalHours / 24.0));
+    }
+
+    private static string BuildDisponibilidadHref(
+        int idVehiculo,
+        int idLocalizacion,
+        DateTimeOffset fechaRecogida,
+        DateTimeOffset fechaDevolucion)
+    {
+        var fr = fechaRecogida.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
+        var fd = fechaDevolucion.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
+        return $"/api/v2/booking/reservas/{idVehiculo}/disponibilidad?idLocalizacion={idLocalizacion.ToString(CultureInfo.InvariantCulture)}&fechaRecogida={Uri.EscapeDataString(fr)}&fechaDevolucion={Uri.EscapeDataString(fd)}";
     }
 }

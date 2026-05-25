@@ -63,9 +63,9 @@ Todas las respuestas siguen el wrapper del contrato:
 { "status": 200, "mensaje": "Operación exitosa", "data": { ... } }
 ```
 
-Los objetos HATEOAS usan la clave **`_links`** (con `href` en cada enlace). El enlace
-`disponibilidad` de cada vehículo apunta a **`/api/v2/booking/reservas/{idVehiculo}/disponibilidad`**
-(tabla del Endpoint 3 del contrato), no a `/vehiculos/.../disponibilidad`.
+Los objetos HATEOAS usan la clave **`_links`** (con `href` en cada enlace). En la **búsqueda de vehículos** (Endpoint 1), el enlace
+`disponibilidad` incluye **`idLocalizacion`**, **`fechaRecogida`** y **`fechaDevolucion`** como query string, alineado con el Endpoint 3.
+En el **detalle** (Endpoint 2) el `href` puede quedar solo con la ruta base si el cliente no envía fechas en la petición.
 
 ### Contraseñas de base de datos (`ms_*`)
 
@@ -125,5 +125,5 @@ curl http://localhost:5200/api/v2/booking/categorias -H "Authorization: Bearer <
 - [x] **Validators FluentValidation** para `CrearReserva` y `CancelarReserva`.
 - [x] **HttpClients tipados** a los 5 MS con JWT pass-through.
 - [x] **gRPC client** hacia MS.Reservas para crear/cancelar reserva (operacion transaccional).
-- [ ] **Implementacion completa de los MS** (Fase 2 de EUROPCAR_V2). Mientras eso no exista,
-      los HttpClients haran 404 y el middleware respondera 502 al canal de Booking.
+- [x] **Microservicios EUROPCAR_V2** (Catálogo, Localizaciones, Clientes, Reservas) consumidos por HTTP/gRPC.
+      Si un MS esta caido o la BD no esta lista, el middleware puede responder **502**; con **timeouts** cortos frente a cold start en Render puede aparecer **504** (subir `Microservicios__*__TimeoutSeconds`, p. ej. 90).

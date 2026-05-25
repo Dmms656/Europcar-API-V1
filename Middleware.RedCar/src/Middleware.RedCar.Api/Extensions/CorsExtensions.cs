@@ -23,6 +23,7 @@ public static class CorsExtensions
                 }
 
                 policy.WithOrigins(origins)
+                    .AllowCredentials()
                     .AllowAnyHeader()
                     .AllowAnyMethod();
             });

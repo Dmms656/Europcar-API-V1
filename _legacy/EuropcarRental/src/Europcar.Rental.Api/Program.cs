@@ -1,5 +1,7 @@
+using System.Threading.RateLimiting;
 using System.Text.Json;
 using Europcar.Rental.Api.Extensions;
+using Europcar.Rental.Api.Services;
 using Europcar.Rental.Api.Middleware;
 using Europcar.Rental.Api.Models.Common;
 using Europcar.Rental.Business.Services;
@@ -22,6 +24,20 @@ builder.Services.AddHealthChecksConfiguration();
 builder.Services.AddControllers();
 builder.Services.AddApiBehavior();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddScoped<GuestClientService>();
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy("guest-client", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+});
 
 var app = builder.Build();
 
@@ -30,17 +46,25 @@ var app = builder.Build();
 // capturar excepciones de cualquier middleware/endpoint posterior.
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
-// === Seed inicial (resiliente y aislado) ===
-await SeedDatabaseAsync(app);
+// === Seed inicial solo en Development (usuarios demo) ===
+if (app.Environment.IsDevelopment())
+    await SeedDatabaseAsync(app);
 
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+var enableSwagger = app.Environment.IsDevelopment()
+    || app.Configuration.GetValue("Swagger:Enabled", false);
+
+if (enableSwagger)
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Europcar Rental API v1");
-    c.RoutePrefix = "swagger";
-});
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Europcar Rental API v1");
+        c.RoutePrefix = "swagger";
+    });
+}
 
 app.UseCors("FrontendPolicy");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
@@ -105,7 +129,7 @@ static async Task SeedUserIfMissingAsync(
         // Reparación para ambientes donde el usuario fue creado con otro esquema de hash (p.ej. pgcrypto).
         if (!LooksLikeBase64(existing.PasswordSalt) || !LooksLikeBase64(existing.PasswordHash))
         {
-            var (repairHash, repairSalt) = AuthService.CreatePasswordHash("12345");
+            var (repairHash, repairSalt) = AuthService.CreatePasswordHash(GetSeedDevPassword());
             existing.PasswordHash = repairHash;
             existing.PasswordSalt = repairSalt;
             existing.RequiereCambioPassword = false;
@@ -120,7 +144,7 @@ static async Task SeedUserIfMissingAsync(
         return;
     }
 
-    var (hash, salt) = AuthService.CreatePasswordHash("12345");
+    var (hash, salt) = AuthService.CreatePasswordHash(GetSeedDevPassword());
 
     var user = new UsuarioAppEntity
     {
@@ -162,6 +186,9 @@ static async Task SeedUserIfMissingAsync(
 
     logger.LogInformation("Seed: usuario '{Username}' creado con contraseña por defecto.", username);
 }
+
+static string GetSeedDevPassword() =>
+    Environment.GetEnvironmentVariable("SEED_DEV_PASSWORD") ?? "12345";
 
 static bool LooksLikeBase64(string? value)
 {

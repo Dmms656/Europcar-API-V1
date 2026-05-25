@@ -197,7 +197,10 @@ public class AuthService : IAuthService
     private (string Token, DateTime Expiration) GenerateJwtToken(int userId, string username, string correo, List<string> roles, int? idCliente)
     {
         var jwtSection = _configuration.GetSection("JwtSettings");
-        var secretKey = jwtSection["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey no configurado");
+        var secretKey = jwtSection["SecretKey"];
+        if (string.IsNullOrWhiteSpace(secretKey))
+            secretKey = Environment.GetEnvironmentVariable("JwtSettings__SecretKey")
+                ?? "DEV_ONLY_REPLACE_ME_DEV_ONLY_REPLACE_ME_32B";
         var issuer = jwtSection["Issuer"] ?? "Europcar.Rental.Api";
         var audience = jwtSection["Audience"] ?? "Europcar.Rental.Client";
         var expirationMinutes = int.Parse(jwtSection["ExpirationMinutes"] ?? "60");

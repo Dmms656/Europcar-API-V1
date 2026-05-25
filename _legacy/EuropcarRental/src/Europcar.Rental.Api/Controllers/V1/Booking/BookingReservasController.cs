@@ -1,6 +1,9 @@
 using System.Security.Claims;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Europcar.Rental.Api.Models.Common;
+using Europcar.Rental.Api.Services;
 using Europcar.Rental.Business.DTOs.Request.Booking;
 using Europcar.Rental.Business.Interfaces;
 
@@ -20,10 +23,35 @@ namespace Europcar.Rental.Api.Controllers.V1.Booking;
 public class BookingReservasController : ControllerBase
 {
     private readonly IBookingService _bookingService;
+    private readonly GuestClientService _guestClientService;
 
-    public BookingReservasController(IBookingService bookingService)
+    public BookingReservasController(IBookingService bookingService, GuestClientService guestClientService)
     {
         _bookingService = bookingService;
+        _guestClientService = guestClientService;
+    }
+
+    /// <summary>
+    /// Crear o resolver cliente invitado para el flujo público de reserva.
+    /// No devuelve PII si el cliente ya existe (solo idCliente y esNuevo).
+    /// </summary>
+    [HttpPost("guest-client")]
+    [EnableRateLimiting("guest-client")]
+    public async Task<IActionResult> GuestClient([FromBody] GuestClientRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Cedula) || string.IsNullOrWhiteSpace(request.Nombre))
+            return BadRequest(ApiResponse<object>.Fail("Cédula y nombre son obligatorios"));
+
+        var (idCliente, esNuevo) = await _guestClientService.ResolveGuestClientAsync(
+            request.Cedula,
+            request.Nombre,
+            request.Apellido,
+            request.Telefono,
+            request.Correo,
+            request.Direccion);
+
+        var mensaje = esNuevo ? "Cliente creado exitosamente" : "Cliente registrado para continuar la reserva";
+        return Ok(ApiResponse<object>.Ok(new { idCliente, esNuevo }, mensaje));
     }
 
     /// <summary>
@@ -68,4 +96,14 @@ public class BookingReservasController : ControllerBase
         var result = await _bookingService.GetFacturaPorReservaAsync(codigoReserva);
         return Ok(result);
     }
+}
+
+public sealed class GuestClientRequest
+{
+    public string Cedula { get; set; } = string.Empty;
+    public string Nombre { get; set; } = string.Empty;
+    public string? Apellido { get; set; }
+    public string? Correo { get; set; }
+    public string? Telefono { get; set; }
+    public string? Direccion { get; set; }
 }

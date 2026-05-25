@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Middleware.RedCar.Api.Extensions;
 using Npgsql;
 using RedCar.Seguridad.Business.Auth;
 using RedCar.Shared.Contracts.Common;
@@ -23,6 +25,7 @@ public sealed class AuthController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>Login: JWT en cookie HttpOnly; el cuerpo no incluye el token.</summary>
     [HttpPost("login")]
     [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct)
@@ -30,30 +33,40 @@ public sealed class AuthController : ControllerBase
         try
         {
             var data = await _auth.LoginAsync(request, ct);
-            return Ok(ApiResponse<LoginResponseDto>.Ok(data, "Login exitoso", HttpContext.TraceIdentifier));
+            AuthCookieExtensions.SetAuthCookie(Response, data.Token, data.Expiration, Request.IsHttps);
+
+            return Ok(ApiResponse<object>.Ok(new
+            {
+                data.Username,
+                data.Correo,
+                data.Roles,
+                data.Expiration,
+                data.IdCliente,
+                data.NombreCompleto
+            }, "Login exitoso", HttpContext.TraceIdentifier));
         }
         catch (UnauthorizedAccessException ex)
         {
-            return BadRequest(ApiResponse<LoginResponseDto>.Fail(400, ex.Message, HttpContext.TraceIdentifier));
+            return BadRequest(ApiResponse<object>.Fail(400, ex.Message, HttpContext.TraceIdentifier));
         }
         catch (NpgsqlException ex)
         {
             _logger.LogError(ex, "Login: error Npgsql (Inner={Inner})", ex.InnerException?.Message);
-            return StatusCode(500, ApiResponse<LoginResponseDto>.Fail(500,
+            return StatusCode(500, ApiResponse<object>.Fail(500,
                 "Error al conectar con la base de datos. Si usas Supabase pooler (6543), revisa la cadena de conexión y los logs del servidor.",
                 HttpContext.TraceIdentifier));
         }
         catch (IOException ex)
         {
             _logger.LogError(ex, "Login: error de lectura en el stream (Inner={Inner})", ex.InnerException?.Message);
-            return StatusCode(500, ApiResponse<LoginResponseDto>.Fail(500,
+            return StatusCode(500, ApiResponse<object>.Fail(500,
                 "Error al conectar con la base de datos. Si usas Supabase pooler (6543), revisa la cadena de conexión y los logs del servidor.",
                 HttpContext.TraceIdentifier));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Login: error no controlado.");
-            return StatusCode(500, ApiResponse<LoginResponseDto>.Fail(500, ex.Message, HttpContext.TraceIdentifier));
+            return StatusCode(500, ApiResponse<object>.Fail(500, ex.Message, HttpContext.TraceIdentifier));
         }
     }
 
@@ -72,14 +85,14 @@ public sealed class AuthController : ControllerBase
         }
         catch (NpgsqlException ex)
         {
-            _logger.LogError(ex, "Register: error Npgsql (Inner={Inner})", ex.InnerException?.Message);
+            _logger.LogError(ex, "Login: error Npgsql (Inner={Inner})", ex.InnerException?.Message);
             return StatusCode(500, ApiResponse<object>.Fail(500,
                 "Error al conectar con la base de datos. Si usas Supabase pooler (6543), revisa la cadena de conexión y los logs del servidor.",
                 HttpContext.TraceIdentifier));
         }
         catch (IOException ex)
         {
-            _logger.LogError(ex, "Register: error de lectura en el stream (Inner={Inner})", ex.InnerException?.Message);
+            _logger.LogError(ex, "Login: error de lectura en el stream (Inner={Inner})", ex.InnerException?.Message);
             return StatusCode(500, ApiResponse<object>.Fail(500,
                 "Error al conectar con la base de datos. Si usas Supabase pooler (6543), revisa la cadena de conexión y los logs del servidor.",
                 HttpContext.TraceIdentifier));
@@ -89,6 +102,34 @@ public sealed class AuthController : ControllerBase
             _logger.LogError(ex, "Register: error no controlado.");
             return StatusCode(500, ApiResponse<object>.Fail(500, ex.Message, HttpContext.TraceIdentifier));
         }
+    }
+
+    [HttpPost("logout")]
+    [Authorize]
+    public IActionResult Logout()
+    {
+        AuthCookieExtensions.ClearAuthCookie(Response, Request.IsHttps);
+        return Ok(ApiResponse<object>.Ok(new { }, "Sesión cerrada", HttpContext.TraceIdentifier));
+    }
+
+    [HttpGet("me")]
+    [Authorize]
+    public IActionResult Me()
+    {
+        var username = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue("unique_name");
+        var correo = User.FindFirstValue(ClaimTypes.Email);
+        var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+        var idClienteClaim = User.FindFirstValue("idCliente");
+        int? idCliente = int.TryParse(idClienteClaim, out var id) ? id : null;
+
+        return Ok(ApiResponse<object>.Ok(new
+        {
+            username,
+            correo,
+            roles,
+            idCliente,
+            nombreCompleto = User.FindFirstValue("nombre_completo")
+        }, "OK", HttpContext.TraceIdentifier));
     }
 
     [HttpGet("cedula-exists")]

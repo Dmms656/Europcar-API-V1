@@ -41,8 +41,8 @@ Aplicar buenas prácticas de ciberseguridad mediante:
 
 | Elemento | Elección |
 |----------|----------|
-| API activa (orquestador) | `Middleware.RedCar/src/Middleware.RedCar.Api` (ASP.NET Core) |
-| API legada (monolito, referencia) | `_legacy/EuropcarRental/src/Europcar.Rental.Api` |
+| API legada (monolito + auth admin) | `_legacy/EuropcarRental/src/Europcar.Rental.Api` |
+| API orquestador V2 | `Middleware.RedCar/src/Middleware.RedCar.Api` (ASP.NET Core) |
 | Cliente web | `frontend/` (React + Vite) |
 | Base de datos | PostgreSQL (`Npgsql`, EF Core) |
 | Autenticación | JWT (`JwtSettings` en configuración) |
@@ -146,7 +146,7 @@ Estos no requieren que el atacante ya tenga shell en el servidor, pero **sí** a
 | H | Contraseña débil `12345` en semilla (`Program.cs`) | Riesgo real si la API con seed se expone a Internet; el atacante externo entra con credenciales conocidas de demo. |
 | I | Rol `postgres` en cadena típica | No es “explotación HTTP” directa; mitigar con usuario de aplicación y permisos mínimos. |
 
-**Nota:** El hallazgo **G** (script con contraseña embebida) fue **corregido en código** (sección 4). Los hallazgos **A–E** siguen vigentes a nivel de diseño hasta aplicar endurecimiento en API y cliente (sección 3 ampliada). **F** requiere User Secrets / variables de entorno y rotación de claves si hubo exposición.
+**Nota (actualización mayo 2026):** **G** y **F** corregidos en repo (`KillZombies.cs`, `appsettings.json` sin secretos). **A–E** mitigados en código: rutas admin sin anónimo, `guest-client` sin PII, Swagger condicional, JWT en cookie HttpOnly, CORS acotado, rate limiting en `guest-client`/`cedula-exists`. Rotar credenciales si alguna vez se publicaron en Git.
 
 ---
 
@@ -163,19 +163,21 @@ Estos no requieren que el atacante ya tenga shell en el servidor, pero **sí** a
 
 | Requisito | Estado | Evidencia / notas |
 |-----------|--------|-------------------|
-| `.env` (frontend) | Parcial / convención correcta | `import.meta.env.VITE_API_URL` en `frontend/src/api/axiosClient.js`; `frontend/.env` local (no versionado). |
-| `.gitignore` | Cumplido | Entrada `.env` en la raíz del repositorio. |
+| `.env` (frontend) | **Hecho** | `frontend/.env.example` con `VITE_API_URL`; `.env` ignorado por Git. |
+| `.gitignore` | **Hecho** | Entrada `.env` en la raíz del repositorio. |
 | Corrección “no secretos en código” en script | **Hecho** | `scripts/KillZombies.cs` (sección 4). |
-| Mínimo privilegio BD | Pendiente de operación | Usuario SQL de aplicación con `GRANT` acotados. |
-| Separación dev/prod | Recomendado | Secretos en User Secrets / variables del host, no en `appsettings.json` commiteado. |
-| **Endurecer superficie HTTP (A–E)** | Pendiente / parcial | Deshabilitar o proteger Swagger en producción; valorar **rate limiting** y CAPTCHA o prueba de trabajo en `guest-client`; alinear **catálogo público** solo con rutas no-`admin` o mismos DTOs que Booking; valorar **cookies HttpOnly** + SameSite en lugar de JWT en `localStorage`; revisión de DTO en `GetDisponibles` / `GetById` vs API pública. |
+| Secretos fuera de `appsettings.json` | **Hecho** | `_legacy/.../appsettings.json` con valores vacíos; plantilla `_legacy/EuropcarRental/.env.example`. |
+| Mínimo privilegio BD | Parcial (V2) | Script `db/microservices/99_supabase_grants.sql` (roles `ms_*`). Monolito legacy: configurar usuario de app en Supabase. |
+| Separación dev/prod | **Hecho** | User Secrets (`UserSecretsId` en `.csproj`), variables de entorno y seed solo en `Development`. |
+| **Endurecer superficie HTTP (A–E)** | **Hecho** | Ver lista abajo. |
 
-**Mitigaciones recomendadas ligadas a un atacante externo (prioridad):**
+**Mitigaciones aplicadas en el repositorio:**
 
-1. **B (guest-client):** no devolver correo ni `idCliente` hasta después de verificación (OTP, enlace mágico) o exigir un secreto compartido por canal autenticado; limitar tasa por IP.
-2. **A (vehículos bajo `admin`):** quitar `[AllowAnonymous]` y exponer búsqueda/detalle solo en `BookingVehiculosController` (`/api/v1/vehiculos`) con el mismo contrato reducido, o exigir JWT de rol público de solo lectura.
-3. **C (JWT):** mitigar XSS (CSP, sanitización); valorar almacenar sesión en **cookie HttpOnly** firmada por el servidor.
-4. **D (Swagger):** activar Swagger solo en `Development` o proteger con autenticación básica / red privada.
+1. **A:** `GET admin/vehiculos/disponibles` y `GET admin/vehiculos/{id}` exigen rol `ADMIN` o `AGENTE_POS`. Catálogo público: `GET /api/v1/vehiculos` (`BookingVehiculosController`).
+2. **B:** `POST /api/v1/reservas/guest-client` (público) devuelve solo `{ idCliente, esNuevo }` + rate limiting (20 req/min por IP).
+3. **C:** login establece cookie HttpOnly `rc_auth`; el frontend usa `withCredentials` y **no** guarda el JWT en `localStorage` (solo perfil en `sessionStorage`).
+4. **D:** Swagger del monolito solo en `Development` o `Swagger:Enabled=true`.
+5. **E:** CORS con orígenes explícitos, `AllowCredentials`, métodos y cabeceras acotados.
 
 ---
 
@@ -185,12 +187,13 @@ Estos no requieren que el atacante ya tenga shell en el servidor, pero **sí** a
 
 **Lista de comprobación sugerida:**
 
-- [ ] API arranca con `ConnectionStrings__RentalDb` y `JwtSettings__SecretKey` definidos en el entorno (o User Secrets), sin contraseñas en texto en archivos trackeados.
-- [ ] Frontend arranca con `frontend/.env` y `VITE_API_URL` apuntando a la API.
-- [ ] Login y un flujo crítico (p. ej. catálogo o reserva) funcionan.
-- [ ] Capturas de pantalla **sin** contraseñas ni tokens completos visibles.
-- [ ] Comprobar que Swagger no queda expuesto en producción (o está protegido).
-- [ ] Revisar con Burp/Postman respuestas de `guest-client` y vehículos anónimos: qué PII o campos extra devuelve la API frente a un cliente no autenticado.
+- [ ] API arranca con `ConnectionStrings__RentalDb` y `JwtSettings__SecretKey` (User Secrets / `.env`), sin secretos en archivos trackeados.
+- [ ] Frontend con `frontend/.env` y `VITE_API_URL` (p. ej. `http://localhost:5207/api/v1` monolito o `http://localhost:5200/api/v1` middleware).
+- [ ] Login: cookie `rc_auth` en respuesta; cuerpo JSON **sin** campo `token`.
+- [ ] Flujo reserva invitado: `POST /reservas/guest-client` → solo `idCliente` y `esNuevo`.
+- [ ] `GET /admin/vehiculos/disponibles` sin JWT → **401**.
+- [ ] Swagger en producción deshabilitado salvo `Swagger__Enabled=true`.
+- [ ] Capturas sin contraseñas ni JWT completos.
 
 ---
 
@@ -267,26 +270,16 @@ catch (Exception ex)
 
 ---
 
-### 4.2 Referencia: configuración sensible actual (sin modificar en esta práctica)
+### 4.2 Configuración sensible (corregida en repo)
 
-El archivo `_legacy/EuropcarRental/src/Europcar.Rental.Api/appsettings.json` sigue conteniendo valores que **no deberían considerarse seguros en un repositorio público**:
+`appsettings.json` del monolito ya **no** incluye contraseñas ni `SecretKey`. Configurar en local con `_legacy/EuropcarRental/.env.example` o:
 
-```json
-{
-  "ConnectionStrings": {
-    "RentalDb": "Host=db.ufqzdzdkcqmwvapdaajx.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=********;Ssl Mode=Require;Trust Server Certificate=true;"
-  },
-  "JwtSettings": {
-    "SecretKey": "EuropcarRentalApi2026SuperSecretKey_MustBeAtLeast32Chars!",
-    "Issuer": "Europcar.Rental.Api",
-    "Audience": "Europcar.Rental.Client",
-    "ExpirationMinutes": 60
-  },
-  ...
-}
+```powershell
+dotnet user-secrets set "ConnectionStrings:RentalDb" "Host=...;Password=..." --project _legacy/EuropcarRental/src/Europcar.Rental.Api
+dotnet user-secrets set "JwtSettings:SecretKey" "TU_SECRETO_DE_32+_CARACTERES" --project _legacy/EuropcarRental/src/Europcar.Rental.Api
 ```
 
-**Recomendación para cerrar el laboratorio al 100%:** mover `JwtSettings:SecretKey` y la cadena real de `RentalDb` a User Secrets (local) o variables del servicio de hosting (producción), dejando en `appsettings.json` solo valores no secretos o marcadores.
+Si las credenciales antiguas estuvieron en Git, **rotarlas** en Supabase.
 
 ---
 

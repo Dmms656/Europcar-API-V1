@@ -18,7 +18,12 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration)
     {
-        var connStr = configuration.GetConnectionString("RentalDb")
+        var baseConn = configuration.GetConnectionString("RentalDb");
+        if (string.IsNullOrWhiteSpace(baseConn))
+            throw new InvalidOperationException(
+                "ConnectionStrings:RentalDb no está configurada. Use variables de entorno (ConnectionStrings__RentalDb), User Secrets o .env local.");
+
+        var connStr = baseConn
             + ";Timeout=30;Command Timeout=0;Maximum Pool Size=20;Connection Idle Lifetime=300;";
 
         services.AddDbContext<RentalDbContext>(options =>
@@ -118,7 +123,12 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
         var jwtSection = configuration.GetSection("JwtSettings");
-        var secretKey = jwtSection["SecretKey"]!;
+        var secretKey = jwtSection["SecretKey"];
+        if (string.IsNullOrWhiteSpace(secretKey))
+        {
+            secretKey = Environment.GetEnvironmentVariable("JwtSettings__SecretKey")
+                ?? "DEV_ONLY_REPLACE_ME_DEV_ONLY_REPLACE_ME_32B";
+        }
 
         services.AddAuthentication(options =>
         {
@@ -137,6 +147,21 @@ public static class ServiceCollectionExtensions
                 ValidAudience = jwtSection["Audience"],
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
                 ClockSkew = TimeSpan.Zero
+            };
+
+            // JWT en cookie HttpOnly (laboratorio: no localStorage) o header Authorization.
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    if (!string.IsNullOrEmpty(context.Token))
+                        return Task.CompletedTask;
+
+                    if (context.Request.Cookies.TryGetValue(AuthCookieExtensions.CookieName, out var cookieToken))
+                        context.Token = cookieToken;
+
+                    return Task.CompletedTask;
+                }
             };
         });
 
@@ -219,8 +244,9 @@ public static class ServiceCollectionExtensions
                         "https://europcar-frontend.onrender.com",
                         "https://tu-frontend.vercel.app"
                        )
-                       .AllowAnyMethod()
-                       .AllowAnyHeader();
+                       .AllowCredentials()
+                       .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+                       .WithHeaders("Content-Type", "Authorization", "X-Requested-With");
             });
         });
 

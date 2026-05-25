@@ -42,7 +42,18 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const response = await authApi.login({ username, password }, { suppressErrorToast: true });
-      const data = response.data.data;
+      const body = response.data;
+      if (body?.success === false) {
+        setError(body.message || 'Credenciales inválidas');
+        setShake(true);
+        setTimeout(() => setShake(false), 500);
+        return;
+      }
+      const data = body?.data;
+      if (!data) {
+        setError('Respuesta de login inválida. Revisa que la API esté en ejecución.');
+        return;
+      }
       const isAdmin = data.roles?.some(r => ['ADMIN', 'AGENTE', 'AGENTE_POS'].includes(r));
 
       if (tab === 'admin' && !isAdmin) {
@@ -81,7 +92,14 @@ export default function LoginPage() {
         <div className="login-card__header">
           <div className="login-card__logo"><Car size={36} /></div>
           <h1 className="login-card__title">Europcar Rental</h1>
-          <p className="login-card__subtitle">Accede a tu cuenta</p>
+          <p className="login-card__subtitle">
+            Accede a tu cuenta
+            {tab === 'admin' && (
+              <span style={{ display: 'block', fontSize: '0.85rem', opacity: 0.75, marginTop: 4 }}>
+                Demo seed: usuario <strong>admin</strong>, contraseña <strong>12345</strong>
+              </span>
+            )}
+          </p>
         </div>
 
         <div className="login-tabs">
@@ -113,7 +131,7 @@ export default function LoginPage() {
               {tab === 'admin' ? 'Usuario' : 'Usuario / Correo'}
             </label>
             <input id="username" type="text" className="form-input"
-              placeholder={tab === 'admin' ? 'admin.dev' : 'cliente.web'}
+              placeholder={tab === 'admin' ? 'admin' : 'cliente.carlos'}
               value={username} onChange={(e) => setUsername(e.target.value)}
               onBlur={() => handleBlur('username')} autoFocus disabled={loading} />
             {fieldErrors.username && <span className="form-error"><AlertCircle size={13} /> {fieldErrors.username}</span>}

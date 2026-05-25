@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { useAuthStore } from './store/useAuthStore';
 import { Toaster, toast } from 'sonner';
 import {
   QueryClient,
@@ -87,11 +89,31 @@ function WithNavbar({ children }) {
   );
 }
 
+function SessionBootstrap({ children }) {
+  const restoreSession = useAuthStore((s) => s.restoreSession);
+  const sessionChecked = useAuthStore((s) => s.sessionChecked);
+
+  useEffect(() => {
+    restoreSession();
+  }, [restoreSession]);
+
+  if (!sessionChecked) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center text-muted" role="status">
+        Cargando sesión…
+      </div>
+    );
+  }
+
+  return children;
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
+          <SessionBootstrap>
           <Toaster
             position="top-right"
             toastOptions={{
@@ -159,6 +181,7 @@ export default function App() {
             {/* Fallback 404 */}
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
+          </SessionBootstrap>
         </BrowserRouter>
       </QueryClientProvider>
     </ErrorBoundary>

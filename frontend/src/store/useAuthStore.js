@@ -1,22 +1,52 @@
 import { create } from 'zustand';
+import { authApi } from '../api/authApi';
+
+const USER_KEY = 'user';
+const USER_TYPE_KEY = 'userType';
+
+const readSession = (key) => {
+  try {
+    return sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+
+const writeSession = (key, value) => {
+  try {
+    if (value == null) sessionStorage.removeItem(key);
+    else sessionStorage.setItem(key, value);
+  } catch {
+    /* ignore quota / private mode */
+  }
+};
 
 const deriveUserType = () => {
-  const stored = localStorage.getItem('userType');
+  const stored = readSession(USER_TYPE_KEY);
   if (stored) return stored;
-  // Fallback: derive from roles for old sessions
   try {
-    const user = JSON.parse(localStorage.getItem('user') || 'null');
-    if (user?.roles?.some(r => ['ADMIN', 'AGENTE_POS'].includes(r))) return 'admin';
+    const user = JSON.parse(readSession(USER_KEY) || 'null');
+    if (user?.roles?.some((r) => ['ADMIN', 'AGENTE_POS'].includes(r))) return 'admin';
     if (user) return 'cliente';
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return null;
 };
 
+const initialUser = (() => {
+  try {
+    return JSON.parse(readSession(USER_KEY) || 'null');
+  } catch {
+    return null;
+  }
+})();
+
 export const useAuthStore = create((set, get) => ({
-  token: localStorage.getItem('token') || null,
-  user: JSON.parse(localStorage.getItem('user') || 'null'),
-  isAuthenticated: !!localStorage.getItem('token'),
-  userType: deriveUserType(), // 'admin' | 'cliente'
+  user: initialUser,
+  isAuthenticated: !!initialUser,
+  userType: deriveUserType(),
+  sessionChecked: false,
 
   login: (loginResponse, type = 'admin') => {
     const userData = {
@@ -24,32 +54,55 @@ export const useAuthStore = create((set, get) => ({
       correo: loginResponse.correo,
       roles: loginResponse.roles,
       expiration: loginResponse.expiration,
-      // Client-specific fields
       idCliente: loginResponse.idCliente,
       nombreCompleto: loginResponse.nombreCompleto,
     };
-    localStorage.setItem('token', loginResponse.token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    localStorage.setItem('userType', type);
-    set({ token: loginResponse.token, user: userData, isAuthenticated: true, userType: type });
+    writeSession(USER_KEY, JSON.stringify(userData));
+    writeSession(USER_TYPE_KEY, type);
+    set({ user: userData, isAuthenticated: true, userType: type, sessionChecked: true });
   },
 
-  logout: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('userType');
-    set({ token: null, user: null, isAuthenticated: false, userType: null });
+  logout: async () => {
+    try {
+      await authApi.logout({ suppressErrorToast: true });
+    } catch {
+      /* cookie puede ya estar ausente */
+    }
+    writeSession(USER_KEY, null);
+    writeSession(USER_TYPE_KEY, null);
+    set({ user: null, isAuthenticated: false, userType: null, sessionChecked: true });
   },
 
-  isAdmin: () => {
-    const { userType } = get();
-    return userType === 'admin';
+  restoreSession: async () => {
+    try {
+      const res = await authApi.me({ suppressErrorToast: true });
+      const data = res.data?.data;
+      if (!data) {
+        set({ user: null, isAuthenticated: false, userType: null, sessionChecked: true });
+        return;
+      }
+      const isAdmin = data.roles?.some((r) => ['ADMIN', 'AGENTE', 'AGENTE_POS'].includes(r));
+      const userType = isAdmin ? 'admin' : 'cliente';
+      const userData = {
+        username: data.username,
+        correo: data.correo,
+        roles: data.roles,
+        idCliente: data.idCliente,
+        nombreCompleto: data.nombreCompleto,
+      };
+      writeSession(USER_KEY, JSON.stringify(userData));
+      writeSession(USER_TYPE_KEY, userType);
+      set({ user: userData, isAuthenticated: true, userType, sessionChecked: true });
+    } catch {
+      writeSession(USER_KEY, null);
+      writeSession(USER_TYPE_KEY, null);
+      set({ user: null, isAuthenticated: false, userType: null, sessionChecked: true });
+    }
   },
 
-  isCliente: () => {
-    const { userType } = get();
-    return userType === 'cliente';
-  },
+  isAdmin: () => get().userType === 'admin',
+
+  isCliente: () => get().userType === 'cliente',
 
   hasRole: (role) => {
     const user = get().user;

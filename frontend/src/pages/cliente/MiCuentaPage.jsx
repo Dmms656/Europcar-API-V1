@@ -6,7 +6,7 @@ import api from '../../api/axiosClient';
 import { validators } from '../../utils/validation';
 
 export default function MiCuentaPage() {
-  const { user, token } = useAuthStore();
+  const { user } = useAuthStore();
   const [editing, setEditing] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [showPwd, setShowPwd] = useState(false);

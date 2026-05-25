@@ -4,6 +4,7 @@ import api from './axiosClient';
 // La ruta pública /api/v1/Vehiculos quedó reservada para el contrato Booking.
 export const vehiculosApi = {
   getAll: () => api.get('/admin/Vehiculos'),
+  /** Requiere JWT (ADMIN/AGENTE_POS). Catálogo público: bookingApi.buscarVehiculos. */
   getDisponibles: (params) => api.get('/admin/Vehiculos/disponibles', { params }),
   getById: (id) => api.get(`/admin/Vehiculos/${id}`),
   create: (data) => api.post('/admin/Vehiculos', data),

@@ -6,6 +6,7 @@ using Middleware.RedCar.Api.Compatibility;
 using Middleware.RedCar.Business.Compatibility;
 using Middleware.RedCar.Business.DTOs.Reservas;
 using Middleware.RedCar.Business.Interfaces;
+using Middleware.RedCar.DataAccess.Clients.Interfaces;
 using BusinessExceptions = global::Middleware.RedCar.Business.Exceptions;
 
 namespace Middleware.RedCar.Api.Controllers.V1;
@@ -22,19 +23,47 @@ public sealed class LegacyPublicReservasController : ControllerBase
 {
     private readonly IReservaOrchestrator _reservas;
     private readonly IFacturaOrchestrator _factura;
+    private readonly IClientesClient _clientes;
     private readonly IValidator<CrearReservaBookingRequest> _crearValidator;
     private readonly IValidator<CancelarReservaRequest> _cancelarValidator;
 
     public LegacyPublicReservasController(
         IReservaOrchestrator reservas,
         IFacturaOrchestrator factura,
+        IClientesClient clientes,
         IValidator<CrearReservaBookingRequest> crearValidator,
         IValidator<CancelarReservaRequest> cancelarValidator)
     {
         _reservas = reservas;
         _factura = factura;
+        _clientes = clientes;
         _crearValidator = crearValidator;
         _cancelarValidator = cancelarValidator;
+    }
+
+    /// <summary>
+    /// Cliente invitado para reserva web. Respuesta mínima (sin PII si ya existía).
+    /// </summary>
+    [HttpPost("guest-client")]
+    public async Task<IActionResult> GuestClient([FromBody] LegacyGuestClientRequest body, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(body.Cedula) || string.IsNullOrWhiteSpace(body.Nombre))
+            return BadRequest(LegacyBookingEnvelope.Fail("Cédula y nombre son obligatorios", 400));
+
+        var upsert = new ClienteUpsertRequest(
+            Nombres: body.Nombre.Trim(),
+            Apellidos: body.Apellido?.Trim() ?? "",
+            TipoIdentificacion: "CEDULA",
+            NumeroIdentificacion: body.Cedula.Trim(),
+            Correo: body.Correo?.Trim() ?? "",
+            Telefono: body.Telefono?.Trim() ?? "");
+
+        var result = await _clientes.UpsertClienteAsync(upsert, ct)
+            ?? throw new InvalidOperationException("MS.Clientes no respondió al guest-client.");
+
+        return Ok(LegacyBookingEnvelope.Ok(
+            new { idCliente = result.IdCliente, esNuevo = result.Created },
+            result.Created ? "Cliente creado exitosamente" : "Cliente registrado para continuar la reserva"));
     }
 
     [HttpPost]
@@ -85,4 +114,14 @@ public sealed class LegacyPublicReservasController : ControllerBase
         var data = await _factura.GetFacturaAsync(codigoReserva, ct);
         return Ok(LegacyBookingEnvelope.Ok(data));
     }
+}
+
+public sealed class LegacyGuestClientRequest
+{
+    public string Cedula { get; set; } = string.Empty;
+    public string Nombre { get; set; } = string.Empty;
+    public string? Apellido { get; set; }
+    public string? Correo { get; set; }
+    public string? Telefono { get; set; }
+    public string? Direccion { get; set; }
 }

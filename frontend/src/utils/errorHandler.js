@@ -12,6 +12,10 @@
 
 const DEFAULT_MESSAGES = {
   0: 'No hay conexión con el servidor. Verifica tu internet.',
+  API_NOT_CONFIGURED:
+    'La URL de la API no está configurada. Crea frontend/.env con VITE_API_URL o usa npm run dev (proxy /api/v1).',
+  CORS_HINT:
+    'No se pudo conectar con la API. En desarrollo usa npm run dev (proxy) o define VITE_API_URL. Si apuntas a Render, revisa CORS en el middleware.',
   400: 'La petición no es válida.',
   401: 'Tu sesión expiró. Inicia sesión nuevamente.',
   403: 'No tienes permisos para realizar esta acción.',
@@ -52,11 +56,24 @@ export function parseApiError(error) {
     });
   }
 
-  // Caso 4: Sin response (error de red, CORS, DNS, servidor caído)
-  if (!error.response) {
+  if (error.code === 'ERR_API_NOT_CONFIGURED') {
     return baseResult({
       status: 0,
-      message: DEFAULT_MESSAGES[0],
+      message: DEFAULT_MESSAGES.API_NOT_CONFIGURED,
+      isNetwork: true,
+      original: error,
+    });
+  }
+
+  // Caso 4: Sin response (error de red, CORS, DNS, servidor caído)
+  if (!error.response) {
+    const hint =
+      import.meta.env?.DEV && !import.meta.env?.VITE_API_URL
+        ? DEFAULT_MESSAGES.CORS_HINT
+        : DEFAULT_MESSAGES[0];
+    return baseResult({
+      status: 0,
+      message: hint,
       isNetwork: true,
       original: error,
     });

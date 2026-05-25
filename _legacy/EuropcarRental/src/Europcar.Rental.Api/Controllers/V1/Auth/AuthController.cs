@@ -1,5 +1,9 @@
+using System.Security.Claims;
 using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Europcar.Rental.Api.Extensions;
 using Europcar.Rental.Api.Models.Common;
 using Europcar.Rental.Business.DTOs.Request.Auth;
 using Europcar.Rental.Business.Interfaces;
@@ -22,17 +26,27 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Iniciar sesión y obtener token JWT.
+    /// Iniciar sesión. El JWT se entrega en cookie HttpOnly (no en el cuerpo JSON).
     /// </summary>
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         var result = await _authService.LoginAsync(request);
-        return Ok(ApiResponse<object>.Ok(result, "Login exitoso"));
+        AuthCookieExtensions.SetAuthCookie(Response, result.Token, result.Expiration, Request.IsHttps);
+
+        return Ok(ApiResponse<object>.Ok(new
+        {
+            result.Username,
+            result.Correo,
+            result.Roles,
+            result.Expiration,
+            result.IdCliente,
+            result.NombreCompleto
+        }, "Login exitoso"));
     }
 
     /// <summary>
-    /// Registrar un nuevo usuario (cliente).
+    /// Registrar un nuevo usuario (cliente). JWT en cookie HttpOnly.
     /// </summary>
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
@@ -42,9 +56,44 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Validar si una cédula/identificación ya existe.
+    /// Cerrar sesión (elimina la cookie de autenticación).
+    /// </summary>
+    [HttpPost("logout")]
+    [Authorize]
+    public IActionResult Logout()
+    {
+        AuthCookieExtensions.ClearAuthCookie(Response);
+        return Ok(ApiResponse<object>.Ok(new { }, "Sesión cerrada"));
+    }
+
+    /// <summary>
+    /// Perfil de la sesión actual (restaura el estado del frontend sin localStorage del token).
+    /// </summary>
+    [HttpGet("me")]
+    [Authorize]
+    public IActionResult Me()
+    {
+        var username = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue("unique_name");
+        var correo = User.FindFirstValue(ClaimTypes.Email);
+        var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+        var idClienteClaim = User.FindFirstValue("idCliente");
+        int? idCliente = int.TryParse(idClienteClaim, out var id) ? id : null;
+
+        return Ok(ApiResponse<object>.Ok(new
+        {
+            username,
+            correo,
+            roles,
+            idCliente,
+            nombreCompleto = User.FindFirstValue("nombre_completo")
+        }));
+    }
+
+    /// <summary>
+    /// Validar si una cédula/identificación ya existe (solo booleano, sin PII).
     /// </summary>
     [HttpGet("cedula-exists")]
+    [EnableRateLimiting("guest-client")]
     public async Task<IActionResult> CedulaExists([FromQuery] string cedula)
     {
         if (string.IsNullOrWhiteSpace(cedula))

@@ -30,7 +30,11 @@ public sealed class CrearReservaValidator : AbstractValidator<CrearReservaBookin
             .WithMessage("fechaFin no puede ser anterior a fechaInicio.")
             .OverridePropertyName("fechaFin");
 
-        // Hora obligatoria (TimeOnly default = 00:00:00 es valido tambien, pero el contrato exige enviarla)
+        RuleFor(r => r)
+            .Must(r => r.FechaFin.ToDateTime(r.HoraFin) > r.FechaInicio.ToDateTime(r.HoraInicio))
+            .WithMessage("La fecha y hora de devolucion deben ser posteriores a la de inicio.")
+            .OverridePropertyName("horaFin");
+
         RuleFor(r => r.Observaciones)
             .MaximumLength(300).When(r => r.Observaciones is not null)
             .WithMessage("observaciones no puede superar 300 caracteres.");

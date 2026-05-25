@@ -7,7 +7,6 @@ using Europcar.Rental.Business.DTOs.Request.Reservas;
 using Europcar.Rental.Business.Exceptions;
 using Europcar.Rental.Business.Interfaces;
 using Europcar.Rental.DataManagement.Interfaces;
-using Europcar.Rental.DataManagement.Models;
 
 namespace Europcar.Rental.Api.Controllers.V1.Internal;
 
@@ -26,65 +25,13 @@ public class ReservasController : ControllerBase
 
     private readonly IReservaService _reservaService;
     private readonly IReservaDataService _reservaDataService;
-    private readonly IClienteDataService _clienteDataService;
 
     public ReservasController(
         IReservaService reservaService,
-        IReservaDataService reservaDataService,
-        IClienteDataService clienteDataService)
+        IReservaDataService reservaDataService)
     {
         _reservaService = reservaService;
         _reservaDataService = reservaDataService;
-        _clienteDataService = clienteDataService;
-    }
-
-    /// <summary>
-    /// Crear o encontrar un cliente invitado (sin cuenta de usuario).
-    /// </summary>
-    [HttpPost("guest-client")]
-    [AllowAnonymous]
-    public async Task<IActionResult> GuestClient([FromBody] GuestClientRequest request)
-    {
-        if (string.IsNullOrWhiteSpace(request.Cedula) || string.IsNullOrWhiteSpace(request.Nombre))
-            return BadRequest(ApiResponse<object>.Fail("Cédula y nombre son obligatorios"));
-
-        var existing = await _clienteDataService.GetByIdentificacionAsync(request.Cedula.Trim());
-        if (existing != null)
-        {
-            return Ok(ApiResponse<object>.Ok(new
-            {
-                existing.IdCliente,
-                existing.Nombre1,
-                existing.Apellido1,
-                existing.NumeroIdentificacion,
-                existing.Correo,
-                esNuevo = false
-            }, "Cliente existente encontrado"));
-        }
-
-        var codigo = $"CLT-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
-        var newCliente = await _clienteDataService.CreateAsync(new ClienteModel
-        {
-            CodigoCliente = codigo,
-            TipoIdentificacion = "CED",
-            NumeroIdentificacion = request.Cedula.Trim(),
-            Nombre1 = request.Nombre.Trim(),
-            Apellido1 = request.Apellido?.Trim() ?? "",
-            Telefono = request.Telefono?.Trim() ?? "",
-            Correo = request.Correo?.Trim() ?? "",
-            DireccionPrincipal = request.Direccion?.Trim(),
-            FechaNacimiento = DateOnly.FromDateTime(DateTime.Today.AddYears(-25))
-        });
-
-        return Ok(ApiResponse<object>.Ok(new
-        {
-            newCliente.IdCliente,
-            newCliente.Nombre1,
-            newCliente.Apellido1,
-            newCliente.NumeroIdentificacion,
-            newCliente.Correo,
-            esNuevo = true
-        }, "Cliente creado exitosamente"));
     }
 
     /// <summary>
@@ -201,14 +148,4 @@ public class ReservasController : ControllerBase
         var raw = User.FindFirstValue("idCliente");
         return int.TryParse(raw, out var id) ? id : null;
     }
-}
-
-public class GuestClientRequest
-{
-    public string Cedula { get; set; } = string.Empty;
-    public string Nombre { get; set; } = string.Empty;
-    public string? Apellido { get; set; }
-    public string? Correo { get; set; }
-    public string? Telefono { get; set; }
-    public string? Direccion { get; set; }
 }

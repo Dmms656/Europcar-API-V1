@@ -5,14 +5,14 @@ import { Car, Home, ShoppingBag, User, Shield, LogOut, Menu, X } from 'lucide-re
 import { useState } from 'react';
 
 export default function Navbar() {
-  const { user, token, logout, hasAnyRole } = useAuthStore();
+  const { user, isAuthenticated, logout, hasAnyRole } = useAuthStore();
   const { sidebarOpen, toggleSidebar } = useAppStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const isAdmin = hasAnyRole?.('ADMIN', 'AGENTE_POS');
-  const isLoggedIn = !!token;
+  const isLoggedIn = isAuthenticated;
 
   // Check if we are in a route that has a sidebar
   const isDashboardRoute = [
