@@ -80,6 +80,10 @@ public sealed class AuthController : ControllerBase
     {
         try
         {
+            var idCliente = await ResolveIdClienteForRegisterAsync(request, ct);
+            if (idCliente.HasValue)
+                request.IdCliente = idCliente;
+
             var data = await _auth.RegisterAsync(request, ct);
             return Ok(ApiResponse<object>.Ok(data, "Registro exitoso", HttpContext.TraceIdentifier));
         }
@@ -168,11 +172,66 @@ public sealed class AuthController : ControllerBase
 
     [HttpGet("cedula-exists")]
     [AllowAnonymous]
-    public IActionResult CedulaExists([FromQuery] string cedula)
+    public async Task<IActionResult> CedulaExists([FromQuery] string cedula, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(cedula))
             return BadRequest(ApiResponse<object>.Fail(400, "La cédula es requerida", HttpContext.TraceIdentifier));
-        return Ok(ApiResponse<object>.Ok(new { exists = false }, "OK", HttpContext.TraceIdentifier));
+
+        ClienteDetalleDto? cliente = null;
+        try
+        {
+            cliente = await _clientes.GetByIdentificacionAsync(cedula.Trim(), ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "cedula-exists: no se pudo consultar MS Clientes");
+        }
+
+        return Ok(ApiResponse<object>.Ok(
+            new { exists = cliente is not null },
+            "OK",
+            HttpContext.TraceIdentifier));
+    }
+
+    /// <summary>
+    /// Crea o vincula el registro en MS.Clientes antes de crear el usuario en seguridad.
+    /// </summary>
+    private async Task<int?> ResolveIdClienteForRegisterAsync(RegisterRequest request, CancellationToken ct)
+    {
+        if (request.IdCliente.HasValue)
+            return request.IdCliente;
+
+        var cedula = (request.Cedula ?? string.Empty).Trim();
+        if (string.IsNullOrEmpty(cedula))
+            return null;
+
+        var vincularExistente = string.IsNullOrWhiteSpace(request.Nombre);
+
+        if (vincularExistente)
+        {
+            var existente = await _clientes.GetByIdentificacionAsync(cedula, ct);
+            if (existente is null)
+            {
+                throw new InvalidOperationException(
+                    $"No se encontró un cliente con la identificación '{cedula}'. " +
+                    "Verifica la cédula o regístrate como «Nuevo Cliente».");
+            }
+
+            return existente.IdCliente;
+        }
+
+        var upsert = new ClienteUpsertRequest(
+            Nombres: request.Nombre!.Trim(),
+            Apellidos: string.IsNullOrWhiteSpace(request.Apellido) ? "N/A" : request.Apellido.Trim(),
+            TipoIdentificacion: "CEDULA",
+            NumeroIdentificacion: cedula,
+            Correo: request.Correo.Trim(),
+            Telefono: string.IsNullOrWhiteSpace(request.Telefono) ? "0999999999" : request.Telefono.Trim());
+
+        var creado = await _clientes.UpsertClienteAsync(upsert, ct)
+            ?? throw new InvalidOperationException("No se pudo registrar el cliente en el sistema.");
+
+        return creado.IdCliente;
     }
 
     [HttpPut("profile")]

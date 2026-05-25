@@ -101,7 +101,7 @@ export default function RegisterPage() {
       const exists = Boolean(response?.data?.data?.exists);
       setCedulaExists(exists);
       if (exists) {
-        const msg = 'La cédula ya está registrada. Usa "Cliente Existente" para vincular tu cuenta.';
+        const msg = 'Esa cédula ya existe como cliente. Usa la pestaña «Cliente Existente» e ingresa la misma cédula para vincular tu cuenta.';
         setError(msg);
         toast.error(msg);
       }
@@ -215,8 +215,11 @@ export default function RegisterPage() {
           <div className="register-success">
             <CheckCircle2 size={56} className="register-success__icon" />
             <h1>¡Cuenta Creada!</h1>
-            <p>Tu cuenta ha sido registrada exitosamente.</p>
+            <p>Tu cuenta ha sido registrada y vinculada al cliente en el sistema.</p>
             <p className="register-success__user">Usuario: <strong>{form.username}</strong></p>
+            {mode === 'existente' && (
+              <p className="register-success__hint">Iniciaste sesión vinculando la cédula <strong>{form.idClienteExistente || form.cedula}</strong>.</p>
+            )}
             <div className="register-success__actions">
               <Link to="/login" className="btn btn--primary btn--full">Iniciar Sesión</Link>
               <Link to="/catalogo" className="btn btn--outline btn--full">Explorar Catálogo</Link>

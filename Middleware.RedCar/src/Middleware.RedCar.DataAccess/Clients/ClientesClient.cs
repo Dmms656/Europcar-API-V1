@@ -20,6 +20,14 @@ public sealed class ClientesClient : HttpClientBase, IClientesClient
         return envelope?.Data;
     }
 
+    public async Task<ClienteDetalleDto?> GetByIdentificacionAsync(string numeroIdentificacion, CancellationToken ct = default)
+    {
+        var doc = Uri.EscapeDataString((numeroIdentificacion ?? string.Empty).Trim());
+        if (string.IsNullOrEmpty(doc)) return null;
+        var envelope = await GetAsync<MsApiEnvelope<ClienteDetalleDto>>($"/api/v1/clientes/by-identificacion/{doc}", ct);
+        return envelope?.Data;
+    }
+
     public async Task<IReadOnlyList<ConductorUpsertResult>?> UpsertConductoresAsync(int idCliente, IReadOnlyList<ConductorUpsertRequest> conductores, CancellationToken ct = default)
     {
         var envelope = await PostAsync<IReadOnlyList<ConductorUpsertRequest>, MsApiEnvelope<IReadOnlyList<ConductorUpsertResult>>>(

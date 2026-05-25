@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { reservasApi } from '../../api/reservasApi';
 import { pagosApi } from '../../api/pagosApi';
@@ -85,10 +85,6 @@ export default function ReservarPage() {
     }
   });
 
-  const STEPS = (isAuthenticated && hasIdentificacionCliente(user, guestForm))
-    ? ['Fechas', 'Conductores', 'Extras', 'Resumen', 'Pago']
-    : ['Identificación', 'Fechas', 'Conductores', 'Extras', 'Resumen', 'Pago'];
-
   const [step, setStep] = useState(0);
   const [vehiculo, setVehiculo] = useState(null);
   const [localizaciones, setLocalizaciones] = useState([]);
@@ -109,6 +105,13 @@ export default function ReservarPage() {
     telefono: '', direccion: '',
   });
   const [guestProcessing, setGuestProcessing] = useState(false);
+
+  const STEPS = useMemo(
+    () => ((isAuthenticated && hasIdentificacionCliente(user, guestForm))
+      ? ['Fechas', 'Conductores', 'Extras', 'Resumen', 'Pago']
+      : ['Identificación', 'Fechas', 'Conductores', 'Extras', 'Resumen', 'Pago']),
+    [isAuthenticated, user, guestForm],
+  );
 
   // Form state
   const [form, setForm] = useState({

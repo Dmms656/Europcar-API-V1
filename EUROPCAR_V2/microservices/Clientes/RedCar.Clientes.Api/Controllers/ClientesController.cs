@@ -16,6 +16,25 @@ public sealed class ClientesController : ControllerBase
 
     public ClientesController(ClientesDbContext db) => _db = db;
 
+    [HttpGet("by-identificacion/{numero}")]
+    public async Task<ActionResult<ApiResponse<ClienteDetalleDto>>> GetByIdentificacion(
+        [FromRoute] string numero,
+        CancellationToken ct)
+    {
+        var doc = (numero ?? string.Empty).Trim();
+        if (string.IsNullOrEmpty(doc))
+            return BadRequest(ApiResponse<ClienteDetalleDto>.Fail(400, "Número de identificación requerido.", HttpContext.TraceIdentifier));
+
+        var c = await _db.Clientes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.NumeroIdentificacion == doc && !x.EsEliminado && x.EstadoCliente == "ACT", ct);
+
+        if (c is null)
+            return NotFound(ApiResponse<ClienteDetalleDto>.Fail(404, "Cliente no encontrado.", HttpContext.TraceIdentifier));
+
+        return Ok(ApiResponse<ClienteDetalleDto>.Ok(MapDetalle(c), traceId: HttpContext.TraceIdentifier));
+    }
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ApiResponse<ClienteDetalleDto>>> GetById(int id, CancellationToken ct)
     {
@@ -33,18 +52,7 @@ public sealed class ClientesController : ControllerBase
                 return NotFound(ApiResponse<ClienteDetalleDto>.Fail(404, "Cliente no encontrado.", HttpContext.TraceIdentifier));
             }
 
-            var dto = new ClienteDetalleDto
-            {
-                IdCliente = c.IdCliente,
-                Nombres = ClientesApiMapper.JoinNames(c.CliNombre1, c.CliNombre2),
-                Apellidos = ClientesApiMapper.JoinNames(c.CliApellido1, c.CliApellido2),
-                TipoIdentificacion = ClientesApiMapper.ToApiTipoIdentificacion(c.TipoIdentificacion),
-                NumeroIdentificacion = c.NumeroIdentificacion,
-                Correo = c.CliCorreo,
-                Telefono = c.CliTelefono
-            };
-
-            return Ok(ApiResponse<ClienteDetalleDto>.Ok(dto, traceId: HttpContext.TraceIdentifier));
+            return Ok(ApiResponse<ClienteDetalleDto>.Ok(MapDetalle(c), traceId: HttpContext.TraceIdentifier));
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
@@ -239,6 +247,17 @@ public sealed class ClientesController : ControllerBase
                 HttpContext.TraceIdentifier));
         }
     }
+
+    private static ClienteDetalleDto MapDetalle(Cliente c) => new()
+    {
+        IdCliente = c.IdCliente,
+        Nombres = ClientesApiMapper.JoinNames(c.CliNombre1, c.CliNombre2),
+        Apellidos = ClientesApiMapper.JoinNames(c.CliApellido1, c.CliApellido2),
+        TipoIdentificacion = ClientesApiMapper.ToApiTipoIdentificacion(c.TipoIdentificacion),
+        NumeroIdentificacion = c.NumeroIdentificacion,
+        Correo = c.CliCorreo,
+        Telefono = c.CliTelefono
+    };
 
     private static string BuildCodigoCliente(string tipoDb, string numero) =>
         Truncate($"CLI-{tipoDb}-{numero}", 20);

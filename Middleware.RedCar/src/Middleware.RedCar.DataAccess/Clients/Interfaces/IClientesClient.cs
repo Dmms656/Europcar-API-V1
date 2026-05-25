@@ -13,6 +13,8 @@ public interface IClientesClient
 
     Task<ClienteDetalleDto?> GetByIdAsync(int idCliente, CancellationToken ct = default);
 
+    Task<ClienteDetalleDto?> GetByIdentificacionAsync(string numeroIdentificacion, CancellationToken ct = default);
+
     /// <summary>
     /// Upsert masivo de conductores asociados a un cliente.
     /// </summary>
