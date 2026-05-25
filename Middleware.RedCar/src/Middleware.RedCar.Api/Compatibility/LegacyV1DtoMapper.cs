@@ -57,6 +57,9 @@ public static class LegacyV1DtoMapper
         aireAcondicionado = v.AireAcondicionado,
         estado = v.Estado,
         localizacion = v.Localizacion,
+        precio = v.Precio,
+        precioBaseDia = v.Precio.PrecioBaseDia,
+        precioDia = v.Precio.PrecioBaseDia,
         _links = v._Links
     };
 

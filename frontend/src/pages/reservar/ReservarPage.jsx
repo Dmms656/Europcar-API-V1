@@ -11,7 +11,9 @@ import {
   Minus, ShieldCheck, Loader2, CheckCircle2, X, AlertCircle, UserPlus
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { normalizeVehiculoDetalle } from '../../utils/bookingNormalize';
+import { normalizeVehiculoDetalle, defaultRentalDateTimeLocalRange } from '../../utils/bookingNormalize';
+
+const guestClientStorageKey = (vehiculoId) => `reservar_guest_client_${vehiculoId}`;
 
 const IVA_RATE = 0.15;
 const RECARGO_CONDUCTOR_ADICIONAL_DIA = 15;
@@ -26,8 +28,17 @@ export default function ReservarPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuthStore();
 
-  // Guest flow: if not authenticated, add 'Identificación' as first step
-  const STEPS = isAuthenticated
+  const [guestClientId, setGuestClientId] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem(guestClientStorageKey(id));
+      return stored ? Number(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const effectiveClientId = user?.idCliente || guestClientId;
+  const STEPS = effectiveClientId
     ? ['Fechas', 'Conductores', 'Extras', 'Resumen', 'Pago']
     : ['Identificación', 'Fechas', 'Conductores', 'Extras', 'Resumen', 'Pago'];
 
@@ -51,7 +62,6 @@ export default function ReservarPage() {
     telefono: '', direccion: '',
   });
   const [guestProcessing, setGuestProcessing] = useState(false);
-  const [guestClientId, setGuestClientId] = useState(null);
 
   // Form state
   const [form, setForm] = useState({
@@ -81,6 +91,19 @@ export default function ReservarPage() {
     loadData();
   }, [id]);
 
+  useEffect(() => {
+    if (user?.idCliente) {
+      setGuestClientId(user.idCliente);
+    }
+  }, [user?.idCliente]);
+
+  useEffect(() => {
+    if (!guestClientId || !id) return;
+    try {
+      sessionStorage.setItem(guestClientStorageKey(id), String(guestClientId));
+    } catch { /* ignore */ }
+  }, [guestClientId, id]);
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -103,6 +126,12 @@ export default function ReservarPage() {
             idLocalizacionDevolucion: String(found.idLocalizacion),
           }));
         }
+        const defaults = defaultRentalDateTimeLocalRange();
+        setForm(prev => ({
+          ...prev,
+          fechaRecogida: prev.fechaRecogida || defaults.fechaRecogida,
+          fechaDevolucion: prev.fechaDevolucion || defaults.fechaDevolucion,
+        }));
       }
       if (locRes.status === 'fulfilled') {
         const ld = locRes.value.data?.data;
@@ -407,15 +436,22 @@ export default function ReservarPage() {
   };
 
   const canProceed = () => {
-    switch (step) {
-      case 0: return form.fechaRecogida && form.fechaDevolucion &&
-        form.idLocalizacionRecogida && form.idLocalizacionDevolucion && dias > 0;
-      case 1: return form.conductores.length > 0;
-      case 2: return true;
-      case 3: return true;
-      case 4: return pago.nombreTitular && pago.numeroTarjeta.length >= 16 &&
-        pago.mesExpiracion && pago.anioExpiracion && pago.cvv.length >= 3;
-      default: return false;
+    switch (STEPS[step]) {
+      case 'Identificación':
+        return Boolean(guestForm.nombre?.trim() && guestForm.cedula?.trim());
+      case 'Fechas':
+        return form.fechaRecogida && form.fechaDevolucion &&
+          form.idLocalizacionRecogida && form.idLocalizacionDevolucion && dias > 0 && !disponibilidadBloqueada;
+      case 'Conductores':
+        return form.conductores.length > 0;
+      case 'Extras':
+      case 'Resumen':
+        return true;
+      case 'Pago':
+        return pago.nombreTitular && pago.numeroTarjeta.length >= 16 &&
+          pago.mesExpiracion && pago.anioExpiracion && pago.cvv.length >= 3;
+      default:
+        return false;
     }
   };
 
@@ -467,8 +503,10 @@ export default function ReservarPage() {
     setGuestProcessing(true);
     try {
       const res = await reservasApi.guestClient(guestForm);
-      const data = res.data?.data;
-      setGuestClientId(data.idCliente);
+      const data = res.data?.data ?? res.data?.Data ?? {};
+      const newId = data.idCliente ?? data.IdCliente;
+      if (!newId) throw new Error('Sin idCliente');
+      setGuestClientId(newId);
       toast.success(data.esNuevo ? '¡Cliente creado!' : 'Cliente encontrado. Continuemos.');
       // Assign as principal conductor
       setForm(prev => ({
@@ -508,13 +546,41 @@ export default function ReservarPage() {
     if (step < STEPS.length - 1) setStep(step + 1);
   };
 
+  const resolveClientId = async () => {
+    if (user?.idCliente) return user.idCliente;
+    if (guestClientId) return guestClientId;
+    if (guestForm.nombre?.trim() && guestForm.cedula?.trim()) {
+      const res = await reservasApi.guestClient(guestForm);
+      const data = res.data?.data ?? res.data?.Data ?? {};
+      const newId = data.idCliente ?? data.IdCliente;
+      if (newId) {
+        setGuestClientId(newId);
+        return newId;
+      }
+    }
+    return null;
+  };
+
   const handlePagar = async () => {
     setProcessing(true);
 
-    // Validate idCliente exists (from user account or guest client)
-    const clientId = user?.idCliente || guestClientId;
-    if (!clientId) {
-      toast.error('No se pudo identificar el cliente. Regresa al primer paso.');
+    let clientId = user?.idCliente || guestClientId;
+    const usePublicBooking = !user?.idCliente;
+
+    if (!clientId && usePublicBooking) {
+      clientId = await resolveClientId();
+    }
+
+    if (!clientId && !usePublicBooking) {
+      toast.error('No se pudo identificar el cliente. Completa el paso de identificación.');
+      setStep(0);
+      setProcessing(false);
+      return;
+    }
+
+    if (usePublicBooking && !guestForm.nombre?.trim()) {
+      toast.error('Completa tus datos en el paso de identificación antes de pagar.');
+      setStep(STEPS.indexOf('Identificación'));
       setProcessing(false);
       return;
     }
@@ -535,8 +601,8 @@ export default function ReservarPage() {
         return { nombres: parts.slice(0, -1).join(' '), apellidos: parts.slice(-1).join(' ') };
       };
 
-      // Public flow: use Booking API to persist selected drivers (principal/secundario).
-      if (!isAuthenticated && principal) {
+      // Flujo público (invitado o usuario sin idCliente vinculado, p. ej. admin).
+      if (usePublicBooking && principal) {
         const principalNames = splitNombres(principal.nombre);
         const secondaryNames = secundario ? splitNombres(secundario.nombre) : null;
         const fechaIni = new Date(form.fechaRecogida);

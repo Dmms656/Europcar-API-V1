@@ -96,6 +96,13 @@ public static class CatalogoBusinessMapper
                 Nombre = nombreLocalizacion,
                 Direccion = direccionLocalizacion
             },
+            Precio = new PrecioResumen
+            {
+                PrecioBaseDia = v.PrecioBaseDia,
+                SubtotalVehiculo = v.PrecioBaseDia,
+                Iva = Math.Round(v.PrecioBaseDia * 0.15m, 2),
+                Total = Math.Round(v.PrecioBaseDia * 1.15m, 2)
+            },
             _Links = new Dictionary<string, LinkHref>
             {
                 ["self"] = new() { Href = $"/api/v2/booking/vehiculos/{v.IdVehiculo}" },

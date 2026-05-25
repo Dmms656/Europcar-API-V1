@@ -49,6 +49,7 @@ public sealed class VehiculoDetalleResponse
     public bool AireAcondicionado { get; set; }
     public string Estado { get; set; } = string.Empty;
     public LocalizacionResumen Localizacion { get; set; } = new();
+    public PrecioResumen Precio { get; set; } = new();
 
     [JsonPropertyName("_links")]
     public Dictionary<string, LinkHref> _Links { get; set; } = new();
