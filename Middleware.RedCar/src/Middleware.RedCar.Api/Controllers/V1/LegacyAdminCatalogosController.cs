@@ -2,6 +2,7 @@ using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Middleware.RedCar.Api.Compatibility;
+using Middleware.RedCar.DataAccess.Clients;
 using Middleware.RedCar.DataAccess.Clients.Interfaces;
 using RedCar.Shared.Contracts.Common;
 
@@ -23,6 +24,9 @@ public sealed class LegacyAdminCatalogosController : ControllerBase
         _catalogo = catalogo;
         _localizaciones = localizaciones;
     }
+
+    private IActionResult FromMs(MicroserviceClientException ex) =>
+        StatusCode((int)ex.StatusCode, ApiResponse<object>.Fail((int)ex.StatusCode, ex.Message, HttpContext.TraceIdentifier));
 
     [HttpGet("paises")]
     public async Task<IActionResult> GetPaises(CancellationToken ct)
@@ -111,16 +115,96 @@ public sealed class LegacyAdminCatalogosController : ControllerBase
     [HttpPut("paises/{id:int}")]
     [HttpPut("paises/{id:int}/estado")]
     [HttpDelete("paises/{id:int}")]
+    public IActionResult PaisesWriteNotSupported()
+        => StatusCode(501, ApiResponse<object>.Fail(501, "CRUD de países no disponible (sin tabla país en MS Localizaciones).", HttpContext.TraceIdentifier));
+
     [HttpPost("ciudades")]
+    public async Task<IActionResult> CreateCiudad([FromBody] object body, CancellationToken ct)
+    {
+        try
+        {
+            var dto = await _localizaciones.CreateCiudadAsync(body, ct);
+            return Ok(ApiResponse<object>.Ok(LegacyAdminDtoMapper.ToCiudad(dto), "Ciudad creada exitosamente", HttpContext.TraceIdentifier));
+        }
+        catch (MicroserviceClientException ex) { return FromMs(ex); }
+    }
+
     [HttpPut("ciudades/{id:int}")]
+    public async Task<IActionResult> UpdateCiudad(int id, [FromBody] object body, CancellationToken ct)
+    {
+        try
+        {
+            var dto = await _localizaciones.UpdateCiudadAsync(id, body, ct);
+            return Ok(ApiResponse<object>.Ok(LegacyAdminDtoMapper.ToCiudad(dto), traceId: HttpContext.TraceIdentifier));
+        }
+        catch (MicroserviceClientException ex) { return FromMs(ex); }
+    }
+
     [HttpPut("ciudades/{id:int}/estado")]
+    public async Task<IActionResult> CambiarEstadoCiudad(int id, [FromBody] LegacyCambiarEstadoBody body, CancellationToken ct)
+    {
+        try
+        {
+            await _localizaciones.CambiarEstadoCiudadAsync(id, body.Estado, ct);
+            return Ok(ApiResponse<object>.Ok(new { id, estado = body.Estado }, traceId: HttpContext.TraceIdentifier));
+        }
+        catch (MicroserviceClientException ex) { return FromMs(ex); }
+    }
+
     [HttpDelete("ciudades/{id:int}")]
+    public async Task<IActionResult> DeleteCiudad(int id, CancellationToken ct)
+    {
+        try
+        {
+            await _localizaciones.DeleteCiudadAsync(id, ct);
+            return Ok(ApiResponse<object>.Ok(new { id }, traceId: HttpContext.TraceIdentifier));
+        }
+        catch (MicroserviceClientException ex) { return FromMs(ex); }
+    }
+
     [HttpPost("extras")]
+    public async Task<IActionResult> CreateExtra([FromBody] object body, CancellationToken ct)
+    {
+        try
+        {
+            var dto = await _catalogo.CreateExtraAsync(body, ct);
+            return Ok(ApiResponse<object>.Ok(LegacyAdminDtoMapper.ToExtra(dto), "Extra creado exitosamente", HttpContext.TraceIdentifier));
+        }
+        catch (MicroserviceClientException ex) { return FromMs(ex); }
+    }
+
     [HttpPut("extras/{id:int}")]
+    public async Task<IActionResult> UpdateExtra(int id, [FromBody] object body, CancellationToken ct)
+    {
+        try
+        {
+            var dto = await _catalogo.UpdateExtraAsync(id, body, ct);
+            return Ok(ApiResponse<object>.Ok(LegacyAdminDtoMapper.ToExtra(dto), "Extra actualizado exitosamente", HttpContext.TraceIdentifier));
+        }
+        catch (MicroserviceClientException ex) { return FromMs(ex); }
+    }
+
     [HttpPut("extras/{id:int}/estado")]
+    public async Task<IActionResult> CambiarEstadoExtra(int id, [FromBody] LegacyCambiarEstadoBody body, CancellationToken ct)
+    {
+        try
+        {
+            await _catalogo.CambiarEstadoExtraAsync(id, body.Estado, body.Motivo, ct);
+            return Ok(ApiResponse<object>.Ok(new { id, estado = body.Estado }, traceId: HttpContext.TraceIdentifier));
+        }
+        catch (MicroserviceClientException ex) { return FromMs(ex); }
+    }
+
     [HttpDelete("extras/{id:int}")]
-    public IActionResult NotImplementedWrite()
-        => StatusCode(501, ApiResponse<object>.Fail(501, "Operación de escritura no implementada en middleware; use el monolito o extienda el microservicio.", HttpContext.TraceIdentifier));
+    public async Task<IActionResult> DeleteExtra(int id, CancellationToken ct)
+    {
+        try
+        {
+            await _catalogo.DeleteExtraAsync(id, ct);
+            return Ok(ApiResponse<object>.Ok(new { id }, "Extra eliminado exitosamente", HttpContext.TraceIdentifier));
+        }
+        catch (MicroserviceClientException ex) { return FromMs(ex); }
+    }
 
     private async Task<List<object>> ListAllLocalizacionesAsync(CancellationToken ct)
     {

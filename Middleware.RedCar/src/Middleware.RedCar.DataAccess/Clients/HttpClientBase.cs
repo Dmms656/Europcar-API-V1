@@ -125,6 +125,78 @@ public abstract class HttpClientBase
 
         return await resp.Content.ReadFromJsonAsync<TResponse>(JsonOptions, ct);
     }
+
+    protected async Task<T> PutAsync<TRequest, T>(string relativeUri, TRequest body, CancellationToken ct)
+        where T : class
+        => await SendEnvelopeAsync<T>(HttpMethod.Put, relativeUri, body, ct);
+
+    protected async Task<T> PostEnvelopeAsync<T>(string relativeUri, object body, CancellationToken ct)
+        where T : class
+        => await SendEnvelopeAsync<T>(HttpMethod.Post, relativeUri, body, ct);
+
+    protected async Task DeleteEnvelopeAsync(string relativeUri, CancellationToken ct)
+    {
+        using var resp = await Http.DeleteAsync(relativeUri, ct);
+        await EnsureSuccessEnvelopeAsync(resp, "DELETE", relativeUri, ct);
+    }
+
+    protected Task PutVoidAsync<TRequest>(string relativeUri, TRequest body, CancellationToken ct)
+        => SendEnvelopeVoidAsync(HttpMethod.Put, relativeUri, body, ct);
+
+    private async Task SendEnvelopeVoidAsync(HttpMethod method, string relativeUri, object? body, CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(method, relativeUri);
+        if (body is not null)
+            request.Content = JsonContent.Create(body, options: JsonOptions);
+        using var resp = await Http.SendAsync(request, ct);
+        await EnsureSuccessEnvelopeAsync(resp, method.Method, relativeUri, ct);
+    }
+
+    private async Task<T> SendEnvelopeAsync<T>(HttpMethod method, string relativeUri, object? body, CancellationToken ct)
+        where T : class
+    {
+        using var request = new HttpRequestMessage(method, relativeUri);
+        if (body is not null)
+            request.Content = JsonContent.Create(body, options: JsonOptions);
+
+        using var resp = await Http.SendAsync(request, ct);
+        return await ReadEnvelopeDataAsync<T>(resp, method.Method, relativeUri, ct);
+    }
+
+    private async Task EnsureSuccessEnvelopeAsync(HttpResponseMessage resp, string verb, string relativeUri, CancellationToken ct)
+    {
+        MsApiEnvelope<object>? envelope = null;
+        try { envelope = await resp.Content.ReadFromJsonAsync<MsApiEnvelope<object>>(JsonOptions, ct); }
+        catch { /* ignore */ }
+
+        if (resp.IsSuccessStatusCode && (envelope is null || envelope.Success))
+            return;
+
+        var status = envelope?.StatusCode > 0 ? envelope.StatusCode : (int)resp.StatusCode;
+        var message = envelope?.Message ?? $"Downstream {verb} {Http.BaseAddress}{relativeUri} respondio {status}.";
+        throw new MicroserviceClientException((HttpStatusCode)status, message);
+    }
+
+    private async Task<T> ReadEnvelopeDataAsync<T>(HttpResponseMessage resp, string verb, string relativeUri, CancellationToken ct)
+        where T : class
+    {
+        MsApiEnvelope<T>? envelope = null;
+        try { envelope = await resp.Content.ReadFromJsonAsync<MsApiEnvelope<T>>(JsonOptions, ct); }
+        catch { /* ignore */ }
+
+        if (resp.IsSuccessStatusCode && envelope?.Data is not null && envelope.Success)
+            return envelope.Data;
+
+        var status = envelope?.StatusCode > 0 ? envelope.StatusCode : (int)resp.StatusCode;
+        var message = envelope?.Message ?? $"Downstream {verb} {Http.BaseAddress}{relativeUri} respondio {status}.";
+        Logger.LogWarning("HTTP {Status} desde {Service} {Verb} {Uri}: {Body}",
+            status, Http.BaseAddress, verb, relativeUri, await resp.Content.ReadAsStringAsync(ct));
+
+        if (status is 408 or 504)
+            throw new TimeoutException(message);
+
+        throw new MicroserviceClientException((HttpStatusCode)status, message);
+    }
 }
 
 /// <summary>

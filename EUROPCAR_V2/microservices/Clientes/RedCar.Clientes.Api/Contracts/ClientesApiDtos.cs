@@ -1,5 +1,24 @@
 namespace RedCar.Clientes.Api.Contracts;
 
+public class CrearClienteRequest
+{
+    public string TipoIdentificacion { get; set; } = string.Empty;
+    public string NumeroIdentificacion { get; set; } = string.Empty;
+    public string Nombre1 { get; set; } = string.Empty;
+    public string? Nombre2 { get; set; }
+    public string Apellido1 { get; set; } = string.Empty;
+    public string? Apellido2 { get; set; }
+    public DateOnly FechaNacimiento { get; set; }
+    public string Telefono { get; set; } = string.Empty;
+    public string Correo { get; set; } = string.Empty;
+    public string? DireccionPrincipal { get; set; }
+}
+
+public sealed class ActualizarClienteRequest : CrearClienteRequest
+{
+    public long RowVersion { get; set; }
+}
+
 public sealed class ClienteUpsertRequest
 {
     public string Nombres { get; set; } = string.Empty;

@@ -2,6 +2,7 @@ using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Middleware.RedCar.Api.Compatibility;
+using Middleware.RedCar.DataAccess.Clients;
 using Middleware.RedCar.DataAccess.Clients.Interfaces;
 using RedCar.Shared.Contracts.Common;
 
@@ -56,9 +57,58 @@ public sealed class LegacyAdminLocalizacionesController : ControllerBase
     }
 
     [HttpPost]
+    public async Task<IActionResult> Create([FromBody] object body, CancellationToken ct)
+    {
+        try
+        {
+            var dto = await _localizaciones.CreateLocalizacionAsync(body, ct);
+            return Ok(ApiResponse<object>.Ok(LegacyAdminDtoMapper.ToLocalizacion(dto), "Localización creada exitosamente", HttpContext.TraceIdentifier));
+        }
+        catch (MicroserviceClientException ex)
+        {
+            return StatusCode((int)ex.StatusCode, ApiResponse<object>.Fail((int)ex.StatusCode, ex.Message, HttpContext.TraceIdentifier));
+        }
+    }
+
     [HttpPut("{id:int}")]
+    public async Task<IActionResult> Update(int id, [FromBody] object body, CancellationToken ct)
+    {
+        try
+        {
+            var dto = await _localizaciones.UpdateLocalizacionAsync(id, body, ct);
+            return Ok(ApiResponse<object>.Ok(LegacyAdminDtoMapper.ToLocalizacion(dto), "Localización actualizada exitosamente", HttpContext.TraceIdentifier));
+        }
+        catch (MicroserviceClientException ex)
+        {
+            return StatusCode((int)ex.StatusCode, ApiResponse<object>.Fail((int)ex.StatusCode, ex.Message, HttpContext.TraceIdentifier));
+        }
+    }
+
     [HttpPut("{id:int}/estado")]
+    public async Task<IActionResult> CambiarEstado(int id, [FromBody] LegacyCambiarEstadoBody body, CancellationToken ct)
+    {
+        try
+        {
+            await _localizaciones.CambiarEstadoLocalizacionAsync(id, body.Estado, body.Motivo, ct);
+            return Ok(ApiResponse<object>.Ok(new { id, estado = body.Estado }, traceId: HttpContext.TraceIdentifier));
+        }
+        catch (MicroserviceClientException ex)
+        {
+            return StatusCode((int)ex.StatusCode, ApiResponse<object>.Fail((int)ex.StatusCode, ex.Message, HttpContext.TraceIdentifier));
+        }
+    }
+
     [HttpDelete("{id:int}")]
-    public IActionResult NotImplementedWrite()
-        => StatusCode(501, ApiResponse<object>.Fail(501, "Alta/edición de localizaciones no implementada en middleware.", HttpContext.TraceIdentifier));
+    public async Task<IActionResult> Delete(int id, CancellationToken ct)
+    {
+        try
+        {
+            await _localizaciones.DeleteLocalizacionAsync(id, ct);
+            return Ok(ApiResponse<object>.Ok(new { id }, "Localización eliminada exitosamente", HttpContext.TraceIdentifier));
+        }
+        catch (MicroserviceClientException ex)
+        {
+            return StatusCode((int)ex.StatusCode, ApiResponse<object>.Fail((int)ex.StatusCode, ex.Message, HttpContext.TraceIdentifier));
+        }
+    }
 }

@@ -55,4 +55,82 @@ public sealed class CiudadesController : ControllerBase
 
         return Ok(ApiResponse<IReadOnlyList<PaisDto>>.Ok(paises, traceId: HttpContext.TraceIdentifier));
     }
+
+    [HttpPost]
+    public async Task<ActionResult<ApiResponse<CiudadDto>>> Create([FromBody] CrearCiudadRequest req, CancellationToken ct)
+    {
+        var entity = new RedCar.Localizaciones.DataAccess.Entities.Ciudad
+        {
+            CiudadGuid = Guid.NewGuid(),
+            IdPais = req.IdPais > 0 ? req.IdPais : 1,
+            NombreCiudad = req.NombreCiudad.Trim(),
+            EstadoCiudad = "ACT",
+            EsEliminado = false,
+            FechaRegistroUtc = DateTimeOffset.UtcNow,
+            CreadoPorUsuario = User?.Identity?.Name ?? "ADMIN_API",
+            OrigenRegistro = "ADMIN_API"
+        };
+        _db.Ciudades.Add(entity);
+        await _db.SaveChangesAsync(ct);
+        return Ok(ApiResponse<CiudadDto>.Ok(new CiudadDto
+        {
+            IdCiudad = entity.IdCiudad,
+            CiudadGuid = entity.CiudadGuid,
+            IdPais = entity.IdPais,
+            NombreCiudad = entity.NombreCiudad,
+            EstadoCiudad = entity.EstadoCiudad
+        }, "Ciudad creada exitosamente", HttpContext.TraceIdentifier));
+    }
+
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<ApiResponse<CiudadDto>>> Update(int id, [FromBody] CrearCiudadRequest req, CancellationToken ct)
+    {
+        var entity = await _db.Ciudades.FirstOrDefaultAsync(c => c.IdCiudad == id && !c.EsEliminado, ct);
+        if (entity is null)
+            return NotFound(ApiResponse<CiudadDto>.Fail(404, "Ciudad no encontrada", HttpContext.TraceIdentifier));
+
+        entity.NombreCiudad = req.NombreCiudad.Trim();
+        entity.IdPais = req.IdPais > 0 ? req.IdPais : entity.IdPais;
+        entity.ModificadoPorUsuario = User?.Identity?.Name ?? "ADMIN_API";
+        entity.FechaModificacionUtc = DateTimeOffset.UtcNow;
+        entity.RowVersion++;
+        await _db.SaveChangesAsync(ct);
+        return Ok(ApiResponse<CiudadDto>.Ok(new CiudadDto
+        {
+            IdCiudad = entity.IdCiudad,
+            CiudadGuid = entity.CiudadGuid,
+            IdPais = entity.IdPais,
+            NombreCiudad = entity.NombreCiudad,
+            EstadoCiudad = entity.EstadoCiudad
+        }, traceId: HttpContext.TraceIdentifier));
+    }
+
+    [HttpPut("{id:int}/estado")]
+    public async Task<ActionResult<ApiResponse<object>>> CambiarEstado(int id, [FromBody] CambiarEstadoRequest req, CancellationToken ct)
+    {
+        var entity = await _db.Ciudades.FirstOrDefaultAsync(c => c.IdCiudad == id && !c.EsEliminado, ct);
+        if (entity is null)
+            return NotFound(ApiResponse<object>.Fail(404, "Ciudad no encontrada", HttpContext.TraceIdentifier));
+
+        entity.EstadoCiudad = (req.Estado ?? "ACT").Trim().ToUpperInvariant() is "INA" ? "INA" : "ACT";
+        entity.ModificadoPorUsuario = User?.Identity?.Name ?? "ADMIN_API";
+        entity.FechaModificacionUtc = DateTimeOffset.UtcNow;
+        entity.RowVersion++;
+        await _db.SaveChangesAsync(ct);
+        return Ok(ApiResponse<object>.Ok(new { id, estado = entity.EstadoCiudad }, traceId: HttpContext.TraceIdentifier));
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<ActionResult<ApiResponse<object>>> Delete(int id, CancellationToken ct)
+    {
+        var entity = await _db.Ciudades.FirstOrDefaultAsync(c => c.IdCiudad == id && !c.EsEliminado, ct);
+        if (entity is null)
+            return NotFound(ApiResponse<object>.Fail(404, "Ciudad no encontrada", HttpContext.TraceIdentifier));
+
+        entity.EsEliminado = true;
+        entity.EstadoCiudad = "INA";
+        entity.RowVersion++;
+        await _db.SaveChangesAsync(ct);
+        return Ok(ApiResponse<object>.Ok(new { id }, traceId: HttpContext.TraceIdentifier));
+    }
 }

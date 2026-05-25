@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using RedCar.Catalogo.Api.Extensions;
 using RedCar.Catalogo.Api.Grpc;
+using RedCar.Catalogo.Api.Services;
 using RedCar.Catalogo.DataAccess.Context;
 using RedCar.Shared.Auth;
 using RedCar.Shared.Contracts.Common;
@@ -32,6 +33,7 @@ builder.Services.AddDbContext<CatalogoDbContext>(options =>
 });
 
 builder.Services.AddRedCarJwt(builder.Configuration);
+builder.Services.AddScoped<VehiculosAdminService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

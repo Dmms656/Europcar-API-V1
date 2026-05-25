@@ -61,6 +61,30 @@ public sealed class CatalogoClient : HttpClientBase, ICatalogoClient
         return envelope?.Data;
     }
 
+    public Task<VehiculoAdminDto> CreateVehiculoAsync(object request, CancellationToken ct = default)
+        => PostEnvelopeAsync<VehiculoAdminDto>("/api/v1/vehiculos", request, ct);
+
+    public Task<VehiculoAdminDto> UpdateVehiculoAsync(int id, object request, CancellationToken ct = default)
+        => PutAsync<object, VehiculoAdminDto>($"/api/v1/vehiculos/{id}", request, ct);
+
+    public Task CambiarEstadoOperativoVehiculoAsync(int id, string estadoOperativo, CancellationToken ct = default)
+        => PutVoidAsync($"/api/v1/vehiculos/{id}/estado-operativo", new { estadoOperativo }, ct);
+
+    public Task DeleteVehiculoAsync(int id, CancellationToken ct = default)
+        => DeleteEnvelopeAsync($"/api/v1/vehiculos/{id}", ct);
+
+    public Task<ExtraDto> CreateExtraAsync(object request, CancellationToken ct = default)
+        => PostEnvelopeAsync<ExtraDto>("/api/v1/extras", request, ct);
+
+    public Task<ExtraDto> UpdateExtraAsync(int id, object request, CancellationToken ct = default)
+        => PutAsync<object, ExtraDto>($"/api/v1/extras/{id}", request, ct);
+
+    public Task CambiarEstadoExtraAsync(int id, string estado, string? motivo, CancellationToken ct = default)
+        => PutVoidAsync($"/api/v1/extras/{id}/estado", new { estado, motivo }, ct);
+
+    public async Task DeleteExtraAsync(int id, CancellationToken ct = default)
+        => await DeleteEnvelopeAsync($"/api/v1/extras/{id}", ct);
+
     public async Task<IReadOnlyList<ExtraDto>?> GetExtrasByIdsAsync(IEnumerable<int> idExtras, CancellationToken ct = default)
     {
         var ids = string.Join(',', idExtras.Select(i => i.ToString(CultureInfo.InvariantCulture)));

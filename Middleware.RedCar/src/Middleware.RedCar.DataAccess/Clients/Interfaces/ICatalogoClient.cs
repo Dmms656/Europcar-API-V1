@@ -15,6 +15,22 @@ public interface ICatalogoClient
     Task<IReadOnlyList<MarcaDto>?> ListMarcasAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<VehiculoAdminDto>?> ListInventarioAsync(int page = 1, int limit = 500, CancellationToken ct = default);
+
+    Task<VehiculoAdminDto> CreateVehiculoAsync(object request, CancellationToken ct = default);
+
+    Task<VehiculoAdminDto> UpdateVehiculoAsync(int id, object request, CancellationToken ct = default);
+
+    Task CambiarEstadoOperativoVehiculoAsync(int id, string estadoOperativo, CancellationToken ct = default);
+
+    Task DeleteVehiculoAsync(int id, CancellationToken ct = default);
+
+    Task<ExtraDto> CreateExtraAsync(object request, CancellationToken ct = default);
+
+    Task<ExtraDto> UpdateExtraAsync(int id, object request, CancellationToken ct = default);
+
+    Task CambiarEstadoExtraAsync(int id, string estado, string? motivo, CancellationToken ct = default);
+
+    Task DeleteExtraAsync(int id, CancellationToken ct = default);
 }
 
 public sealed record VehiculoQuery(
@@ -59,9 +75,12 @@ public sealed record CategoriaDto(
 
 public sealed record ExtraDto(
     int IdExtra,
+    Guid ExtraGuid,
     string Codigo,
     string Nombre,
     string Descripcion,
+    string TipoExtra,
+    bool RequiereStock,
     decimal ValorFijo,
     string Estado);
 

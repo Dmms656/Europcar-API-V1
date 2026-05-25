@@ -31,6 +31,7 @@ public static class LegacyAdminDtoMapper
     {
         id = e.IdExtra,
         idExtra = e.IdExtra,
+        extraGuid = e.ExtraGuid,
         codigo = e.Codigo,
         codigoExtra = e.Codigo,
         nombre = e.Nombre,
@@ -40,8 +41,8 @@ public static class LegacyAdminDtoMapper
         valorFijo = e.ValorFijo,
         estado = e.Estado,
         estadoExtra = e.Estado,
-        tipoExtra = "SERVICIO",
-        requiereStock = false
+        tipoExtra = e.TipoExtra,
+        requiereStock = e.RequiereStock
     };
 
     public static object ToLocalizacion(LocalizacionDto l) => new

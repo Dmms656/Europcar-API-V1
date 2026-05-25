@@ -81,6 +81,87 @@ public sealed class ClientesController : ControllerBase
         }
     }
 
+    [HttpPost]
+    public async Task<ActionResult<ApiResponse<ClienteListItemDto>>> Create(
+        [FromBody] CrearClienteRequest req,
+        CancellationToken ct)
+    {
+        var tipoDb = ClientesApiMapper.ToDbTipoIdentificacion(req.TipoIdentificacion);
+        var numero = (req.NumeroIdentificacion ?? string.Empty).Trim();
+        if (string.IsNullOrEmpty(numero))
+            return BadRequest(ApiResponse<ClienteListItemDto>.Fail(400, "Número de identificación requerido.", HttpContext.TraceIdentifier));
+
+        if (await _db.Clientes.AnyAsync(c => c.NumeroIdentificacion == numero && !c.EsEliminado, ct))
+            return Conflict(ApiResponse<ClienteListItemDto>.Fail(409, "Cliente ya registrado.", HttpContext.TraceIdentifier));
+
+        var entity = new Cliente
+        {
+            ClienteGuid = Guid.NewGuid(),
+            CodigoCliente = BuildCodigoCliente(tipoDb, numero),
+            TipoIdentificacion = tipoDb,
+            NumeroIdentificacion = numero,
+            CliNombre1 = req.Nombre1.Trim(),
+            CliNombre2 = req.Nombre2?.Trim(),
+            CliApellido1 = req.Apellido1.Trim(),
+            CliApellido2 = req.Apellido2?.Trim(),
+            FechaNacimiento = req.FechaNacimiento == default ? DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-25)) : req.FechaNacimiento,
+            CliTelefono = req.Telefono.Trim(),
+            CliCorreo = req.Correo.Trim(),
+            DireccionPrincipal = req.DireccionPrincipal?.Trim(),
+            EstadoCliente = "ACT",
+            EsEliminado = false,
+            FechaRegistroUtc = DateTimeOffset.UtcNow,
+            CreadoPorUsuario = "ADMIN_API",
+            OrigenRegistro = "ADMIN_API"
+        };
+        _db.Clientes.Add(entity);
+        await _db.SaveChangesAsync(ct);
+        return Ok(ApiResponse<ClienteListItemDto>.Ok(MapListItem(entity), "Cliente creado exitosamente", HttpContext.TraceIdentifier));
+    }
+
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<ApiResponse<ClienteListItemDto>>> Update(
+        int id,
+        [FromBody] ActualizarClienteRequest req,
+        CancellationToken ct)
+    {
+        var entity = await _db.Clientes.FirstOrDefaultAsync(c => c.IdCliente == id && !c.EsEliminado, ct);
+        if (entity is null)
+            return NotFound(ApiResponse<ClienteListItemDto>.Fail(404, "Cliente no encontrado.", HttpContext.TraceIdentifier));
+
+        entity.TipoIdentificacion = ClientesApiMapper.ToDbTipoIdentificacion(req.TipoIdentificacion);
+        entity.NumeroIdentificacion = req.NumeroIdentificacion.Trim();
+        entity.CliNombre1 = req.Nombre1.Trim();
+        entity.CliNombre2 = req.Nombre2?.Trim();
+        entity.CliApellido1 = req.Apellido1.Trim();
+        entity.CliApellido2 = req.Apellido2?.Trim();
+        entity.FechaNacimiento = req.FechaNacimiento;
+        entity.CliTelefono = req.Telefono.Trim();
+        entity.CliCorreo = req.Correo.Trim();
+        entity.DireccionPrincipal = req.DireccionPrincipal?.Trim();
+        entity.ModificadoPorUsuario = "ADMIN_API";
+        entity.FechaModificacionUtc = DateTimeOffset.UtcNow;
+        entity.RowVersion = req.RowVersion > 0 ? req.RowVersion : entity.RowVersion + 1;
+        await _db.SaveChangesAsync(ct);
+        return Ok(ApiResponse<ClienteListItemDto>.Ok(MapListItem(entity), "Cliente actualizado exitosamente", HttpContext.TraceIdentifier));
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<ActionResult<ApiResponse<object>>> Delete(int id, CancellationToken ct)
+    {
+        var entity = await _db.Clientes.FirstOrDefaultAsync(c => c.IdCliente == id && !c.EsEliminado, ct);
+        if (entity is null)
+            return NotFound(ApiResponse<object>.Fail(404, "Cliente no encontrado.", HttpContext.TraceIdentifier));
+
+        entity.EsEliminado = true;
+        entity.EstadoCliente = "INA";
+        entity.ModificadoPorUsuario = "ADMIN_API";
+        entity.FechaModificacionUtc = DateTimeOffset.UtcNow;
+        entity.RowVersion++;
+        await _db.SaveChangesAsync(ct);
+        return Ok(ApiResponse<object>.Ok(new { id }, "Cliente eliminado exitosamente", HttpContext.TraceIdentifier));
+    }
+
     [HttpPost("upsert")]
     public async Task<ActionResult<ApiResponse<ClienteUpsertResult>>> Upsert([FromBody] ClienteUpsertRequest req, CancellationToken ct)
     {

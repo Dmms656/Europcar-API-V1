@@ -11,6 +11,22 @@ public interface ILocalizacionesClient
     Task<IReadOnlyList<CiudadDto>?> ListCiudadesAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<PaisDto>?> ListPaisesAsync(CancellationToken ct = default);
+
+    Task<LocalizacionDto> CreateLocalizacionAsync(object request, CancellationToken ct = default);
+
+    Task<LocalizacionDto> UpdateLocalizacionAsync(int id, object request, CancellationToken ct = default);
+
+    Task CambiarEstadoLocalizacionAsync(int id, string estado, string? motivo, CancellationToken ct = default);
+
+    Task DeleteLocalizacionAsync(int id, CancellationToken ct = default);
+
+    Task<CiudadDto> CreateCiudadAsync(object request, CancellationToken ct = default);
+
+    Task<CiudadDto> UpdateCiudadAsync(int id, object request, CancellationToken ct = default);
+
+    Task CambiarEstadoCiudadAsync(int id, string estado, CancellationToken ct = default);
+
+    Task DeleteCiudadAsync(int id, CancellationToken ct = default);
 }
 
 public sealed record CiudadDto(int IdCiudad, Guid CiudadGuid, int IdPais, string NombreCiudad, string EstadoCiudad);

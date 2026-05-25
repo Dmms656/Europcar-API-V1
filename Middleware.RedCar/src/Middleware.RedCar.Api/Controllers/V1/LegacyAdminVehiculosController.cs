@@ -1,7 +1,9 @@
+using System.Security.Claims;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Middleware.RedCar.Api.Compatibility;
+using Middleware.RedCar.DataAccess.Clients;
 using Middleware.RedCar.DataAccess.Clients.Interfaces;
 using RedCar.Shared.Contracts.Common;
 
@@ -44,9 +46,63 @@ public sealed class LegacyAdminVehiculosController : ControllerBase
     }
 
     [HttpPost]
+    public async Task<IActionResult> Create([FromBody] object body, CancellationToken ct)
+    {
+        try
+        {
+            var dto = await _catalogo.CreateVehiculoAsync(body, ct);
+            return Ok(ApiResponse<object>.Ok(LegacyAdminDtoMapper.ToVehiculo(dto), "Vehículo creado exitosamente", HttpContext.TraceIdentifier));
+        }
+        catch (MicroserviceClientException ex)
+        {
+            return StatusCode((int)ex.StatusCode, ApiResponse<object>.Fail((int)ex.StatusCode, ex.Message, HttpContext.TraceIdentifier));
+        }
+    }
+
     [HttpPut("{id:int}")]
+    public async Task<IActionResult> Update(int id, [FromBody] object body, CancellationToken ct)
+    {
+        try
+        {
+            var dto = await _catalogo.UpdateVehiculoAsync(id, body, ct);
+            return Ok(ApiResponse<object>.Ok(LegacyAdminDtoMapper.ToVehiculo(dto), "Vehículo actualizado exitosamente", HttpContext.TraceIdentifier));
+        }
+        catch (MicroserviceClientException ex)
+        {
+            return StatusCode((int)ex.StatusCode, ApiResponse<object>.Fail((int)ex.StatusCode, ex.Message, HttpContext.TraceIdentifier));
+        }
+    }
+
     [HttpPut("{id:int}/estado-operativo")]
+    public async Task<IActionResult> CambiarEstadoOperativo(int id, [FromBody] CambiarEstadoVehiculoBody body, CancellationToken ct)
+    {
+        try
+        {
+            await _catalogo.CambiarEstadoOperativoVehiculoAsync(id, body.EstadoOperativo, ct);
+            return Ok(ApiResponse<object>.Ok(new { id, estadoOperativo = body.EstadoOperativo }, traceId: HttpContext.TraceIdentifier));
+        }
+        catch (MicroserviceClientException ex)
+        {
+            return StatusCode((int)ex.StatusCode, ApiResponse<object>.Fail((int)ex.StatusCode, ex.Message, HttpContext.TraceIdentifier));
+        }
+    }
+
     [HttpDelete("{id:int}")]
-    public IActionResult NotImplementedWrite()
-        => StatusCode(501, ApiResponse<object>.Fail(501, "CRUD de vehículos no implementado en middleware.", HttpContext.TraceIdentifier));
+    public async Task<IActionResult> Delete(int id, CancellationToken ct)
+    {
+        try
+        {
+            await _catalogo.DeleteVehiculoAsync(id, ct);
+            return Ok(ApiResponse<object>.Ok(new { id }, "Vehículo eliminado exitosamente", HttpContext.TraceIdentifier));
+        }
+        catch (MicroserviceClientException ex)
+        {
+            return StatusCode((int)ex.StatusCode, ApiResponse<object>.Fail((int)ex.StatusCode, ex.Message, HttpContext.TraceIdentifier));
+        }
+    }
+}
+
+public sealed class CambiarEstadoVehiculoBody
+{
+    public string EstadoOperativo { get; set; } = string.Empty;
 }

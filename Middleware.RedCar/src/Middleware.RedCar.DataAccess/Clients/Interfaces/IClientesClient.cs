@@ -17,6 +17,12 @@ public interface IClientesClient
 
     Task<IReadOnlyList<ClienteListItemDto>?> ListAllAsync(int page = 1, int limit = 500, CancellationToken ct = default);
 
+    Task<ClienteListItemDto> CreateClienteAsync(object request, CancellationToken ct = default);
+
+    Task<ClienteListItemDto> UpdateClienteAsync(int id, object request, CancellationToken ct = default);
+
+    Task DeleteClienteAsync(int id, CancellationToken ct = default);
+
     /// <summary>
     /// Upsert masivo de conductores asociados a un cliente.
     /// </summary>

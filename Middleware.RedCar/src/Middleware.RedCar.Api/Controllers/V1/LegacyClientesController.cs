@@ -2,6 +2,7 @@ using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Middleware.RedCar.Api.Compatibility;
+using Middleware.RedCar.DataAccess.Clients;
 using Middleware.RedCar.DataAccess.Clients.Interfaces;
 using RedCar.Shared.Contracts.Common;
 
@@ -41,8 +42,44 @@ public sealed class LegacyClientesController : ControllerBase
     }
 
     [HttpPost]
+    public async Task<IActionResult> Create([FromBody] object body, CancellationToken ct)
+    {
+        try
+        {
+            var dto = await _clientes.CreateClienteAsync(body, ct);
+            return Ok(ApiResponse<object>.Ok(LegacyAdminDtoMapper.ToCliente(dto), "Cliente creado exitosamente", HttpContext.TraceIdentifier));
+        }
+        catch (MicroserviceClientException ex)
+        {
+            return StatusCode((int)ex.StatusCode, ApiResponse<object>.Fail((int)ex.StatusCode, ex.Message, HttpContext.TraceIdentifier));
+        }
+    }
+
     [HttpPut("{id:int}")]
+    public async Task<IActionResult> Update(int id, [FromBody] object body, CancellationToken ct)
+    {
+        try
+        {
+            var dto = await _clientes.UpdateClienteAsync(id, body, ct);
+            return Ok(ApiResponse<object>.Ok(LegacyAdminDtoMapper.ToCliente(dto), "Cliente actualizado exitosamente", HttpContext.TraceIdentifier));
+        }
+        catch (MicroserviceClientException ex)
+        {
+            return StatusCode((int)ex.StatusCode, ApiResponse<object>.Fail((int)ex.StatusCode, ex.Message, HttpContext.TraceIdentifier));
+        }
+    }
+
     [HttpDelete("{id:int}")]
-    public IActionResult NotImplementedWrite()
-        => StatusCode(501, ApiResponse<object>.Fail(501, "CRUD de clientes no implementado; use registro web o upsert en MS Clientes.", HttpContext.TraceIdentifier));
+    public async Task<IActionResult> Delete(int id, CancellationToken ct)
+    {
+        try
+        {
+            await _clientes.DeleteClienteAsync(id, ct);
+            return Ok(ApiResponse<object>.Ok(new { id }, "Cliente eliminado exitosamente", HttpContext.TraceIdentifier));
+        }
+        catch (MicroserviceClientException ex)
+        {
+            return StatusCode((int)ex.StatusCode, ApiResponse<object>.Fail((int)ex.StatusCode, ex.Message, HttpContext.TraceIdentifier));
+        }
+    }
 }

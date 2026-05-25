@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RedCar.Catalogo.Api.Contracts;
 using RedCar.Catalogo.DataAccess.Context;
+using RedCar.Catalogo.Api.Services;
 using RedCar.Shared.Contracts.Common;
 
 namespace RedCar.Catalogo.Api.Controllers;
@@ -12,8 +13,13 @@ public sealed class VehiculosController : ControllerBase
 {
     private static readonly TimeSpan QueryTimeout = TimeSpan.FromSeconds(8);
     private readonly CatalogoDbContext _db;
+    private readonly VehiculosAdminService _admin;
 
-    public VehiculosController(CatalogoDbContext db) => _db = db;
+    public VehiculosController(CatalogoDbContext db, VehiculosAdminService admin)
+    {
+        _db = db;
+        _admin = admin;
+    }
 
     [HttpGet]
     public async Task<ActionResult<ApiResponse<PagedDto<VehiculoCatalogoDto>>>> GetList(
@@ -162,43 +168,109 @@ public sealed class VehiculosController : ControllerBase
         return Ok(ApiResponse<IReadOnlyList<VehiculoAdminDto>>.Ok(rows, traceId: HttpContext.TraceIdentifier));
     }
 
-    [HttpGet("{id:int}")]
-    public async Task<ActionResult<ApiResponse<VehiculoCatalogoDto>>> GetById(int id, CancellationToken ct)
+    [HttpPost]
+    public async Task<ActionResult<ApiResponse<VehiculoAdminDto>>> Create(
+        [FromBody] CrearVehiculoRequest request,
+        CancellationToken ct)
     {
-        var dto = await _db.Vehiculos
-            .AsNoTracking()
-            .Where(x => x.IdVehiculo == id && !x.EsEliminado)
-            .Select(v => new VehiculoCatalogoDto
-            {
-                IdVehiculo = v.IdVehiculo,
-                CodigoInterno = v.CodigoInternoVehiculo,
-                IdMarca = v.IdMarca,
-                Marca = v.Marca != null ? v.Marca.NombreMarca : string.Empty,
-                IdCategoria = v.IdCategoria,
-                CategoriaCodigo = v.Categoria != null ? v.Categoria.CodigoCategoria : string.Empty,
-                CategoriaNombre = v.Categoria != null ? v.Categoria.NombreCategoria : string.Empty,
-                Modelo = v.ModeloVehiculo,
-                Anio = v.AnioFabricacion,
-                Color = v.ColorVehiculo,
-                ImagenUrl = v.ImagenReferencialUrl ?? string.Empty,
-                Transmision = v.TipoTransmision,
-                Combustible = v.TipoCombustible,
-                CapacidadPasajeros = v.CapacidadPasajeros,
-                CapacidadMaletas = v.CapacidadMaletas,
-                NumeroPuertas = v.NumeroPuertas,
-                AireAcondicionado = v.AireAcondicionado,
-                Estado = v.EstadoOperativo,
-                IdLocalizacion = v.LocalizacionActual,
-                PrecioBaseDia = v.PrecioBaseDia
-            })
-            .FirstOrDefaultAsync(ct);
-
-        if (dto is null)
+        try
         {
-            return NotFound(ApiResponse<VehiculoCatalogoDto>.Fail(404, "Vehiculo no encontrado.", HttpContext.TraceIdentifier));
+            var usuario = User?.Identity?.Name ?? "ADMIN_API";
+            var dto = await _admin.CreateAsync(request, usuario, ct);
+            return Ok(ApiResponse<VehiculoAdminDto>.Ok(dto, "Vehículo creado exitosamente", HttpContext.TraceIdentifier));
         }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<VehiculoAdminDto>.Fail(404, ex.Message, HttpContext.TraceIdentifier));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<VehiculoAdminDto>.Fail(409, ex.Message, HttpContext.TraceIdentifier));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<VehiculoAdminDto>.Fail(400, ex.Message, HttpContext.TraceIdentifier));
+        }
+    }
 
-        return Ok(ApiResponse<VehiculoCatalogoDto>.Ok(dto, traceId: HttpContext.TraceIdentifier));
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<ApiResponse<VehiculoAdminDto>>> Update(
+        int id,
+        [FromBody] ActualizarVehiculoRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            var usuario = User?.Identity?.Name ?? "ADMIN_API";
+            var dto = await _admin.UpdateAsync(id, request, usuario, ct);
+            return Ok(ApiResponse<VehiculoAdminDto>.Ok(dto, "Vehículo actualizado exitosamente", HttpContext.TraceIdentifier));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<VehiculoAdminDto>.Fail(404, ex.Message, HttpContext.TraceIdentifier));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<VehiculoAdminDto>.Fail(409, ex.Message, HttpContext.TraceIdentifier));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<VehiculoAdminDto>.Fail(400, ex.Message, HttpContext.TraceIdentifier));
+        }
+    }
+
+    [HttpPut("{id:int}/estado-operativo")]
+    public async Task<ActionResult<ApiResponse<object>>> CambiarEstadoOperativo(
+        int id,
+        [FromBody] CambiarEstadoVehiculoRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            var usuario = User?.Identity?.Name ?? "ADMIN_API";
+            await _admin.CambiarEstadoAsync(id, request, usuario, ct);
+            return Ok(ApiResponse<object>.Ok(
+                new { id, estadoOperativo = request.EstadoOperativo },
+                "Estado operativo actualizado",
+                HttpContext.TraceIdentifier));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.Fail(404, ex.Message, HttpContext.TraceIdentifier));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<object>.Fail(409, ex.Message, HttpContext.TraceIdentifier));
+        }
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<ActionResult<ApiResponse<object>>> Delete(int id, CancellationToken ct)
+    {
+        try
+        {
+            var usuario = User?.Identity?.Name ?? "ADMIN_API";
+            await _admin.DeleteAsync(id, usuario, ct);
+            return Ok(ApiResponse<object>.Ok(new { id }, "Vehículo eliminado exitosamente", HttpContext.TraceIdentifier));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.Fail(404, ex.Message, HttpContext.TraceIdentifier));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<object>.Fail(409, ex.Message, HttpContext.TraceIdentifier));
+        }
+    }
+
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<ApiResponse<VehiculoAdminDto>>> GetById(int id, CancellationToken ct)
+    {
+        var admin = await _admin.MapAdminAsync(id, ct);
+        if (admin is null)
+            return NotFound(ApiResponse<VehiculoAdminDto>.Fail(404, "Vehiculo no encontrado.", HttpContext.TraceIdentifier));
+
+        return Ok(ApiResponse<VehiculoAdminDto>.Ok(admin, traceId: HttpContext.TraceIdentifier));
     }
 
     private static PagedDto<VehiculoCatalogoDto> BuildPaged(IReadOnlyList<VehiculoCatalogoDto> items, int page, int limit, bool hasNext)

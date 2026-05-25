@@ -35,6 +35,15 @@ public sealed class ClientesClient : HttpClientBase, IClientesClient
         return envelope?.Data;
     }
 
+    public Task<ClienteListItemDto> CreateClienteAsync(object request, CancellationToken ct = default)
+        => PostEnvelopeAsync<ClienteListItemDto>("/api/v1/clientes", request, ct);
+
+    public Task<ClienteListItemDto> UpdateClienteAsync(int id, object request, CancellationToken ct = default)
+        => PutAsync<object, ClienteListItemDto>($"/api/v1/clientes/{id}", request, ct);
+
+    public Task DeleteClienteAsync(int id, CancellationToken ct = default)
+        => DeleteEnvelopeAsync($"/api/v1/clientes/{id}", ct);
+
     public async Task<IReadOnlyList<ConductorUpsertResult>?> UpsertConductoresAsync(int idCliente, IReadOnlyList<ConductorUpsertRequest> conductores, CancellationToken ct = default)
     {
         var envelope = await PostAsync<IReadOnlyList<ConductorUpsertRequest>, MsApiEnvelope<IReadOnlyList<ConductorUpsertResult>>>(
