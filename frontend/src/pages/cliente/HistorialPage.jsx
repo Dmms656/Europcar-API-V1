@@ -34,7 +34,8 @@ export default function HistorialPage() {
   const loadReservas = async () => {
     setLoading(true);
     try {
-      const idCliente = user?.idCliente;
+      const profile = await useAuthStore.getState().refreshProfile();
+      const idCliente = profile?.idCliente ?? useAuthStore.getState().user?.idCliente;
       if (!idCliente) { setLoading(false); return; }
       const res = await reservasApi.getByCliente(idCliente);
       const data = res.data?.data;

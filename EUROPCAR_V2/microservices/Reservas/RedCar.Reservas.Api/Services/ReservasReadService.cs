@@ -91,6 +91,88 @@ public sealed class ReservasReadService
         };
     }
 
+    public async Task<IReadOnlyList<ClienteReservaListItemDto>> ListByClienteAsync(int idCliente, CancellationToken ct)
+    {
+        var rows = await _db.Reservas
+            .AsNoTracking()
+            .Include(x => x.Extras)
+            .Where(r => r.IdCliente == idCliente)
+            .OrderByDescending(r => r.FechaRegistroUtc)
+            .ToListAsync(ct);
+
+        if (rows.Count == 0)
+        {
+            return Array.Empty<ClienteReservaListItemDto>();
+        }
+
+        var vehiculoCache = new Dictionary<int, CatalogoVehiculoPayload?>();
+        var cliente = await GetClienteAsync(idCliente, ct);
+        var nombreCliente = cliente is null
+            ? null
+            : $"{cliente.Nombres} {cliente.Apellidos}".Trim();
+
+        var result = new List<ClienteReservaListItemDto>(rows.Count);
+        foreach (var r in rows)
+        {
+            if (!vehiculoCache.TryGetValue(r.IdVehiculo, out var vehiculo))
+            {
+                vehiculo = await GetCatalogoVehiculoAsync(r.IdVehiculo, ct);
+                vehiculoCache[r.IdVehiculo] = vehiculo;
+            }
+
+            var extrasActivos = r.Extras.Where(e => !e.EsEliminado && e.EstadoReservaExtra == "ACT").ToList();
+            var extraIds = extrasActivos.Select(e => e.IdExtra).Distinct().ToList();
+            var extraNombres = await GetExtraNombresAsync(extraIds, ct);
+
+            result.Add(new ClienteReservaListItemDto
+            {
+                IdReserva = r.IdReserva,
+                ReservaGuid = r.ReservaGuid,
+                CodigoReserva = r.CodigoReserva,
+                CodigoConfirmacion = string.IsNullOrWhiteSpace(r.CodigoConfirmacion) ? r.CodigoReserva : r.CodigoConfirmacion,
+                EstadoReserva = r.EstadoReserva,
+                IdCliente = r.IdCliente,
+                IdVehiculo = r.IdVehiculo,
+                IdLocalizacionRecogida = r.IdLocalizacionRecogida,
+                IdLocalizacionDevolucion = r.IdLocalizacionDevolucion,
+                CanalReserva = r.CanalReserva,
+                FechaHoraRecogida = r.FechaHoraRecogida,
+                FechaHoraDevolucion = r.FechaHoraDevolucion,
+                Subtotal = r.Subtotal,
+                ValorImpuestos = r.ValorImpuestos,
+                ValorExtras = r.ValorExtras,
+                CargoOneWay = r.CargoOneWay,
+                Total = r.Total,
+                NombreCliente = nombreCliente,
+                PlacaVehiculo = null,
+                DescripcionVehiculo = vehiculo is null
+                    ? $"Vehículo {r.IdVehiculo}"
+                    : $"{vehiculo.Marca} {vehiculo.Modelo}".Trim(),
+                Extras = extrasActivos.Select(e => new ReservaExtraListItemDto
+                {
+                    IdReservaExtra = e.IdReservaExtra,
+                    IdExtra = e.IdExtra,
+                    CodigoExtra = $"EXT-{e.IdExtra}",
+                    NombreExtra = extraNombres.GetValueOrDefault(e.IdExtra, $"Extra {e.IdExtra}"),
+                    Cantidad = e.Cantidad,
+                    ValorUnitario = e.ValorUnitarioExtra,
+                    Subtotal = e.SubtotalExtra
+                }).ToList()
+            });
+        }
+
+        return result;
+    }
+
+    public async Task<string?> GetCodigoReservaByIdAsync(int idReserva, CancellationToken ct)
+    {
+        return await _db.Reservas
+            .AsNoTracking()
+            .Where(r => r.IdReserva == idReserva)
+            .Select(r => r.CodigoReserva)
+            .FirstOrDefaultAsync(ct);
+    }
+
     public async Task<ReservaDto?> GetReservaAsync(string codigoReserva, CancellationToken ct)
     {
         var r = await _db.Reservas

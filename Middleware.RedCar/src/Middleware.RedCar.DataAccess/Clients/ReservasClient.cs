@@ -96,6 +96,59 @@ public sealed class ReservasClient : HttpClientBase, IReservasClient
         return new CancelarReservaWriteResult(data.CodigoReserva, data.EstadoReserva, data.FechaCancelacionUtc);
     }
 
+    public async Task<IReadOnlyList<ClienteReservaListItemDto>?> ListByClienteAsync(int idCliente, CancellationToken ct = default)
+    {
+        var envelope = await GetAsync<MsApiEnvelope<List<ClienteReservaListItemRestPayload>>>(
+            $"/api/v1/reservas/cliente/{idCliente}", ct);
+        return envelope?.Data?.Select(MapListItem).ToList();
+    }
+
+    public async Task<CancelarReservaWriteResult> CancelarByIdAsync(
+        int idReserva, string motivo, string usuario, CancellationToken ct = default)
+    {
+        var body = new { motivoCancelacion = motivo, usuarioCancelacion = usuario };
+        var path = $"/api/v1/reservas/{idReserva}/cancelar";
+        var data = await PutEnvelopeAsync<CancelarReservaRestPayload>(path, body, ct);
+        return new CancelarReservaWriteResult(data.CodigoReserva, data.EstadoReserva, data.FechaCancelacionUtc);
+    }
+
+    private static ClienteReservaListItemDto MapListItem(ClienteReservaListItemRestPayload src) => new(
+        src.IdReserva,
+        src.ReservaGuid,
+        src.CodigoReserva,
+        src.CodigoConfirmacion,
+        src.EstadoReserva,
+        src.IdCliente,
+        src.IdVehiculo,
+        src.IdLocalizacionRecogida,
+        src.IdLocalizacionDevolucion,
+        src.CanalReserva,
+        src.FechaHoraRecogida,
+        src.FechaHoraDevolucion,
+        src.Subtotal,
+        src.ValorImpuestos,
+        src.ValorExtras,
+        src.CargoOneWay,
+        src.Total,
+        src.NombreCliente,
+        src.PlacaVehiculo,
+        src.DescripcionVehiculo,
+        (IReadOnlyList<ReservaExtraListItemDto>)(src.Extras?.Select(e => new ReservaExtraListItemDto(
+            e.IdReservaExtra,
+            e.IdExtra,
+            e.CodigoExtra,
+            e.NombreExtra,
+            e.Cantidad,
+            e.ValorUnitario,
+            e.Subtotal)).ToList() ?? []));
+
+    private async Task<T> PutEnvelopeAsync<T>(string relativeUri, object body, CancellationToken ct)
+        where T : class
+    {
+        using var resp = await Http.PutAsJsonAsync(relativeUri, body, JsonOptions, ct);
+        return await ReadEnvelopeDataAsync<T>(resp, "PUT", relativeUri, ct);
+    }
+
     private async Task<T> PostEnvelopeAsync<T>(string relativeUri, object body, CancellationToken ct)
         where T : class
     {
@@ -161,5 +214,41 @@ public sealed class ReservasClient : HttpClientBase, IReservasClient
         public string CodigoReserva { get; set; } = string.Empty;
         public string EstadoReserva { get; set; } = string.Empty;
         public DateTimeOffset FechaCancelacionUtc { get; set; }
+    }
+
+    private sealed class ClienteReservaListItemRestPayload
+    {
+        public int IdReserva { get; set; }
+        public Guid ReservaGuid { get; set; }
+        public string CodigoReserva { get; set; } = string.Empty;
+        public string CodigoConfirmacion { get; set; } = string.Empty;
+        public string EstadoReserva { get; set; } = string.Empty;
+        public int IdCliente { get; set; }
+        public int IdVehiculo { get; set; }
+        public int IdLocalizacionRecogida { get; set; }
+        public int IdLocalizacionDevolucion { get; set; }
+        public string CanalReserva { get; set; } = string.Empty;
+        public DateTimeOffset FechaHoraRecogida { get; set; }
+        public DateTimeOffset FechaHoraDevolucion { get; set; }
+        public decimal Subtotal { get; set; }
+        public decimal ValorImpuestos { get; set; }
+        public decimal ValorExtras { get; set; }
+        public decimal CargoOneWay { get; set; }
+        public decimal Total { get; set; }
+        public string? NombreCliente { get; set; }
+        public string? PlacaVehiculo { get; set; }
+        public string? DescripcionVehiculo { get; set; }
+        public List<ReservaExtraListItemRestPayload>? Extras { get; set; }
+    }
+
+    private sealed class ReservaExtraListItemRestPayload
+    {
+        public int IdReservaExtra { get; set; }
+        public int IdExtra { get; set; }
+        public string CodigoExtra { get; set; } = string.Empty;
+        public string NombreExtra { get; set; } = string.Empty;
+        public int Cantidad { get; set; }
+        public decimal ValorUnitario { get; set; }
+        public decimal Subtotal { get; set; }
     }
 }

@@ -82,6 +82,40 @@ public sealed class ReservasController : ControllerBase
         return Ok(ApiResponse<FacturaDto>.Ok(dto, traceId: HttpContext.TraceIdentifier));
     }
 
+    [HttpGet("cliente/{idCliente:int}")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<ClienteReservaListItemDto>>>> ListByCliente(
+        [FromRoute] int idCliente,
+        CancellationToken ct)
+    {
+        var items = await _read.ListByClienteAsync(idCliente, ct);
+        return Ok(ApiResponse<IReadOnlyList<ClienteReservaListItemDto>>.Ok(items, traceId: HttpContext.TraceIdentifier));
+    }
+
+    [HttpPut("{idReserva:int}/cancelar")]
+    public async Task<ActionResult<ApiResponse<CancelarReservaRestResponse>>> CancelarById(
+        [FromRoute] int idReserva,
+        [FromBody] CancelarReservaRestRequest request,
+        CancellationToken ct)
+    {
+        var codigo = await _read.GetCodigoReservaByIdAsync(idReserva, ct);
+        if (string.IsNullOrWhiteSpace(codigo))
+        {
+            return NotFound(ApiResponse<CancelarReservaRestResponse>.Fail(404, "Reserva no encontrada.", HttpContext.TraceIdentifier));
+        }
+
+        try
+        {
+            var proto = ReservasWriteMapper.ToProto(codigo, request);
+            var result = await _write.CancelarReservaAsync(proto, ct);
+            return Ok(ApiResponse<CancelarReservaRestResponse>.Ok(
+                ReservasWriteMapper.ToRest(result), traceId: HttpContext.TraceIdentifier));
+        }
+        catch (RpcException ex)
+        {
+            return RpcExceptionMapper.ToActionResult<CancelarReservaRestResponse>(ex, HttpContext);
+        }
+    }
+
     [HttpGet("{codigoReserva}")]
     public async Task<ActionResult<ApiResponse<ReservaDto>>> GetByCodigo(string codigoReserva, CancellationToken ct)
     {

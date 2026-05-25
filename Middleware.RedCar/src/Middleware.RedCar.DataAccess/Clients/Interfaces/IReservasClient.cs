@@ -11,7 +11,43 @@ public interface IReservasClient
     Task<FacturaDto?> GetFacturaAsync(string codigoReserva, CancellationToken ct = default);
     Task<CrearReservaWriteResult> CrearReservaAsync(CrearReservaWriteRequest request, CancellationToken ct = default);
     Task<CancelarReservaWriteResult> CancelarReservaAsync(string codigoReserva, string motivo, string usuario, CancellationToken ct = default);
+
+    Task<IReadOnlyList<ClienteReservaListItemDto>?> ListByClienteAsync(int idCliente, CancellationToken ct = default);
+
+    Task<CancelarReservaWriteResult> CancelarByIdAsync(int idReserva, string motivo, string usuario, CancellationToken ct = default);
 }
+
+public sealed record ClienteReservaListItemDto(
+    int IdReserva,
+    Guid ReservaGuid,
+    string CodigoReserva,
+    string CodigoConfirmacion,
+    string EstadoReserva,
+    int IdCliente,
+    int IdVehiculo,
+    int IdLocalizacionRecogida,
+    int IdLocalizacionDevolucion,
+    string CanalReserva,
+    DateTimeOffset FechaHoraRecogida,
+    DateTimeOffset FechaHoraDevolucion,
+    decimal Subtotal,
+    decimal ValorImpuestos,
+    decimal ValorExtras,
+    decimal CargoOneWay,
+    decimal Total,
+    string? NombreCliente,
+    string? PlacaVehiculo,
+    string? DescripcionVehiculo,
+    IReadOnlyList<ReservaExtraListItemDto> Extras);
+
+public sealed record ReservaExtraListItemDto(
+    int IdReservaExtra,
+    int IdExtra,
+    string CodigoExtra,
+    string NombreExtra,
+    int Cantidad,
+    decimal ValorUnitario,
+    decimal Subtotal);
 
 public sealed record CrearReservaWriteRequest(
     int IdVehiculo,

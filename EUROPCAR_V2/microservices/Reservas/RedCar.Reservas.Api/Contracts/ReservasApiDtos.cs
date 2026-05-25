@@ -80,6 +80,43 @@ public sealed class ReservaExtraDto
     public decimal Subtotal { get; set; }
 }
 
+/// <summary>Lista para portal del cliente y back-office (compat monolito).</summary>
+public sealed class ClienteReservaListItemDto
+{
+    public int IdReserva { get; set; }
+    public Guid ReservaGuid { get; set; }
+    public string CodigoReserva { get; set; } = string.Empty;
+    public string CodigoConfirmacion { get; set; } = string.Empty;
+    public string EstadoReserva { get; set; } = string.Empty;
+    public int IdCliente { get; set; }
+    public int IdVehiculo { get; set; }
+    public int IdLocalizacionRecogida { get; set; }
+    public int IdLocalizacionDevolucion { get; set; }
+    public string CanalReserva { get; set; } = string.Empty;
+    public DateTimeOffset FechaHoraRecogida { get; set; }
+    public DateTimeOffset FechaHoraDevolucion { get; set; }
+    public decimal Subtotal { get; set; }
+    public decimal ValorImpuestos { get; set; }
+    public decimal ValorExtras { get; set; }
+    public decimal CargoOneWay { get; set; }
+    public decimal Total { get; set; }
+    public string? NombreCliente { get; set; }
+    public string? PlacaVehiculo { get; set; }
+    public string? DescripcionVehiculo { get; set; }
+    public List<ReservaExtraListItemDto> Extras { get; set; } = new();
+}
+
+public sealed class ReservaExtraListItemDto
+{
+    public int IdReservaExtra { get; set; }
+    public int IdExtra { get; set; }
+    public string CodigoExtra { get; set; } = string.Empty;
+    public string NombreExtra { get; set; } = string.Empty;
+    public int Cantidad { get; set; }
+    public decimal ValorUnitario { get; set; }
+    public decimal Subtotal { get; set; }
+}
+
 public sealed class FacturaDto
 {
     public string NumeroFactura { get; set; } = string.Empty;
