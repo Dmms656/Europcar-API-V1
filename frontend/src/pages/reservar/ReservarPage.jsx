@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { reservasApi } from '../../api/reservasApi';
-import { pagosApi } from '../../api/pagosApi';
 import DateTimePicker from '../../components/ui/DateTimePicker';
 import { bookingApi } from '../../api/bookingApi';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -619,40 +618,11 @@ export default function ReservarPage() {
     if (step < STEPS.length - 1) setStep(step + 1);
   };
 
-  const resolveClientId = async () => {
-    if (user?.idCliente) return user.idCliente;
-    if (guestClientId) return guestClientId;
-    if (guestForm.nombre?.trim() && guestForm.cedula?.trim()) {
-      const res = await reservasApi.guestClient(guestForm);
-      const data = res.data?.data ?? res.data?.Data ?? {};
-      const newId = data.idCliente ?? data.IdCliente;
-      if (newId) {
-        setGuestClientId(newId);
-        return newId;
-      }
-    }
-    return null;
-  };
-
   const handlePagar = async () => {
     setProcessing(true);
 
-    let clientId = user?.idCliente || guestClientId;
-    const usePublicBooking = !user?.idCliente;
-
-    if (!clientId && usePublicBooking) {
-      clientId = await resolveClientId();
-    }
-
-    if (!clientId && !usePublicBooking) {
-      toast.error('No se pudo identificar el cliente. Completa el paso de identificación.');
-      setStep(0);
-      setProcessing(false);
-      return;
-    }
-
     const clienteReserva = resolveClienteReserva(user, guestForm);
-    if (usePublicBooking && (!clienteReserva?.nombre || !clienteReserva?.cedula)) {
+    if (!clienteReserva?.nombre || !clienteReserva?.cedula) {
       toast.error('Indica tu cédula o pasaporte en el paso de identificación antes de pagar.');
       const idStep = STEPS.indexOf('Identificación');
       if (idStep >= 0) setStep(idStep);
@@ -660,127 +630,94 @@ export default function ReservarPage() {
       return;
     }
 
-    const lastFour = (pago.numeroTarjeta || '0000').slice(-4);
+    const principal = form.conductores.find(c => c.esPrincipal) || form.conductores[0];
+    if (!principal) {
+      toast.error('Agrega al menos un conductor antes de pagar.');
+      setProcessing(false);
+      return;
+    }
+
     try {
-      const principal = form.conductores.find(c => c.esPrincipal) || form.conductores[0];
       const secundario = form.conductores.find(c => !c.esPrincipal);
       let codigoReservaFinal = '';
       let codigoConfirmacionFinal = '';
-      let idReservaFinal = null;
 
       const splitNombres = (fullName = '') => {
         const trimmed = String(fullName || '').trim();
         const parts = trimmed.split(/\s+/).filter(Boolean);
         if (parts.length === 0) return { nombres: '', apellidos: '' };
-        if (parts.length === 1) return { nombres: parts[0], apellidos: principal?.esCliente ? (guestForm.apellido || 'N/A') : 'N/A' };
+        if (parts.length === 1) {
+          return {
+            nombres: parts[0],
+            apellidos: principal?.esCliente ? (clienteReserva.apellido || 'N/A') : 'N/A',
+          };
+        }
         return { nombres: parts.slice(0, -1).join(' '), apellidos: parts.slice(-1).join(' ') };
       };
 
-      // Flujo público (invitado o usuario sin idCliente vinculado, p. ej. admin).
-      if (usePublicBooking && principal) {
-        const principalNames = splitNombres(principal.nombre);
-        const secondaryNames = secundario ? splitNombres(secundario.nombre) : null;
-        const fechaIni = new Date(form.fechaRecogida);
-        const fechaFin = new Date(form.fechaDevolucion);
-        const horaInicio = `${String(fechaIni.getHours()).padStart(2, '0')}:${String(fechaIni.getMinutes()).padStart(2, '0')}:00`;
-        const horaFin = `${String(fechaFin.getHours()).padStart(2, '0')}:${String(fechaFin.getMinutes()).padStart(2, '0')}:00`;
+      const principalNames = splitNombres(principal.nombre);
+      const secondaryNames = secundario ? splitNombres(secundario.nombre) : null;
+      const fechaIni = new Date(form.fechaRecogida);
+      const fechaFin = new Date(form.fechaDevolucion);
+      const horaInicio = `${String(fechaIni.getHours()).padStart(2, '0')}:${String(fechaIni.getMinutes()).padStart(2, '0')}:00`;
+      const horaFin = `${String(fechaFin.getHours()).padStart(2, '0')}:${String(fechaFin.getMinutes()).padStart(2, '0')}:00`;
 
-        const bookingPayload = {
-          idVehiculo: String(Number(vehiculo?.idVehiculo || id)),
-          idLocalizacionRecogida: Number(form.idLocalizacionRecogida),
-          idLocalizacionEntrega: Number(form.idLocalizacionDevolucion),
-          idLocalizacionDevolucion: Number(form.idLocalizacionDevolucion),
-          fechaInicio: form.fechaRecogida.slice(0, 10),
-          fechaFin: form.fechaDevolucion.slice(0, 10),
-          horaInicio,
-          horaFin,
-          origenCanalReserva: 'WEB',
-          cliente: {
-            nombres: clienteReserva.nombre,
-            apellidos: clienteReserva.apellido || 'N/A',
-            tipoIdentificacion: 'CEDULA',
-            numeroIdentificacion: clienteReserva.cedula,
-            correo: clienteReserva.correo,
-            telefono: clienteReserva.telefono,
-          },
-          conductorPrincipal: {
-            nombres: principalNames.nombres || clienteReserva.nombre,
-            apellidos: principalNames.apellidos || clienteReserva.apellido || 'N/A',
-            tipoIdentificacion: 'CEDULA',
-            numeroIdentificacion: principal.esCliente ? clienteReserva.cedula : `${clienteReserva.cedula}-A`,
-            correo: clienteReserva.correo,
-            telefono: principal.telefono?.trim() || clienteReserva.telefono,
-            numeroLicencia: principal.licencia?.trim() || 'PENDIENTE',
-            fechaVencimientoLicencia: '2035-12-31',
-            edadConductor: Number(principal.edad) || 25,
-          },
-          conductorSecundario: secondaryNames ? {
-            nombres: secondaryNames.nombres,
-            apellidos: secondaryNames.apellidos,
-            tipoIdentificacion: 'PASAPORTE',
-            numeroIdentificacion: `${clienteReserva.cedula}-B`,
-            correo: clienteReserva.correo,
-            telefono: secundario?.telefono?.trim() || clienteReserva.telefono,
-            numeroLicencia: secundario?.licencia?.trim() || 'PENDIENTE',
-            fechaVencimientoLicencia: '2035-12-31',
-            edadConductor: Number(secundario?.edad) || 25,
-          } : null,
-          extras: form.extrasSeleccionados.map((ex) => ({
-            idExtra: Number(ex.idExtra ?? ex.id),
-            cantidad: Number(ex.cantidad) || 1,
-          })).filter((ex) => ex.idExtra > 0),
-        };
+      // Siempre contrato booking público POST /api/v1/reservas (no /admin/Reservas).
+      const bookingPayload = {
+        idVehiculo: String(Number(vehiculo?.idVehiculo || id)),
+        idLocalizacionRecogida: Number(form.idLocalizacionRecogida),
+        idLocalizacionEntrega: Number(form.idLocalizacionDevolucion),
+        idLocalizacionDevolucion: Number(form.idLocalizacionDevolucion),
+        fechaInicio: form.fechaRecogida.slice(0, 10),
+        fechaFin: form.fechaDevolucion.slice(0, 10),
+        horaInicio,
+        horaFin,
+        origenCanalReserva: 'WEB',
+        cliente: {
+          nombres: clienteReserva.nombre,
+          apellidos: clienteReserva.apellido || 'N/A',
+          tipoIdentificacion: 'CEDULA',
+          numeroIdentificacion: clienteReserva.cedula,
+          correo: clienteReserva.correo,
+          telefono: clienteReserva.telefono,
+        },
+        conductorPrincipal: {
+          nombres: principalNames.nombres || clienteReserva.nombre,
+          apellidos: principalNames.apellidos || clienteReserva.apellido || 'N/A',
+          tipoIdentificacion: 'CEDULA',
+          numeroIdentificacion: principal.esCliente ? clienteReserva.cedula : `${clienteReserva.cedula}-A`,
+          correo: clienteReserva.correo,
+          telefono: principal.telefono?.trim() || clienteReserva.telefono,
+          numeroLicencia: principal.licencia?.trim() || 'PENDIENTE',
+          fechaVencimientoLicencia: '2035-12-31',
+          edadConductor: Number(principal.edad) || 25,
+        },
+        conductorSecundario: secondaryNames ? {
+          nombres: secondaryNames.nombres,
+          apellidos: secondaryNames.apellidos,
+          tipoIdentificacion: 'PASAPORTE',
+          numeroIdentificacion: `${clienteReserva.cedula}-B`,
+          correo: clienteReserva.correo,
+          telefono: secundario?.telefono?.trim() || clienteReserva.telefono,
+          numeroLicencia: secundario?.licencia?.trim() || 'PENDIENTE',
+          fechaVencimientoLicencia: '2035-12-31',
+          edadConductor: Number(secundario?.edad) || 25,
+        } : null,
+        extras: form.extrasSeleccionados.map((ex) => ({
+          idExtra: Number(ex.idExtra ?? ex.id),
+          cantidad: Number(ex.cantidad) || 1,
+        })).filter((ex) => ex.idExtra > 0),
+      };
 
-        const bookingRes = await bookingApi.crearReserva(bookingPayload);
-        const bookingData = bookingRes.data?.data || bookingRes.data?.Data || {};
-        codigoReservaFinal = bookingData?.codigoReserva || bookingData?.CodigoReserva || '';
-        codigoConfirmacionFinal = codigoReservaFinal;
-      } else {
-        const reservaPayload = {
-          idCliente: clientId,
-          idVehiculo: Number(id),
-          idLocalizacionRecogida: Number(form.idLocalizacionRecogida),
-          idLocalizacionDevolucion: Number(form.idLocalizacionDevolucion),
-          canalReserva: 'WEB',
-          fechaHoraRecogida: new Date(form.fechaRecogida).toISOString(),
-          fechaHoraDevolucion: new Date(form.fechaDevolucion).toISOString(),
-          extras: form.extrasSeleccionados.map(ex => ({
-            idExtra: ex.id,
-            cantidad: ex.cantidad,
-          })),
-          conductores: form.conductores
-            .filter(c => c.id)
-            .map(c => ({ idConductor: c.id, esPrincipal: c.esPrincipal })),
-        };
-
-        const res = await reservasApi.create(reservaPayload);
-        const reservaData = res.data?.data;
-        idReservaFinal = reservaData?.idReserva ?? null;
-        codigoReservaFinal = reservaData?.codigoReserva || '';
-        codigoConfirmacionFinal = reservaData?.codigoConfirmacion || codigoReservaFinal;
-
-        if (idReservaFinal) {
-          try {
-            await reservasApi.confirmar(idReservaFinal, {
-              monto: totalFinal,
-              referenciaExterna: `SIM-${lastFour}-${Date.now().toString(36).toUpperCase()}`,
-            });
-          } catch (confirmErr) {
-            const confirmData = confirmErr?.response?.data || {};
-            const confirmMsg =
-              confirmData.message ||
-              confirmData.mensaje ||
-              confirmData.Mensaje ||
-              'La reserva fue creada, pero no se pudo confirmar automáticamente.';
-            toast.warning(confirmMsg);
-          }
-        }
-      }
+      const bookingRes = await bookingApi.crearReserva(bookingPayload);
+      const bookingData = bookingRes.data?.data || bookingRes.data?.Data || {};
+      codigoReservaFinal = bookingData?.codigoReserva || bookingData?.CodigoReserva || '';
+      codigoConfirmacionFinal = codigoReservaFinal;
 
       setReservaConfirmada({
         codigoReserva: codigoReservaFinal || `RES-${Date.now().toString(36).toUpperCase()}`,
         codigoConfirmacion: codigoConfirmacionFinal || codigoReservaFinal || `RES-${Date.now().toString(36).toUpperCase()}`,
-        idReserva: idReservaFinal,
+        idReserva: null,
         vehiculo: `${vehiculo?.marca} ${vehiculo?.modelo || vehiculo?.modeloVehiculo}`,
         fechaRecogida: form.fechaRecogida,
         fechaDevolucion: form.fechaDevolucion,
