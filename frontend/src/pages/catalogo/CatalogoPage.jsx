@@ -109,20 +109,32 @@ export default function CatalogoPage() {
         setLocalizaciones(locsMapped);
       }
 
-      const firstLoc = locsMapped[0];
-      if (!firstLoc) {
+      if (locsMapped.length === 0) {
         setVehiculos([]);
       } else {
         const { fechaRecogida, fechaDevolucion } = defaultRentalDateTimeLocalRange();
-        const vehRes = await bookingApi.buscarVehiculos({
-          idLocalizacion: firstLoc.idLocalizacion,
-          fechaRecogida,
-          fechaDevolucion,
-          page: 1,
-          limit: 100,
+        const results = await Promise.allSettled(
+          locsMapped.map((loc) =>
+            bookingApi.buscarVehiculos({
+              idLocalizacion: loc.idLocalizacion,
+              fechaRecogida,
+              fechaDevolucion,
+              page: 1,
+              limit: 100,
+            }),
+          ),
+        );
+        const byId = new Map();
+        results.forEach((res) => {
+          if (res.status !== 'fulfilled') return;
+          const raw = res.value.data?.data?.vehiculos ?? [];
+          raw.forEach((v) => {
+            const norm = normalizeVehiculoFromBookingList(v);
+            const key = norm.idVehiculo ?? norm.id;
+            if (key != null && !byId.has(key)) byId.set(key, norm);
+          });
         });
-        const raw = vehRes.data?.data?.vehiculos ?? [];
-        setVehiculos(raw.map(normalizeVehiculoFromBookingList));
+        setVehiculos(Array.from(byId.values()));
       }
     } catch (e) {
       console.error('Error loading catalog:', e);

@@ -64,6 +64,22 @@ export function normalizeVehiculoFromBookingList(v) {
   };
 }
 
+/**
+ * Correo y teléfono válidos para POST /reservas (FluentValidation exige ambos).
+ */
+export function normalizeContactoReserva(user, guestForm = {}) {
+  const correoRaw = (guestForm.correo || user?.correo || '').trim();
+  const telefonoRaw = (guestForm.telefono || '').trim();
+  const slug = String(user?.username || guestForm.cedula || 'cliente')
+    .replace(/\W/g, '')
+    .slice(0, 24) || 'cliente';
+  const correo = correoRaw && correoRaw.includes('@')
+    ? correoRaw
+    : `${slug}@reserva.europcar.ec`;
+  const telefono = telefonoRaw.length >= 7 ? telefonoRaw : '0999999999';
+  return { correo, telefono };
+}
+
 /** Detalle GET /vehiculos/:id */
 export function normalizeVehiculoDetalle(v) {
   if (!v) return null;

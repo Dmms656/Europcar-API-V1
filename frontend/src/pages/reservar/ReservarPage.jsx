@@ -11,19 +11,24 @@ import {
   Minus, ShieldCheck, Loader2, CheckCircle2, X, AlertCircle, UserPlus
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { normalizeVehiculoDetalle, defaultRentalDateTimeLocalRange } from '../../utils/bookingNormalize';
+import {
+  normalizeVehiculoDetalle,
+  defaultRentalDateTimeLocalRange,
+  normalizeContactoReserva,
+} from '../../utils/bookingNormalize';
+import { getErrorMessage, getFieldErrors } from '../../utils/errorHandler';
 
 const guestClientStorageKey = (vehiculoId) => `reservar_guest_client_${vehiculoId}`;
 
 /** Datos de cliente para booking público: formulario invitado o perfil de sesión. */
 function resolveClienteReserva(user, guestForm) {
+  const contacto = normalizeContactoReserva(user, guestForm);
   if (guestForm.nombre?.trim()) {
     return {
       nombre: guestForm.nombre.trim(),
       apellido: (guestForm.apellido || '').trim(),
       cedula: (guestForm.cedula || '').trim(),
-      correo: (guestForm.correo || '').trim(),
-      telefono: (guestForm.telefono || '').trim(),
+      ...contacto,
     };
   }
   if (!user) return null;
@@ -32,13 +37,7 @@ function resolveClienteReserva(user, guestForm) {
   const nombre = parts[0] || user.username || 'Cliente';
   const apellido = parts.length > 1 ? parts.slice(1).join(' ') : 'N/A';
   const cedula = (guestForm.cedula || '').trim() || `WEB-${String(user.username || 'user').replace(/\W/g, '').slice(0, 12)}`;
-  return {
-    nombre,
-    apellido,
-    cedula,
-    correo: (user.correo || guestForm.correo || '').trim(),
-    telefono: (guestForm.telefono || '').trim(),
-  };
+  return { nombre, apellido, cedula, ...contacto };
 }
 
 const IVA_RATE = 0.15;
@@ -660,7 +659,7 @@ export default function ReservarPage() {
           cliente: {
             nombres: clienteReserva.nombre,
             apellidos: clienteReserva.apellido || 'N/A',
-            tipoIdentificacion: 'CED',
+            tipoIdentificacion: 'CEDULA',
             numeroIdentificacion: clienteReserva.cedula,
             correo: clienteReserva.correo,
             telefono: clienteReserva.telefono,
@@ -668,24 +667,29 @@ export default function ReservarPage() {
           conductorPrincipal: {
             nombres: principalNames.nombres || clienteReserva.nombre,
             apellidos: principalNames.apellidos || clienteReserva.apellido || 'N/A',
-            tipoIdentificacion: 'CED',
+            tipoIdentificacion: 'CEDULA',
             numeroIdentificacion: principal.esCliente ? clienteReserva.cedula : `${clienteReserva.cedula}-A`,
             correo: clienteReserva.correo,
             telefono: principal.telefono?.trim() || clienteReserva.telefono,
             numeroLicencia: principal.licencia?.trim() || 'PENDIENTE',
+            fechaVencimientoLicencia: '2035-12-31',
             edadConductor: Number(principal.edad) || 25,
           },
           conductorSecundario: secondaryNames ? {
             nombres: secondaryNames.nombres,
             apellidos: secondaryNames.apellidos,
-            tipoIdentificacion: 'PAS',
+            tipoIdentificacion: 'PASAPORTE',
             numeroIdentificacion: `${clienteReserva.cedula}-B`,
             correo: clienteReserva.correo,
             telefono: secundario?.telefono?.trim() || clienteReserva.telefono,
             numeroLicencia: secundario?.licencia?.trim() || 'PENDIENTE',
+            fechaVencimientoLicencia: '2035-12-31',
             edadConductor: Number(secundario?.edad) || 25,
           } : null,
-          extras: form.extrasSeleccionados.map(ex => ({ idExtra: ex.id, cantidad: ex.cantidad })),
+          extras: form.extrasSeleccionados.map((ex) => ({
+            idExtra: Number(ex.idExtra ?? ex.id),
+            cantidad: Number(ex.cantidad) || 1,
+          })).filter((ex) => ex.idExtra > 0),
         };
 
         const bookingRes = await bookingApi.crearReserva(bookingPayload);
@@ -748,14 +752,9 @@ export default function ReservarPage() {
       toast.success('¡Reserva creada exitosamente!');
       toast.success('¡Pago simulado exitosamente!');
     } catch (err) {
-      const errorData = err?.response?.data || {};
-      const message =
-        errorData.message ||
-        errorData.mensaje ||
-        errorData.Mensaje ||
-        errorData.detail ||
-        'No se pudo generar la reserva.';
-      toast.error(message);
+      const fieldErrors = getFieldErrors(err);
+      const detail = Object.values(fieldErrors).filter(Boolean).join(' · ');
+      toast.error(detail || getErrorMessage(err) || 'No se pudo generar la reserva.');
     } finally {
       setProcessing(false);
     }
