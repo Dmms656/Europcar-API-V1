@@ -24,13 +24,41 @@ export function defaultRentalDateTimeLocalRange() {
   };
 }
 
+/** Extrae texto de referencias anidadas (camelCase o PascalCase del middleware .NET). */
+function refNombre(ref) {
+  if (ref == null) return '';
+  if (typeof ref === 'string') return ref;
+  if (typeof ref === 'object') {
+    return (
+      ref.nombre
+      ?? ref.Nombre
+      ?? ref.nombreMarca
+      ?? ref.NombreMarca
+      ?? ref.nombreCategoria
+      ?? ref.NombreCategoria
+      ?? ''
+    ).toString();
+  }
+  return String(ref);
+}
+
+function refId(ref, ...keys) {
+  if (!ref || typeof ref !== 'object') return null;
+  for (const k of keys) {
+    if (ref[k] != null) return ref[k];
+  }
+  return null;
+}
+
 function sucursalNombrePlano(localizacion) {
   if (localizacion == null) return '';
   if (typeof localizacion === 'string') return localizacion;
   return (
     localizacion.nombre
-    || localizacion.nombreLocalizacion
-    || ''
+    ?? localizacion.Nombre
+    ?? localizacion.nombreLocalizacion
+    ?? localizacion.NombreLocalizacion
+    ?? ''
   ).toString();
 }
 
@@ -40,18 +68,16 @@ export function normalizeVehiculoFromBookingList(v) {
   const loc = v.localizacion;
   const idLoc =
     v.idLocalizacion
-    ?? (typeof loc === 'object' && loc ? (loc.idLocalizacion ?? loc.id) : null);
-  const marcaStr =
-    typeof v.marca === 'object' && v.marca?.nombre != null ? v.marca.nombre : (v.marca || '');
-  const catStr =
-    typeof v.categoria === 'object' && v.categoria?.nombre != null
-      ? v.categoria.nombre
-      : (v.categoria || v.nombreCategoria || '');
+    ?? (typeof loc === 'object' && loc
+      ? (refId(loc, 'idLocalizacion', 'IdLocalizacion', 'id', 'Id'))
+      : null);
+  const marcaStr = refNombre(v.marca);
+  const catStr = refNombre(v.categoria) || v.nombreCategoria || v.NombreCategoria || '';
 
   return {
     ...v,
-    marca: marcaStr || v.marca,
-    categoria: catStr || v.categoria,
+    marca: marcaStr,
+    categoria: catStr,
     modelo: v.modelo || v.modeloVehiculo,
     anioFabricacion: v.anioFabricacion ?? v.anio,
     tipoCombustible: v.tipoCombustible || v.combustible,
@@ -115,31 +141,29 @@ export function normalizeContactoReserva(user, guestForm = {}) {
 /** Detalle GET /vehiculos/:id */
 export function normalizeVehiculoDetalle(v) {
   if (!v) return null;
-  const marca =
-    typeof v.marca === 'object' && v.marca?.nombre != null ? v.marca.nombre : (v.marca || '');
-  const categoria =
-    typeof v.categoria === 'object' && v.categoria?.nombre != null
-      ? v.categoria.nombre
-      : (v.categoria || '');
   const loc = v.localizacion;
-  const idLoc =
-    v.idLocalizacion
-    ?? (typeof loc === 'object' && loc ? (loc.idLocalizacion ?? loc.id) : null);
+  const precioObj = v.precio;
   const precioBase =
     v.precioBaseDia
     ?? v.precioDia
-    ?? (typeof v.precio === 'object' && v.precio ? v.precio.precioBaseDia : undefined)
+    ?? (precioObj && (precioObj.precioBaseDia ?? precioObj.PrecioBaseDia))
     ?? 0;
 
   return {
     ...v,
-    marca,
-    categoria,
+    marca: refNombre(v.marca),
+    categoria: refNombre(v.categoria),
     modelo: v.modelo || v.modeloVehiculo,
     anioFabricacion: v.anioFabricacion ?? v.anio,
-    tipoCombustible: v.tipoCombustible || v.combustible,
-    tipoTransmision: v.tipoTransmision || v.transmision,
-    idLocalizacion: idLoc,
+    tipoCombustible: v.tipoCombustible || v.combustible || v.Combustible,
+    tipoTransmision: v.tipoTransmision || v.transmision || v.Transmision,
+    imagenUrl: v.imagenUrl ?? v.ImagenUrl,
+    idLocalizacion:
+      v.idLocalizacion
+      ?? (typeof loc === 'object' && loc
+        ? refId(loc, 'idLocalizacion', 'IdLocalizacion', 'id', 'Id')
+        : null),
+    localizacion: sucursalNombrePlano(loc) || v.localizacion,
     precioBaseDia: precioBase,
     precioDia: v.precioDia ?? precioBase,
   };

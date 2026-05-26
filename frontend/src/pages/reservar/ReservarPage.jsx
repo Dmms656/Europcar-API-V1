@@ -107,12 +107,23 @@ export default function ReservarPage() {
   const [guestProcessing, setGuestProcessing] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
 
+  /** Solo omitir identificación si ya hay cédula (perfil o formulario invitado) o id de cliente invitado. */
+  const skipIdentificacion = Boolean(
+    guestClientId || hasIdentificacionCliente(user, guestForm),
+  );
+
   const STEPS = useMemo(
-    () => ((isAuthenticated && hasIdentificacionCliente(user, guestForm))
+    () => (skipIdentificacion
       ? ['Fechas', 'Conductores', 'Extras', 'Resumen', 'Pago']
       : ['Identificación', 'Fechas', 'Conductores', 'Extras', 'Resumen', 'Pago']),
-    [isAuthenticated, user, guestForm],
+    [skipIdentificacion],
   );
+
+  useEffect(() => {
+    if (step >= STEPS.length) {
+      setStep(Math.max(0, STEPS.length - 1));
+    }
+  }, [STEPS.length, step]);
 
   // Form state
   const [form, setForm] = useState({
@@ -599,8 +610,11 @@ export default function ReservarPage() {
     } finally { setGuestProcessing(false); }
   };
 
-  const handleNext = () => {
-    if (STEPS[step] === 'Identificación') return;
+  const handleNext = async () => {
+    if (STEPS[step] === 'Identificación') {
+      await handleGuestClient();
+      return;
+    }
 
     const errs = getStepErrors();
     if (Object.keys(errs).length > 0) {
@@ -839,7 +853,7 @@ export default function ReservarPage() {
               <div className="reservar-vehicle-card__img">
                 {isValidImageUrl(vehiculo?.imagenUrl) ? (
                   <img src={vehiculo.imagenUrl}
-                    alt={`${vehiculo.marca} ${vehiculo.modelo}`} />
+                    alt={nombreVehiculo || 'Vehículo'} />
                 ) : (
                   <div className="reservar-vehicle-card__placeholder">
                     <Car size={48} />
@@ -916,7 +930,8 @@ export default function ReservarPage() {
                   </p>
                 )}
                 <p style={{color:'var(--color-text-secondary)', marginBottom:'1.5rem'}}>
-                  Ingresa tus datos para continuar. Si ya tienes una cuenta, <a href="/login" style={{color:'var(--color-primary)'}}>inicia sesión aquí</a>.
+                  No necesitas crear una cuenta: ingresa tus datos y continúa como invitado.
+                  Si ya tienes cuenta, <a href="/login" style={{color:'var(--color-primary)'}}>inicia sesión aquí</a>.
                   <br /><small>Si tu cédula ya está registrada, se reutilizará tu perfil existente.</small>
                 </p>
                 <div className="reservar-form-grid">
@@ -1281,8 +1296,13 @@ export default function ReservarPage() {
                   )}
                   <div className="resumen-section">
                     <h4>Cliente</h4>
-                    <p>{user?.nombreCompleto || user?.username}</p>
-                    <p>{user?.correo}</p>
+                    <p>
+                      {user?.nombreCompleto
+                        || `${guestForm.nombre || ''} ${guestForm.apellido || ''}`.trim()
+                        || user?.username}
+                    </p>
+                    <p>{guestForm.correo || user?.correo}</p>
+                    <p>{guestForm.cedula || user?.numeroIdentificacion}</p>
                   </div>
                 </div>
               </div>
@@ -1381,7 +1401,7 @@ export default function ReservarPage() {
                 </button>
               )}
               <div className="reservar-nav__spacer" />
-              {step < 4 ? (
+              {step < STEPS.length - 1 ? (
                 <button className="btn btn--primary" onClick={handleNext}>
                   Siguiente <ArrowRight size={16} />
                 </button>

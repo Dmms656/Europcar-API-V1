@@ -43,8 +43,10 @@ public static class LegacyV1DtoMapper
     {
         idVehiculo = v.IdVehiculo,
         codigoInterno = v.CodigoInterno,
-        marca = v.Marca,
-        categoria = v.Categoria,
+        marca = v.Marca.Nombre,
+        idMarca = v.Marca.IdMarca,
+        categoria = v.Categoria.Nombre,
+        idCategoria = v.Categoria.IdCategoria,
         modelo = v.Modelo,
         anio = v.Anio,
         color = v.Color,

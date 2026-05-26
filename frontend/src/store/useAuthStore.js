@@ -105,7 +105,8 @@ export const useAuthStore = create((set, get) => ({
       const data = res.data?.data;
       if (!data) return get().user;
 
-      const isAdmin = data.roles?.some((r) => ['ADMIN', 'AGENTE', 'AGENTE_POS'].includes(r));
+      const roles = Array.isArray(data.roles) ? data.roles : data.roles ? [data.roles] : [];
+      const isAdmin = roles.some((r) => ['ADMIN', 'AGENTE', 'AGENTE_POS'].includes(r));
       const userType = isAdmin ? 'admin' : 'cliente';
       const userData = get().mergeUserProfile(get().user, data);
       writeSession(USER_KEY, JSON.stringify(userData));
@@ -147,7 +148,8 @@ export const useAuthStore = create((set, get) => ({
         set({ user: null, accessToken: null, isAuthenticated: false, userType: null, sessionChecked: true });
         return;
       }
-      const isAdmin = data.roles?.some((r) => ['ADMIN', 'AGENTE', 'AGENTE_POS'].includes(r));
+      const roles = Array.isArray(data.roles) ? data.roles : data.roles ? [data.roles] : [];
+      const isAdmin = roles.some((r) => ['ADMIN', 'AGENTE', 'AGENTE_POS'].includes(r));
       const userType = isAdmin ? 'admin' : 'cliente';
       const userData = get().mergeUserProfile(get().user, data);
       writeSession(USER_KEY, JSON.stringify(userData));
