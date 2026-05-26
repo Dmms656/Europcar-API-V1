@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { reservasApi } from '../../api/reservasApi';
 import DateTimePicker from '../../components/ui/DateTimePicker';
@@ -66,6 +66,7 @@ function hasIdentificacionCliente(user, guestForm) {
 const IVA_RATE = 0.15;
 const RECARGO_CONDUCTOR_ADICIONAL_DIA = 15;
 const EXTRA_CONDUCTOR_ADICIONAL_CODE = 'COND-ADIC';
+const RESERVAR_STEPS = ['Identificación', 'Fechas', 'Conductores', 'Extras', 'Resumen', 'Pago'];
 const isValidImageUrl = (url) => url && (url.startsWith('http://') || url.startsWith('https://'));
 const NAME_REGEX = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' ]{2,50}$/;
 const PHONE_REGEX = /^[+]?[\d\s()-]{7,20}$/;
@@ -107,17 +108,27 @@ export default function ReservarPage() {
   const [guestProcessing, setGuestProcessing] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
 
-  /** Solo omitir identificación si ya hay cédula (perfil o formulario invitado) o id de cliente invitado. */
+  /** Saltar paso 0 solo con perfil verificado o tras guest-client (no al teclear la cédula). */
   const skipIdentificacion = Boolean(
-    guestClientId || hasIdentificacionCliente(user, guestForm),
+    (user?.numeroIdentificacion || '').trim() || guestClientId,
   );
 
-  const STEPS = useMemo(
-    () => (skipIdentificacion
-      ? ['Fechas', 'Conductores', 'Extras', 'Resumen', 'Pago']
-      : ['Identificación', 'Fechas', 'Conductores', 'Extras', 'Resumen', 'Pago']),
-    [skipIdentificacion],
-  );
+  const STEPS = RESERVAR_STEPS;
+
+  useEffect(() => {
+    if (isAuthenticated) return;
+    try {
+      sessionStorage.removeItem(guestClientStorageKey(id));
+    } catch { /* ignore */ }
+    setGuestClientId(null);
+    setStep(0);
+  }, [id, isAuthenticated]);
+
+  useEffect(() => {
+    if (skipIdentificacion && step === 0) {
+      setStep(1);
+    }
+  }, [skipIdentificacion, step]);
 
   useEffect(() => {
     if (step >= STEPS.length) {
@@ -591,7 +602,6 @@ export default function ReservarPage() {
       if (!newId) throw new Error('Sin idCliente');
       setGuestClientId(newId);
       toast.success(data.esNuevo ? '¡Cliente creado!' : 'Cliente encontrado. Continuemos.');
-      // Assign as principal conductor
       setForm(prev => ({
         ...prev,
         conductores: [{
@@ -602,9 +612,9 @@ export default function ReservarPage() {
           telefono: guestForm.telefono || '',
           esPrincipal: true,
           esCliente: true,
-        }]
+        }],
       }));
-      setStep(step + 1);
+      setStep(RESERVAR_STEPS.indexOf('Fechas'));
     } catch (e) {
       toast.error(e.response?.data?.message || 'Error al registrar cliente');
     } finally { setGuestProcessing(false); }
@@ -752,7 +762,7 @@ export default function ReservarPage() {
 
   if (loading) {
     return (
-      <div className="reservar-page">
+      <div className="reservar-page page-with-navbar">
         <div className="reservar-loading">
           <Loader2 size={40} className="spin" />
           <p>Cargando información del vehículo...</p>
@@ -763,7 +773,7 @@ export default function ReservarPage() {
 
   if (reservaConfirmada) {
     return (
-      <div className="reservar-page">
+      <div className="reservar-page page-with-navbar">
         <div className="reservar-confirmacion">
           <div className="confirmacion-card">
             <div className="confirmacion-icon">
@@ -823,17 +833,12 @@ export default function ReservarPage() {
   }
 
   return (
-    <div className="reservar-page">
-      <nav className="home-nav">
-        <div className="home-nav__inner">
-          <Link to="/catalogo" className="home-nav__logo">
-            <ArrowLeft size={20} />
-            <span>Volver al catálogo</span>
-          </Link>
-        </div>
-      </nav>
-
+    <div className="reservar-page page-with-navbar">
       <div className="reservar-content">
+        <Link to="/catalogo" className="reservar-back-link">
+          <ArrowLeft size={18} />
+          Volver al catálogo
+        </Link>
         {/* Steps indicator */}
         <div className="reservar-steps">
           {STEPS.map((s, i) => (
@@ -1395,8 +1400,12 @@ export default function ReservarPage() {
 
             {/* Navigation Buttons */}
             <div className={`reservar-nav ${shake ? 'form-shake' : ''}`}>
-              {step > 0 && (
-                <button className="btn btn--outline" onClick={() => { setStep(step - 1); setStepErrors({}); }} disabled={processing}>
+              {step > 0 && !(skipIdentificacion && step === 1) && (
+                <button
+                  className="btn btn--outline"
+                  onClick={() => { setStep(step - 1); setStepErrors({}); }}
+                  disabled={processing}
+                >
                   <ArrowLeft size={16} /> Anterior
                 </button>
               )}
