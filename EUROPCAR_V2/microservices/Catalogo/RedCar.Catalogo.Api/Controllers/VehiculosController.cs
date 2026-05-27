@@ -168,7 +168,18 @@ public sealed class VehiculosController : ControllerBase
         return Ok(ApiResponse<IReadOnlyList<VehiculoAdminDto>>.Ok(rows, traceId: HttpContext.TraceIdentifier));
     }
 
-    [HttpPost]
+    /// <summary>Detalle admin (panel). No usar en booking — usar GET /vehiculos/{id}.</summary>
+    [HttpGet("inventario/{id:int}")]
+    public async Task<ActionResult<ApiResponse<VehiculoAdminDto>>> GetInventarioById(int id, CancellationToken ct)
+    {
+        var admin = await _admin.MapAdminAsync(id, ct);
+        if (admin is null)
+            return NotFound(ApiResponse<VehiculoAdminDto>.Fail(404, "Vehiculo no encontrado.", HttpContext.TraceIdentifier));
+
+        return Ok(ApiResponse<VehiculoAdminDto>.Ok(admin, traceId: HttpContext.TraceIdentifier));
+    }
+
+    [HttpPost("inventario")]
     public async Task<ActionResult<ApiResponse<VehiculoAdminDto>>> Create(
         [FromBody] CrearVehiculoRequest request,
         CancellationToken ct)
@@ -193,7 +204,7 @@ public sealed class VehiculosController : ControllerBase
         }
     }
 
-    [HttpPut("{id:int}")]
+    [HttpPut("inventario/{id:int}")]
     public async Task<ActionResult<ApiResponse<VehiculoAdminDto>>> Update(
         int id,
         [FromBody] ActualizarVehiculoRequest request,
@@ -219,7 +230,7 @@ public sealed class VehiculosController : ControllerBase
         }
     }
 
-    [HttpPut("{id:int}/estado-operativo")]
+    [HttpPut("inventario/{id:int}/estado-operativo")]
     public async Task<ActionResult<ApiResponse<object>>> CambiarEstadoOperativo(
         int id,
         [FromBody] CambiarEstadoVehiculoRequest request,
@@ -244,7 +255,7 @@ public sealed class VehiculosController : ControllerBase
         }
     }
 
-    [HttpDelete("{id:int}")]
+    [HttpDelete("inventario/{id:int}")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(int id, CancellationToken ct)
     {
         try
@@ -263,14 +274,42 @@ public sealed class VehiculosController : ControllerBase
         }
     }
 
+    /// <summary>Detalle para booking / OTA (VehiculoCatalogoDto). Sin filtro DISPONIBLE.</summary>
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<ApiResponse<VehiculoAdminDto>>> GetById(int id, CancellationToken ct)
+    public async Task<ActionResult<ApiResponse<VehiculoCatalogoDto>>> GetById(int id, CancellationToken ct)
     {
-        var admin = await _admin.MapAdminAsync(id, ct);
-        if (admin is null)
-            return NotFound(ApiResponse<VehiculoAdminDto>.Fail(404, "Vehiculo no encontrado.", HttpContext.TraceIdentifier));
+        var dto = await _db.Vehiculos
+            .AsNoTracking()
+            .Where(x => x.IdVehiculo == id && !x.EsEliminado)
+            .Select(v => new VehiculoCatalogoDto
+            {
+                IdVehiculo = v.IdVehiculo,
+                CodigoInterno = v.CodigoInternoVehiculo,
+                IdMarca = v.IdMarca,
+                Marca = v.Marca != null ? v.Marca.NombreMarca : string.Empty,
+                IdCategoria = v.IdCategoria,
+                CategoriaCodigo = v.Categoria != null ? v.Categoria.CodigoCategoria : string.Empty,
+                CategoriaNombre = v.Categoria != null ? v.Categoria.NombreCategoria : string.Empty,
+                Modelo = v.ModeloVehiculo,
+                Anio = v.AnioFabricacion,
+                Color = v.ColorVehiculo,
+                ImagenUrl = v.ImagenReferencialUrl ?? string.Empty,
+                Transmision = v.TipoTransmision,
+                Combustible = v.TipoCombustible,
+                CapacidadPasajeros = v.CapacidadPasajeros,
+                CapacidadMaletas = v.CapacidadMaletas,
+                NumeroPuertas = v.NumeroPuertas,
+                AireAcondicionado = v.AireAcondicionado,
+                Estado = v.EstadoOperativo,
+                IdLocalizacion = v.LocalizacionActual,
+                PrecioBaseDia = v.PrecioBaseDia
+            })
+            .FirstOrDefaultAsync(ct);
 
-        return Ok(ApiResponse<VehiculoAdminDto>.Ok(admin, traceId: HttpContext.TraceIdentifier));
+        if (dto is null)
+            return NotFound(ApiResponse<VehiculoCatalogoDto>.Fail(404, "Vehiculo no encontrado.", HttpContext.TraceIdentifier));
+
+        return Ok(ApiResponse<VehiculoCatalogoDto>.Ok(dto, traceId: HttpContext.TraceIdentifier));
     }
 
     private static PagedDto<VehiculoCatalogoDto> BuildPaged(IReadOnlyList<VehiculoCatalogoDto> items, int page, int limit, bool hasNext)

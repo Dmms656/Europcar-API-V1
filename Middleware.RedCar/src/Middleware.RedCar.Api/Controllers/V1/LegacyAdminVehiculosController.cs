@@ -38,8 +38,7 @@ public sealed class LegacyAdminVehiculosController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id, CancellationToken ct)
     {
-        var items = await _catalogo.ListInventarioAsync(ct: ct) ?? Array.Empty<VehiculoAdminDto>();
-        var v = items.FirstOrDefault(x => x.IdVehiculo == id);
+        var v = await _catalogo.GetInventarioVehiculoAsync(id, ct);
         return v is null
             ? NotFound(ApiResponse<object>.Fail(404, "Vehículo no encontrado", HttpContext.TraceIdentifier))
             : Ok(ApiResponse<object>.Ok(LegacyAdminDtoMapper.ToVehiculo(v), traceId: HttpContext.TraceIdentifier));

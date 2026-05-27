@@ -16,6 +16,8 @@ public interface ICatalogoClient
 
     Task<IReadOnlyList<VehiculoAdminDto>?> ListInventarioAsync(int page = 1, int limit = 500, CancellationToken ct = default);
 
+    Task<VehiculoAdminDto?> GetInventarioVehiculoAsync(int idVehiculo, CancellationToken ct = default);
+
     Task<VehiculoAdminDto> CreateVehiculoAsync(object request, CancellationToken ct = default);
 
     Task<VehiculoAdminDto> UpdateVehiculoAsync(int id, object request, CancellationToken ct = default);

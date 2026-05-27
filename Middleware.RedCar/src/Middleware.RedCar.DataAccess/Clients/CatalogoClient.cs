@@ -61,17 +61,24 @@ public sealed class CatalogoClient : HttpClientBase, ICatalogoClient
         return envelope?.Data;
     }
 
+    public async Task<VehiculoAdminDto?> GetInventarioVehiculoAsync(int idVehiculo, CancellationToken ct = default)
+    {
+        var envelope = await GetAsync<MsApiEnvelope<VehiculoAdminDto>>(
+            $"/api/v1/vehiculos/inventario/{idVehiculo}", ct);
+        return envelope?.Data;
+    }
+
     public Task<VehiculoAdminDto> CreateVehiculoAsync(object request, CancellationToken ct = default)
-        => PostEnvelopeAsync<VehiculoAdminDto>("/api/v1/vehiculos", request, ct);
+        => PostEnvelopeAsync<VehiculoAdminDto>("/api/v1/vehiculos/inventario", request, ct);
 
     public Task<VehiculoAdminDto> UpdateVehiculoAsync(int id, object request, CancellationToken ct = default)
-        => PutAsync<object, VehiculoAdminDto>($"/api/v1/vehiculos/{id}", request, ct);
+        => PutAsync<object, VehiculoAdminDto>($"/api/v1/vehiculos/inventario/{id}", request, ct);
 
     public Task CambiarEstadoOperativoVehiculoAsync(int id, string estadoOperativo, CancellationToken ct = default)
-        => PutVoidAsync($"/api/v1/vehiculos/{id}/estado-operativo", new { estadoOperativo }, ct);
+        => PutVoidAsync($"/api/v1/vehiculos/inventario/{id}/estado-operativo", new { estadoOperativo }, ct);
 
     public Task DeleteVehiculoAsync(int id, CancellationToken ct = default)
-        => DeleteEnvelopeAsync($"/api/v1/vehiculos/{id}", ct);
+        => DeleteEnvelopeAsync($"/api/v1/vehiculos/inventario/{id}", ct);
 
     public Task<ExtraDto> CreateExtraAsync(object request, CancellationToken ct = default)
         => PostEnvelopeAsync<ExtraDto>("/api/v1/extras", request, ct);
