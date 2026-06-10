@@ -14,7 +14,9 @@
     <ProjectReference Include="..\..\..\EUROPCAR_V2\shared\RedCar.Shared.Contracts\RedCar.Shared.Contracts.csproj" />
     <ProjectReference Include="..\..\..\EUROPCAR_V2\shared\RedCar.Shared.Events\RedCar.Shared.Events.csproj" />
     <ProjectReference Include="..\..\..\EUROPCAR_V2\shared\RedCar.Shared.Messaging\RedCar.Shared.Messaging.csproj" />
-    <ProjectReference Include="..\..\..\EUROPCAR_V2\integration\RedCar.Integration.GraphQl\RedCar.Integration.GraphQl.csproj" />
+    <ProjectReference Include="..\..\..\EUROPCAR_V2\integration\RedCar.Integration.GraphQl\RedCar.Integration.GraphQl.csproj">
+      <ExcludeAssets>contentfiles</ExcludeAssets>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>

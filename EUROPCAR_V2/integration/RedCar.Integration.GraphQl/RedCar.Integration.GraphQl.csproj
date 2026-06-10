@@ -16,4 +16,11 @@
     <ProjectReference Include="..\..\shared\RedCar.Shared.Messaging\RedCar.Shared.Messaging.csproj" />
   </ItemGroup>
 
+  <!-- Referenciado por el middleware: evita NETSDK1152 (dos appsettings.json en publish). -->
+  <ItemGroup>
+    <Content Update="appsettings.json" CopyToPublishDirectory="Never" />
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+    <Content Update="Properties\launchSettings.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
 </Project>
