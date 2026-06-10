@@ -17,6 +17,11 @@ public static class MassTransitExtensions
         var rabbit = configuration.GetSection(RabbitMqSettings.SectionName).Get<RabbitMqSettings>()
             ?? new RabbitMqSettings();
 
+        // CloudAMQP/LavinMQ usa vhost sin barra (ej. nendzadb); local Docker suele usar /redcar-marketplace.
+        var virtualHost = rabbit.VirtualHost.Trim();
+        if (virtualHost.Length > 1 && virtualHost.StartsWith('/'))
+            virtualHost = virtualHost.TrimStart('/');
+
         services.AddMassTransit(x =>
         {
             configureConsumers?.Invoke(x);
@@ -25,7 +30,7 @@ public static class MassTransitExtensions
 
             x.UsingRabbitMq((context, cfg) =>
             {
-                cfg.Host(rabbit.Host, rabbit.Port, rabbit.VirtualHost, h =>
+                cfg.Host(rabbit.Host, rabbit.Port, virtualHost, h =>
                 {
                     h.Username(rabbit.Username);
                     h.Password(rabbit.Password);
