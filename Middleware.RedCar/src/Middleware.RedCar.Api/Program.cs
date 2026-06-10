@@ -63,6 +63,7 @@ builder.Services.AddRedCarAuthentication(builder.Configuration);
 builder.Services.AddMicroservicioHttpClients();
 builder.Services.AddRedCarGrpcClients();
 builder.Services.AddGraphQlIntegrationClient(builder.Configuration);
+builder.Services.AddEmbeddedGraphQlGateway(builder.Configuration);
 builder.Services.AddRedCarEventBus(builder.Configuration);
 builder.Services.AddRedCarMiddlewareServices(builder.Configuration);
 
@@ -144,6 +145,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapGraphQL("/graphql");
 app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready");
 app.MapGet("/", () => enableSwagger

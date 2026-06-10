@@ -26,8 +26,11 @@ public sealed class IntegrationSettings
 {
     public const string SectionName = "Integration";
 
-    /// <summary>Leer microservicios vía gateway GraphQL único en lugar de HTTP disperso.</summary>
+    /// <summary>Leer microservicios vía gateway GraphQL en lugar de HTTP disperso.</summary>
     public bool UseGraphQl { get; set; }
+
+    /// <summary>GraphQL en el mismo proceso que el middleware (un solo Web Service en Render).</summary>
+    public bool EmbeddedGraphQl { get; set; }
 
     public string GraphQlBaseUrl { get; set; } = "http://localhost:5110/graphql";
 }

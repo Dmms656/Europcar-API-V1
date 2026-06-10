@@ -34,11 +34,15 @@ public sealed class GraphQlIntegrationClient
 
     public async Task<T?> QueryAsync<T>(string query, object? variables = null, CancellationToken ct = default)
     {
-        if (!_settings.UseGraphQl || string.IsNullOrWhiteSpace(_settings.GraphQlBaseUrl))
+        if (!_settings.UseGraphQl)
+            return default;
+
+        var endpoint = ResolveGraphQlEndpoint();
+        if (string.IsNullOrWhiteSpace(endpoint))
             return default;
 
         var body = JsonSerializer.Serialize(new { query, variables }, Json);
-        using var req = new HttpRequestMessage(HttpMethod.Post, _settings.GraphQlBaseUrl)
+        using var req = new HttpRequestMessage(HttpMethod.Post, endpoint)
         {
             Content = new StringContent(body, Encoding.UTF8, "application/json")
         };
@@ -59,6 +63,16 @@ public sealed class GraphQlIntegrationClient
         }
 
         return envelope is null ? default : envelope.Data;
+    }
+
+    private string? ResolveGraphQlEndpoint()
+    {
+        if (_settings.EmbeddedGraphQl)
+            return string.IsNullOrWhiteSpace(_settings.GraphQlBaseUrl)
+                ? "http://127.0.0.1:8080/graphql"
+                : _settings.GraphQlBaseUrl;
+
+        return string.IsNullOrWhiteSpace(_settings.GraphQlBaseUrl) ? null : _settings.GraphQlBaseUrl;
     }
 
     private sealed class GraphQlResponse<T>
