@@ -13,13 +13,23 @@ public static class EventBusExtensions
         services.Configure<IntegrationSettings>(configuration.GetSection(IntegrationSettings.SectionName));
 
         services.AddSingleton<ReservaSagaWaiter>();
-        services.AddScoped<IReservaSagaService, ReservaSagaService>();
 
-        services.AddRedCarMassTransit(configuration, "middleware-redcar", x =>
+        var evb = configuration.GetSection(EventBusSettings.SectionName).Get<EventBusSettings>() ?? new EventBusSettings();
+        var rabbitConfigured = MassTransitExtensions.IsRabbitMqConfigured(configuration);
+
+        if (evb.Enabled && rabbitConfigured)
         {
-            x.AddConsumer<ReservaCreadaSagaConsumer>();
-            x.AddConsumer<ReservaRechazadaSagaConsumer>();
-        });
+            services.AddScoped<IReservaSagaService, ReservaSagaService>();
+            services.AddRedCarMassTransit(configuration, "middleware-redcar", x =>
+            {
+                x.AddConsumer<ReservaCreadaSagaConsumer>();
+                x.AddConsumer<ReservaRechazadaSagaConsumer>();
+            });
+        }
+        else
+        {
+            services.AddScoped<IReservaSagaService, DisabledReservaSagaService>();
+        }
 
         return services;
     }

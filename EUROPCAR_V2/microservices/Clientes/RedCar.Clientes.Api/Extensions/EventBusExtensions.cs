@@ -8,6 +8,11 @@ public static class EventBusExtensions
 {
     public static IServiceCollection AddClientesEventBus(this IServiceCollection services, IConfiguration configuration)
     {
+        if (!MassTransitExtensions.IsRabbitMqConfigured(configuration))
+        {
+            return services;
+        }
+
         services.AddScoped<ClientesWriteService>();
         services.AddRedCarMassTransit(configuration, "clientes", x =>
         {

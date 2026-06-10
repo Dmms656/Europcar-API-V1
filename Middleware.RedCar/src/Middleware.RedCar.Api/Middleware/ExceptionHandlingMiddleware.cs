@@ -73,7 +73,10 @@ public sealed class ExceptionHandlingMiddleware
         catch (HttpRequestException hex)
         {
             _logger.LogError(hex, "Error de comunicacion con microservicio.");
-            await WriteAsync(context, 502, "Error al comunicarse con un servicio interno.");
+            var msg = hex.Message.StartsWith("Downstream", StringComparison.OrdinalIgnoreCase)
+                ? hex.Message
+                : "Error al comunicarse con un servicio interno.";
+            await WriteAsync(context, 502, msg);
         }
         catch (Exception ex)
         {

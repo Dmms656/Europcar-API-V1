@@ -2,9 +2,11 @@ using System.Text.Json;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Middleware.RedCar.Api.Extensions;
 using Middleware.RedCar.Api.Middleware;
 using Middleware.RedCar.Api.Models.Common;
+using Middleware.RedCar.Api.Models.Settings;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -153,4 +155,14 @@ app.MapGet("/", () => enableSwagger
     : Results.Redirect("/health/live"));
 
 app.Logger.LogInformation("Middleware.RedCar V2 iniciado en {Urls}", string.Join(",", app.Urls));
+
+var ms = app.Services.GetRequiredService<IOptions<MicroserviciosSettings>>().Value;
+app.Logger.LogInformation(
+    "Microservicios: Catalogo={Catalogo}, Localizaciones={Loc}, Clientes={Cli}, Reservas={Res}",
+    ms.Catalogo.BaseUrl, ms.Localizaciones.BaseUrl, ms.Clientes.BaseUrl, ms.Reservas.BaseUrl);
+app.Logger.LogInformation(
+    "EvB Enabled={EvB}, RabbitMQ Host={RabbitHost}",
+    app.Configuration.GetValue<bool>("EvB:Enabled"),
+    app.Configuration["RabbitMQ:Host"] ?? "(no configurado)");
+
 app.Run();

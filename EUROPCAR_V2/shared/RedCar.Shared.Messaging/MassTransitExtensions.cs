@@ -6,12 +6,24 @@ namespace RedCar.Shared.Messaging;
 
 public static class MassTransitExtensions
 {
+    /// <summary>
+    /// True cuando RabbitMQ__Host (o appsettings RabbitMQ:Host) está definido.
+    /// Sin esto no se registra MassTransit: el REST público sigue como antes de EvB.
+    /// </summary>
+    public static bool IsRabbitMqConfigured(IConfiguration configuration)
+        => !string.IsNullOrWhiteSpace(configuration["RabbitMQ:Host"]);
+
     public static IServiceCollection AddRedCarMassTransit(
         this IServiceCollection services,
         IConfiguration configuration,
         string serviceName,
         Action<IBusRegistrationConfigurator>? configureConsumers = null)
     {
+        if (!IsRabbitMqConfigured(configuration))
+        {
+            return services;
+        }
+
         services.Configure<RabbitMqSettings>(configuration.GetSection(RabbitMqSettings.SectionName));
 
         var rabbit = configuration.GetSection(RabbitMqSettings.SectionName).Get<RabbitMqSettings>()

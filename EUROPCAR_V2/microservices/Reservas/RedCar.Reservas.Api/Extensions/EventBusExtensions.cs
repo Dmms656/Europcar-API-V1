@@ -9,6 +9,11 @@ public static class EventBusExtensions
 {
     public static IServiceCollection AddReservasEventBus(this IServiceCollection services, IConfiguration configuration)
     {
+        if (!MassTransitExtensions.IsRabbitMqConfigured(configuration))
+        {
+            return services;
+        }
+
         services.AddScoped<OutboxService>();
         services.AddScoped<ReservasBookingSagaService>();
         services.AddHostedService<OutboxDispatcherHostedService>();
