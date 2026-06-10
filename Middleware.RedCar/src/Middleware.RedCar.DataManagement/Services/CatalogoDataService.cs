@@ -9,10 +9,7 @@ public sealed class CatalogoDataService : ICatalogoDataService
 {
     private readonly ICatalogoClient _client;
 
-    public CatalogoDataService(ICatalogoClient client)
-    {
-        _client = client;
-    }
+    public CatalogoDataService(ICatalogoClient client) => _client = client;
 
     public async Task<(IReadOnlyList<VehiculoDataModel> Items, int Total)> BuscarVehiculosAsync(VehiculoQuery query, CancellationToken ct = default)
     {

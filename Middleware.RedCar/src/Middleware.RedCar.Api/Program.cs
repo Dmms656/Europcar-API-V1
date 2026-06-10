@@ -62,6 +62,8 @@ builder.Services.AddRedCarAuthentication(builder.Configuration);
 
 builder.Services.AddMicroservicioHttpClients();
 builder.Services.AddRedCarGrpcClients();
+builder.Services.AddGraphQlIntegrationClient(builder.Configuration);
+builder.Services.AddRedCarEventBus(builder.Configuration);
 builder.Services.AddRedCarMiddlewareServices(builder.Configuration);
 
 builder.Services.AddHealthChecks();

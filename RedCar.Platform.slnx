@@ -34,7 +34,12 @@
   <Folder Name="/EUROPCAR_V2/shared/">
     <Project Path="EUROPCAR_V2/shared/RedCar.Shared.Auth/RedCar.Shared.Auth.csproj" />
     <Project Path="EUROPCAR_V2/shared/RedCar.Shared.Contracts/RedCar.Shared.Contracts.csproj" />
+    <Project Path="EUROPCAR_V2/shared/RedCar.Shared.Events/RedCar.Shared.Events.csproj" />
+    <Project Path="EUROPCAR_V2/shared/RedCar.Shared.Messaging/RedCar.Shared.Messaging.csproj" />
     <Project Path="EUROPCAR_V2/shared/RedCar.Shared.Protos/RedCar.Shared.Protos.csproj" />
+  </Folder>
+  <Folder Name="/EUROPCAR_V2/integration/">
+    <Project Path="EUROPCAR_V2/integration/RedCar.Integration.GraphQl/RedCar.Integration.GraphQl.csproj" />
   </Folder>
   <Folder Name="/Middleware.RedCar/" />
   <Folder Name="/Middleware.RedCar/src/">

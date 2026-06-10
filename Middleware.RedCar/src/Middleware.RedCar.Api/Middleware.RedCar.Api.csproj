@@ -12,6 +12,13 @@
     <ProjectReference Include="..\..\..\EUROPCAR_V2\microservices\Seguridad\RedCar.Seguridad.Business\RedCar.Seguridad.Business.csproj" />
     <ProjectReference Include="..\..\..\EUROPCAR_V2\shared\RedCar.Shared.Auth\RedCar.Shared.Auth.csproj" />
     <ProjectReference Include="..\..\..\EUROPCAR_V2\shared\RedCar.Shared.Contracts\RedCar.Shared.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\EUROPCAR_V2\shared\RedCar.Shared.Events\RedCar.Shared.Events.csproj" />
+    <ProjectReference Include="..\..\..\EUROPCAR_V2\shared\RedCar.Shared.Messaging\RedCar.Shared.Messaging.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MassTransit" Version="8.3.7" />
+    <PackageReference Include="MassTransit.RabbitMQ" Version="8.3.7" />
   </ItemGroup>
 
   <ItemGroup>

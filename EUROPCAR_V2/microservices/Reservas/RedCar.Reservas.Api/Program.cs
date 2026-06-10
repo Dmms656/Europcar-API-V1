@@ -41,6 +41,7 @@ builder.Services.AddRedCarJwt(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ReservasReadService>();
 builder.Services.AddScoped<ReservasWriteService>();
+builder.Services.AddReservasEventBus(builder.Configuration);
 builder.Services.AddHttpClient("DownstreamCatalogo").ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(25));
 builder.Services.AddHttpClient("DownstreamLocalizaciones").ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(25));
 builder.Services.AddHttpClient("DownstreamClientes").ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(25));

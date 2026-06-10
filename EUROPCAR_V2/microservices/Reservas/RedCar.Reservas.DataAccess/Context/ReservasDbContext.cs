@@ -13,6 +13,8 @@ public class ReservasDbContext : DbContext
     public DbSet<ReservaConductorLink> ReservaConductores => Set<ReservaConductorLink>();
     public DbSet<ReservaExtraLine> ReservaExtras => Set<ReservaExtraLine>();
     public DbSet<Factura> Facturas => Set<Factura>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<InboxProcessedEvent> InboxProcessedEvents => Set<InboxProcessedEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -141,6 +143,28 @@ public class ReservasDbContext : DbContext
             e.HasOne(x => x.Reserva)
                 .WithMany()
                 .HasForeignKey(x => x.IdReserva);
+        });
+
+        modelBuilder.Entity<OutboxMessage>(e =>
+        {
+            e.ToTable("outbox_messages");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            e.Property(x => x.EventId).HasColumnName("event_id");
+            e.Property(x => x.EventType).HasColumnName("event_type").HasMaxLength(120);
+            e.Property(x => x.CorrelationId).HasColumnName("correlation_id");
+            e.Property(x => x.PayloadJson).HasColumnName("payload_json").HasColumnType("jsonb");
+            e.Property(x => x.OccurredAt).HasColumnName("occurred_at");
+            e.Property(x => x.PublishedAt).HasColumnName("published_at");
+            e.HasIndex(x => x.EventId).IsUnique();
+        });
+
+        modelBuilder.Entity<InboxProcessedEvent>(e =>
+        {
+            e.ToTable("inbox_processed_events");
+            e.HasKey(x => x.EventId);
+            e.Property(x => x.EventId).HasColumnName("event_id");
+            e.Property(x => x.ProcessedAt).HasColumnName("processed_at");
         });
     }
 }

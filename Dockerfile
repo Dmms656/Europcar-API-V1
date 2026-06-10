@@ -15,6 +15,8 @@ COPY ["Middleware.RedCar/src/Middleware.RedCar.DataAccess/Middleware.RedCar.Data
 # Auth embebido: Seguridad.Business + shared (restaurar dependencias antes del COPY completo)
 COPY ["EUROPCAR_V2/shared/RedCar.Shared.Auth/RedCar.Shared.Auth.csproj", "EUROPCAR_V2/shared/RedCar.Shared.Auth/"]
 COPY ["EUROPCAR_V2/shared/RedCar.Shared.Contracts/RedCar.Shared.Contracts.csproj", "EUROPCAR_V2/shared/RedCar.Shared.Contracts/"]
+COPY ["EUROPCAR_V2/shared/RedCar.Shared.Events/RedCar.Shared.Events.csproj", "EUROPCAR_V2/shared/RedCar.Shared.Events/"]
+COPY ["EUROPCAR_V2/shared/RedCar.Shared.Messaging/RedCar.Shared.Messaging.csproj", "EUROPCAR_V2/shared/RedCar.Shared.Messaging/"]
 COPY ["EUROPCAR_V2/microservices/Seguridad/RedCar.Seguridad.DataAccess/RedCar.Seguridad.DataAccess.csproj", "EUROPCAR_V2/microservices/Seguridad/RedCar.Seguridad.DataAccess/"]
 COPY ["EUROPCAR_V2/microservices/Seguridad/RedCar.Seguridad.DataManagement/RedCar.Seguridad.DataManagement.csproj", "EUROPCAR_V2/microservices/Seguridad/RedCar.Seguridad.DataManagement/"]
 COPY ["EUROPCAR_V2/microservices/Seguridad/RedCar.Seguridad.Business/RedCar.Seguridad.Business.csproj", "EUROPCAR_V2/microservices/Seguridad/RedCar.Seguridad.Business/"]
@@ -25,6 +27,8 @@ COPY ["Middleware.RedCar/", "Middleware.RedCar/"]
 COPY ["EUROPCAR_V2/microservices/Seguridad/", "EUROPCAR_V2/microservices/Seguridad/"]
 COPY ["EUROPCAR_V2/shared/RedCar.Shared.Auth/", "EUROPCAR_V2/shared/RedCar.Shared.Auth/"]
 COPY ["EUROPCAR_V2/shared/RedCar.Shared.Contracts/", "EUROPCAR_V2/shared/RedCar.Shared.Contracts/"]
+COPY ["EUROPCAR_V2/shared/RedCar.Shared.Events/", "EUROPCAR_V2/shared/RedCar.Shared.Events/"]
+COPY ["EUROPCAR_V2/shared/RedCar.Shared.Messaging/", "EUROPCAR_V2/shared/RedCar.Shared.Messaging/"]
 
 WORKDIR "/src/Middleware.RedCar/src/Middleware.RedCar.Api"
 

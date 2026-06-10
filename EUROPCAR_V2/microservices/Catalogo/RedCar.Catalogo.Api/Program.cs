@@ -34,6 +34,7 @@ builder.Services.AddDbContext<CatalogoDbContext>(options =>
 
 builder.Services.AddRedCarJwt(builder.Configuration);
 builder.Services.AddScoped<VehiculosAdminService>();
+builder.Services.AddCatalogoEventBus(builder.Configuration);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

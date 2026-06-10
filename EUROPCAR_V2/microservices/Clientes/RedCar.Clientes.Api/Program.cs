@@ -32,6 +32,7 @@ builder.Services.AddDbContext<ClientesDbContext>(options =>
 });
 
 builder.Services.AddRedCarJwt(builder.Configuration);
+builder.Services.AddClientesEventBus(builder.Configuration);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

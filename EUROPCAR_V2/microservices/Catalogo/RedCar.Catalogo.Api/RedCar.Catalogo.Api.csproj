@@ -12,10 +12,14 @@
     <ProjectReference Include="..\..\..\shared\RedCar.Shared.Contracts\RedCar.Shared.Contracts.csproj" />
     <ProjectReference Include="..\..\..\shared\RedCar.Shared.Auth\RedCar.Shared.Auth.csproj" />
     <ProjectReference Include="..\..\..\shared\RedCar.Shared.Protos\RedCar.Shared.Protos.csproj" />
+    <ProjectReference Include="..\..\..\shared\RedCar.Shared.Events\RedCar.Shared.Events.csproj" />
+    <ProjectReference Include="..\..\..\shared\RedCar.Shared.Messaging\RedCar.Shared.Messaging.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Grpc.AspNetCore" Version="2.70.0" />
+    <PackageReference Include="MassTransit" Version="8.3.7" />
+    <PackageReference Include="MassTransit.RabbitMQ" Version="8.3.7" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.4" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="9.0.4" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="7.3.1" />

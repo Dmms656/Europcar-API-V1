@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Middleware.RedCar.DataManagement\Middleware.RedCar.DataManagement.csproj" />
+    <ProjectReference Include="..\..\..\EUROPCAR_V2\shared\RedCar.Shared.Messaging\RedCar.Shared.Messaging.csproj" />
   </ItemGroup>
 
   <ItemGroup>

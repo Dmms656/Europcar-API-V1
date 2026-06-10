@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Migración ESB → Event Bus (RabbitMQ) — RedCar Marketplace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface-2: #243044;
+      --text: #e8edf4;
+      --text-muted: #94a3b8;
+      --accent: #f97316;
+      --accent-soft: rgba(249, 115, 22, 0.15);
+      --border: #334155;
+      --link: #38bdf8;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --code-bg: #0d1117;
+      --shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+      --radius: 10px;
+      --max-width: 920px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "DM Sans", system-ui, sans-serif;
+      font-size: 1.05rem;
+      line-height: 1.65;
+      color: var(--text);
+      background: var(--bg);
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(249, 115, 22, 0.12), transparent),
+        linear-gradient(180deg, var(--bg) 0%, #121820 100%);
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: 100vh;
+    }
+    @media (max-width: 1024px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { position: relative; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+    }
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 1.5rem 1.25rem 2rem;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+    }
+    .sidebar-brand {
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+    .sidebar-title {
+      font-size: 1rem;
+      font-weight: 600;
+      line-height: 1.35;
+      margin: 0 0 1.25rem;
+      color: var(--text);
+    }
+    .sidebar nav ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .sidebar nav li { margin: 0.15rem 0; }
+    .sidebar nav a {
+      display: block;
+      padding: 0.35rem 0.6rem;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      border-radius: 6px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .sidebar nav a:hover {
+      color: var(--text);
+      background: var(--surface-2);
+    }
+    .sidebar nav .toc-h3 { padding-left: 1rem; font-size: 0.82rem; }
+    main {
+      padding: 2.5rem 3rem 4rem;
+      max-width: calc(var(--max-width) + 6rem);
+    }
+    @media (max-width: 640px) {
+      main { padding: 1.5rem 1.25rem 3rem; }
+    }
+    .doc-header {
+      margin-bottom: 2.5rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .doc-header h1 {
+      font-size: clamp(1.75rem, 4vw, 2.35rem);
+      font-weight: 700;
+      line-height: 1.2;
+      margin: 0 0 0.5rem;
+      background: linear-gradient(135deg, var(--text) 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .doc-header .subtitle {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      margin: 0 0 1.25rem;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.75rem;
+    }
+    .meta-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.85rem 1rem;
+      font-size: 0.9rem;
+    }
+    .meta-card strong {
+      display: block;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+    }
+    .content h2 {
+      font-size: 1.55rem;
+      font-weight: 700;
+      margin: 2.75rem 0 1rem;
+      padding-top: 0.5rem;
+      color: var(--text);
+      border-bottom: 2px solid var(--accent-soft);
+    }
+    .content h2:first-child { margin-top: 0; }
+    .content h3 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin: 2rem 0 0.75rem;
+      color: #f1f5f9;
+    }
+    .content h4 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin: 1.5rem 0 0.5rem;
+      color: var(--accent);
+    }
+    .content p { margin: 0.85rem 0; }
+    .content ul, .content ol {
+      margin: 0.85rem 0;
+      padding-left: 1.4rem;
+    }
+    .content li { margin: 0.35rem 0; }
+    .content a {
+      color: var(--link);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.15s;
+    }
+    .content a:hover { border-bottom-color: var(--link); }
+    .content strong { color: #f8fafc; font-weight: 600; }
+    .content em { color: var(--text-muted); }
+    .content hr {
+      border: none;
+      height: 1px;
+      background: var(--border);
+      margin: 2.5rem 0;
+    }
+    .content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.25rem 0;
+      font-size: 0.92rem;
+      background: var(--surface);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .content thead {
+      background: var(--surface-2);
+    }
+    .content th, .content td {
+      padding: 0.65rem 0.9rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .content th {
+      font-weight: 600;
+      color: var(--accent);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .content tr:last-child td { border-bottom: none; }
+    .content tr:hover td { background: rgba(255,255,255,0.02); }
+    .content code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      color: #fb923c;
+      padding: 0.15em 0.45em;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+    .content pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.25rem;
+      overflow-x: auto;
+      margin: 1.25rem 0;
+      box-shadow: var(--shadow);
+    }
+    .content pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      color: #e2e8f0;
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+    .mermaid-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      overflow-x: auto;
+      box-shadow: var(--shadow);
+    }
+    .mermaid { text-align: center; }
+    .content blockquote {
+      margin: 1.25rem 0;
+      padding: 1rem 1.25rem;
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      color: var(--text-muted);
+    }
+    .badge-p0 { color: #fca5a5; }
+    .badge-p1 { color: #fcd34d; }
+    .footer-note {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+    .print-hint {
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      opacity: 0.7;
+    }
+    @media print {
+      body { background: white; color: #111; }
+      .sidebar, .print-hint { display: none; }
+      .layout { display: block; }
+      main { max-width: 100%; padding: 1rem; }
+      .content table, .mermaid-wrap { box-shadow: none; break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand">RedCar / Europcar V2</div>
+      <p class="sidebar-title">Migración ESB → Event Bus</p>
+      <nav id="doc-toc"><ul><li><a href="#1-resumen-ejecutivo">1. Resumen ejecutivo</a></li>
+<li><a href="#2-situación-actual-esb-de-facto">2. Situación actual (ESB de facto)</a></li>
+<li class="toc-h3"><a href="#21-componentes-relevantes">2.1. Componentes relevantes</a></li>
+<li class="toc-h3"><a href="#22-flujos-marketplace-que-hoy-pegan-varios-ms">2.2. Flujos Marketplace que hoy “pegan” varios MS</a></li>
+<li class="toc-h3"><a href="#23-por-qué-se-considera-esb-aunque-no-sea-un-producto-esb-clásico">2.3. Por qué se considera ESB (aunque no sea un producto ESB clásico)</a></li>
+<li><a href="#3-fundamentos-teóricos">3. Fundamentos teóricos</a></li>
+<li class="toc-h3"><a href="#31-esb-vs-event-bus-evb">3.1. ESB vs Event Bus (EvB)</a></li>
+<li class="toc-h3"><a href="#32-arquitectura-orientada-a-eventos-eda">3.2. Arquitectura orientada a eventos (EDA)</a></li>
+<li class="toc-h3"><a href="#33-teorema-cap-y-consistencia-en-marketplace">3.3. Teorema CAP y consistencia en Marketplace</a></li>
+<li class="toc-h3"><a href="#34-patrones-complementarios">3.4. Patrones complementarios</a></li>
+<li class="toc-h3"><a href="#35-rabbitmq-en-el-modelo-lógico-del-evb">3.5. RabbitMQ en el modelo lógico del EvB</a></li>
+<li><a href="#4-criterios-técnicos-de-migración">4. Criterios técnicos de migración</a></li>
+<li class="toc-h3"><a href="#41-criterios-de-selección-de-flujos-candidatos">4.1. Criterios de selección de flujos candidatos</a></li>
+<li class="toc-h3"><a href="#42-criterios-de-diseño-de-mensajes">4.2. Criterios de diseño de mensajes</a></li>
+<li class="toc-h3"><a href="#43-criterios-de-infraestructura-rabbitmq">4.3. Criterios de infraestructura RabbitMQ</a></li>
+<li class="toc-h3"><a href="#44-criterios-de-implementación-net-cuando-se-codifique">4.4. Criterios de implementación .NET (cuando se codifique)</a></li>
+<li class="toc-h3"><a href="#45-qué-no-migrar-al-evb-criterios-de-exclusión">4.5. Qué **no** migrar al EvB (criterios de exclusión)</a></li>
+<li><a href="#5-mejores-prácticas-con-rabbitmq">5. Mejores prácticas con RabbitMQ</a></li>
+<li class="toc-h3"><a href="#51-topología-recomendada-para-redcar-marketplace">5.1. Topología recomendada para RedCar Marketplace</a></li>
+<li class="toc-h3"><a href="#52-tabla-de-decisiones-exchange-queue">5.2. Tabla de decisiones Exchange / Queue</a></li>
+<li class="toc-h3"><a href="#53-idempotencia-y-orden">5.3. Idempotencia y orden</a></li>
+<li class="toc-h3"><a href="#54-seguridad">5.4. Seguridad</a></li>
+<li class="toc-h3"><a href="#55-observabilidad-mínima-viable">5.5. Observabilidad mínima viable</a></li>
+<li><a href="#6-microservicios-a-actualizar-marketplace">6. Microservicios a actualizar (Marketplace)</a></li>
+<li class="toc-h3"><a href="#61-matriz-de-impacto">6.1. Matriz de impacto</a></li>
+<li class="toc-h3"><a href="#62-detalle-por-microservicio">6.2. Detalle por microservicio</a></li>
+<li class="toc-h3"><a href="#63-proyecto-compartido-nuevo-recomendado">6.3. Proyecto compartido nuevo (recomendado)</a></li>
+<li class="toc-h3"><a href="#64-servicios-de-plataforma-adicionales-no-son-ms-de-dominio">6.4. Servicios de plataforma adicionales (no son MS de dominio)</a></li>
+<li><a href="#7-catálogo-de-eventos-de-dominio">7. Catálogo de eventos de dominio</a></li>
+<li class="toc-h3"><a href="#71-eventos-núcleo-marketplace-v1">7.1. Eventos núcleo Marketplace (v1)</a></li>
+<li class="toc-h3"><a href="#72-comandos-cola-direct-no-fan-out">7.2. Comandos (cola direct, no fan-out)</a></li>
+<li><a href="#8-arquitectura-objetivo-del-event-bus">8. Arquitectura objetivo del Event Bus</a></li>
+<li class="toc-h3"><a href="#81-vista-de-contenedores-c4-simplificado">8.1. Vista de contenedores (C4 simplificado)</a></li>
+<li class="toc-h3"><a href="#82-flujo-objetivo-crear-reserva-saga-orquestada">8.2. Flujo objetivo: crear reserva (saga orquestada)</a></li>
+<li class="toc-h3"><a href="#83-flujo-objetivo-búsqueda-de-vehículos-híbrido">8.3. Flujo objetivo: búsqueda de vehículos (híbrido)</a></li>
+<li class="toc-h3"><a href="#84-diagrama-de-despliegue-render-docker">8.4. Diagrama de despliegue (Render / Docker)</a></li>
+<li><a href="#9-estrategia-de-migración-por-fases">9. Estrategia de migración por fases</a></li>
+<li><a href="#10-riesgos-métricas-y-criterios-de-aceptación">10. Riesgos, métricas y criterios de aceptación</a></li>
+<li class="toc-h3"><a href="#101-riesgos-principales">10.1. Riesgos principales</a></li>
+<li class="toc-h3"><a href="#102-métricas-de-éxito">10.2. Métricas de éxito</a></li>
+<li class="toc-h3"><a href="#103-criterios-de-aceptación-de-la-migración-marketplace">10.3. Criterios de aceptación de la migración Marketplace</a></li>
+<li><a href="#11-referencias">11. Referencias</a></li>
+<li><a href="#anexo-a-mapeo-endpoints-marketplace-futuro-evb">Anexo A — Mapeo endpoints Marketplace → futuro EvB</a></li>
+<li><a href="#anexo-b-glosario">Anexo B — Glosario</a></li></ul></nav>
+    </aside>
+    <main>
+      <header class="doc-header">
+        <h1>Migración ESB → Event Bus (EvB) con RabbitMQ</h1>
+        <p class="subtitle">Plataforma RedCar / Europcar — Canal Marketplace (Booking)</p>
+        <div class="meta-grid"><div class="meta-card"><strong>Versión del documento</strong>1.0</div><div class="meta-card"><strong>Fecha</strong>4 de junio de 2026</div><div class="meta-card"><strong>Alcance</strong>Fundamentos teóricos, criterios técnicos, mejores prácticas y arquitectura objetivo</div><div class="meta-card"><strong>Broker objetivo</strong><a href="https://www.rabbitmq.com/">RabbitMQ</a></div><div class="meta-card"><strong>Restricción</strong>Documento de diseño — <strong>sin cambios de código</strong> en este entregable</div></div>
+      </header>
+      <article class="content">
+        <hr />
+<h2 id="1-resumen-ejecutivo">1. Resumen ejecutivo</h2>
+<p>Hoy el <strong>canal Marketplace</strong> (booking público <code>/api/v2/booking/...</code> y compat <code>/api/v1/...</code>) depende de <strong>orquestación síncrona</strong> centralizada en <code>Middleware.RedCar</code>: un patrón de <strong>Enterprise Service Bus (ESB) ligero</strong> implementado como <strong>BFF + orquestadores</strong> (<code>MarketplaceOrchestrator</code>, <code>ReservaOrchestrator</code>, <code>FacturaOrchestrator</code>) que encadenan llamadas <strong>REST</strong> y <strong>gRPC</strong> hacia cinco dominios (<code>Catálogo</code>, <code>Localizaciones</code>, <code>Clientes</code>, <code>Reservas</code>, <code>Seguridad</code>).</p>
+<p>La migración propuesta sustituye progresivamente esa <strong>integración acoplada en tiempo</strong> por un <strong>Event Bus (EvB)</strong> basado en <strong>mensajería asíncrona</strong> con <strong>RabbitMQ</strong>, manteniendo el middleware como <strong>fachada HTTP</strong> para el frontend pero delegando los <strong>procesos de negocio multi-dominio</strong> a <strong>eventos de dominio</strong>, <strong>consumidores idempotentes</strong> y, donde aplique, <strong>sagas</strong> o <strong>coreografías</strong>.</p>
+<p><strong>Beneficios esperados en Marketplace:</strong></p>
+<ul>
+<li>Desacoplamiento temporal entre MS (menos cascadas de timeout 502/504 en Render).</li>
+<li>Escalado independiente de lecturas (catálogo) frente a escrituras (reservas).</li>
+<li>Trazabilidad de procesos de reserva como flujo de eventos auditables.</li>
+<li>Evolución de contratos sin romper todos los consumidores a la vez (versionado de eventos).</li>
+</ul>
+<p><strong>Principio rector:</strong> <em>Strangler Fig</em> — el EvB convive con HTTP/gRPC hasta retirar rutas orquestadas una a una.</p>
+<hr />
+<h2 id="2-situación-actual-esb-de-facto">2. Situación actual (ESB de facto)</h2>
+<h3 id="21-componentes-relevantes">2.1. Componentes relevantes</h3>
+<table>
+<thead>
+<tr>
+<th>Componente</th>
+<th>Rol actual</th>
+<th>Protocolo hacia MS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Middleware.RedCar.Api</code></td>
+<td>API pública, JWT, Swagger</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>MarketplaceOrchestrator</code></td>
+<td>Búsqueda vehículos, localizaciones, categorías, extras</td>
+<td>REST → Catálogo, Localizaciones, Reservas</td>
+</tr>
+<tr>
+<td><code>ReservaOrchestrator</code></td>
+<td>Disponibilidad, crear/cancelar reserva</td>
+<td>REST + <strong>gRPC</strong> → Catálogo, Clientes, Reservas</td>
+</tr>
+<tr>
+<td><code>FacturaOrchestrator</code></td>
+<td>Consulta factura por código reserva</td>
+<td>REST → Reservas</td>
+</tr>
+<tr>
+<td><code>RedCar.Seguridad</code></td>
+<td>Auth (embebido en middleware en prod típica)</td>
+<td>SQL directo en middleware</td>
+</tr>
+<tr>
+<td>MS <code>Reservas</code></td>
+<td>Ya hace <strong>enriquecimiento HTTP opcional</strong> hacia Catálogo (<code>Downstream:CatalogoUrl</code>)</td>
+<td>Acoplamiento punto a punto</td>
+</tr>
+</tbody>
+</table>
+<h3 id="22-flujos-marketplace-que-hoy-pegan-varios-ms">2.2. Flujos Marketplace que hoy “pegan” varios MS</h3>
+<div class="mermaid-wrap"><pre class="mermaid">
+sequenceDiagram
+    participant FE as Frontend Booking
+    participant MW as Middleware.RedCar
+    participant CAT as MS Catálogo
+    participant LOC as MS Localizaciones
+    participant CLI as MS Clientes
+    participant RES as MS Reservas
+
+    FE->>MW: GET /booking/vehiculos (filtros)
+    MW->>CAT: Buscar vehículos (REST)
+    loop Por cada vehículo
+        MW->>RES: Verificar disponibilidad (REST)
+    end
+    MW->>LOC: Enriquecer localización (REST)
+    MW-->>FE: Lista enriquecida
+
+    FE->>MW: POST /booking/reservas
+    MW->>CAT: Validar vehículo (REST)
+    MW->>RES: Disponibilidad final (REST)
+    MW->>CLI: Upsert cliente + conductores (REST)
+    MW->>RES: Crear reserva (gRPC transaccional)
+    MW-->>FE: 201 + código reserva
+</pre></div>
+
+<h3 id="23-por-qué-se-considera-esb-aunque-no-sea-un-producto-esb-clásico">2.3. Por qué se considera ESB (aunque no sea un producto ESB clásico)</h3>
+<table>
+<thead>
+<tr>
+<th>Característica ESB clásica</th>
+<th>Equivalente en RedCar hoy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hub central de integración</td>
+<td><code>Middleware.RedCar</code></td>
+</tr>
+<tr>
+<td>Transformación de mensajes</td>
+<td>Mappers (<code>*BusinessMapper</code>)</td>
+</tr>
+<tr>
+<td>Enrutamiento</td>
+<td>Orquestadores por endpoint</td>
+</tr>
+<tr>
+<td>Protocol mediation</td>
+<td>REST + gRPC hacia MS</td>
+</tr>
+<tr>
+<td>Acoplamiento temporal fuerte</td>
+<td>Cadena síncrona en crear reserva y búsqueda N+1 disponibilidad</td>
+</tr>
+</tbody>
+</table>
+<p>El <strong>EvB</strong> no elimina el middleware como <strong>API Gateway/BFF</strong>, pero <strong>sí</strong> debe reducir su rol de <strong>orquestador transaccional</strong> en favor de <strong>publicación/consumo de eventos</strong> y <strong>consultas de lectura</strong> optimizadas.</p>
+<hr />
+<h2 id="3-fundamentos-teóricos">3. Fundamentos teóricos</h2>
+<h3 id="31-esb-vs-event-bus-evb">3.1. ESB vs Event Bus (EvB)</h3>
+<table>
+<thead>
+<tr>
+<th>Dimensión</th>
+<th>ESB (integración orientada a servicios)</th>
+<th>Event Bus (integración orientada a eventos)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Unidad de integración</strong></td>
+<td>Mensaje/solicitud de servicio</td>
+<td>Hecho de dominio ocurrido (<code>ReservaCreada</code>)</td>
+</tr>
+<tr>
+<td><strong>Acoplamiento</strong></td>
+<td>Conocimiento del endpoint y contrato síncrono</td>
+<td>Conocimiento del tipo de evento y esquema</td>
+</tr>
+<tr>
+<td><strong>Temporalidad</strong></td>
+<td>Request/response en la misma ventana</td>
+<td>Productor y consumidor desacoplados en el tiempo</td>
+</tr>
+<tr>
+<td><strong>Consistencia</strong></td>
+<td>Fuerte en una sola transacción distribuida (difícil)</td>
+<td><strong>Eventual</strong>; compensaciones vía sagas</td>
+</tr>
+<tr>
+<td><strong>Escalabilidad</strong></td>
+<td>Escala el hub y todas las dependencias</td>
+<td>Escala por cola/consumidor</td>
+</tr>
+<tr>
+<td><strong>Evolución</strong></td>
+<td>Cambios en el hub afectan muchos flujos</td>
+<td>Nuevos consumidores sin tocar al productor</td>
+</tr>
+<tr>
+<td><strong>Complejidad operativa</strong></td>
+<td>Menor al inicio</td>
+<td>Mayor (broker, DLQ, observabilidad, idempotencia)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-arquitectura-orientada-a-eventos-eda">3.2. Arquitectura orientada a eventos (EDA)</h3>
+<p>Conceptos aplicables al Marketplace RedCar:</p>
+<ol>
+<li><strong>Evento de dominio</strong> — Algo que ya ocurrió en un bounded context (<code>reservas.reserva_creada</code>). Nombre en pasado, payload mínimo, identificador de correlación.</li>
+<li><strong>Evento de integración</strong> — Versión publicada al bus para otros contextos (puede ser subset del dominio).</li>
+<li><strong>Comando</strong> — Intención de cambio (<code>CrearReservaCommand</code>); en RabbitMQ suele ir a una <strong>cola de trabajo</strong> dedicada, no a fan-out.</li>
+<li><strong>Consulta (CQRS)</strong> — Lecturas de catálogo/localizaciones pueden seguir síncronas o servirse desde <strong>proyecciones</strong> alimentadas por eventos.</li>
+<li><strong>Coreografía vs orquestación</strong><br />
+   - <strong>Coreografía:</strong> cada MS reacciona a eventos sin coordinador central (ej. Catálogo invalida caché al recibir <code>ReservaConfirmada</code>).<br />
+   - <strong>Orquestación:</strong> un <strong>Saga Coordinator</strong> (puede vivir en Middleware o en un worker <code>RedCar.Sagas</code>) dirige pasos y compensaciones.</li>
+</ol>
+<p>Para <strong>crear reserva</strong>, se recomienda <strong>orquestación de saga</strong> en fase inicial (menor riesgo que coreografía pura) y migrar a coreografía solo en pasos maduros.</p>
+<h3 id="33-teorema-cap-y-consistencia-en-marketplace">3.3. Teorema CAP y consistencia en Marketplace</h3>
+<ul>
+<li>En reserva de vehículos, <strong>disponibilidad</strong> es un recurso contencioso → riesgo de <strong>condiciones de carrera</strong>.</li>
+<li>El modelo actual mitiga con verificación final síncrona antes de <code>CrearReserva</code> (gRPC).</li>
+<li>Con EvB: usar <strong>idempotencia</strong> + <strong>bloqueo optimista</strong> o <strong>hold temporal</strong> (<code>ReservaHoldCreada</code> → <code>ReservaConfirmada</code> / <code>ReservaHoldExpirada</code>).</li>
+<li>Aceptar <strong>consistencia eventual</strong> en lecturas de listado (vehículos “casi disponibles”) si el UX muestra confirmación explícita en el paso de pago/reserva.</li>
+</ul>
+<h3 id="34-patrones-complementarios">3.4. Patrones complementarios</h3>
+<table>
+<thead>
+<tr>
+<th>Patrón</th>
+<th>Uso en RedCar + RabbitMQ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Transactional Outbox</strong></td>
+<td>Persistir evento en la misma TX que la reserva en <code>schema reservas</code>, luego publicador los envía a RabbitMQ</td>
+</tr>
+<tr>
+<td><strong>Inbox / idempotent consumer</strong></td>
+<td>Tabla <code>inbox_events</code> por MS para no procesar dos veces el mismo <code>eventId</code></td>
+</tr>
+<tr>
+<td><strong>Dead Letter Queue (DLQ)</strong></td>
+<td>Cola <code>*.dlq</code> tras N reintentos</td>
+</tr>
+<tr>
+<td><strong>Correlation ID</strong></td>
+<td><code>correlationId</code> en headers AMQP = <code>TraceIdentifier</code> o <code>codigoReserva</code></td>
+</tr>
+<tr>
+<td><strong>Event versioning</strong></td>
+<td><code>eventType</code> + <code>schemaVersion</code> en envelope JSON</td>
+</tr>
+<tr>
+<td><strong>Strangler Fig</strong></td>
+<td>Mantener endpoints actuales; nuevos flujos detrás de feature flag</td>
+</tr>
+</tbody>
+</table>
+<h3 id="35-rabbitmq-en-el-modelo-lógico-del-evb">3.5. RabbitMQ en el modelo lógico del EvB</h3>
+<p>RabbitMQ implementa el <strong>EvB físico</strong> mediante:</p>
+<ul>
+<li><strong>Exchanges</strong> (enrutamiento): <code>topic</code> para eventos de dominio; <code>direct</code> para comandos por servicio.</li>
+<li><strong>Queues</strong> (buffer + competencia de consumidores): una cola por <strong>consumidor lógico</strong>, no por evento.</li>
+<li><strong>Bindings</strong> (reglas <code>routing key</code>): convención <code>redcar.&lt;dominio&gt;.&lt;entidad&gt;.&lt;verbo&gt;</code>.</li>
+</ul>
+<p>No confundir <strong>cola de trabajo</strong> (un consumidor procesa) con <strong>fan-out</strong> (varios consumidores con colas propias ligadas al mismo exchange).</p>
+<hr />
+<h2 id="4-criterios-técnicos-de-migración">4. Criterios técnicos de migración</h2>
+<h3 id="41-criterios-de-selección-de-flujos-candidatos">4.1. Criterios de selección de flujos candidatos</h3>
+<p>Priorizar migración al EvB cuando el flujo cumpla <strong>≥2</strong> de:</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Criterio</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>C1</td>
+<td>Involucra <strong>≥2 microservicios</strong> en escritura</td>
+</tr>
+<tr>
+<td>C2</td>
+<td>Tolerancia a latencia de <strong>segundos</strong> en la respuesta al usuario</td>
+</tr>
+<tr>
+<td>C3</td>
+<td>Necesidad de <strong>auditoría</strong> o reproceso histórico</td>
+</tr>
+<tr>
+<td>C4</td>
+<td>Picos de carga desiguales entre productor y consumidor</td>
+</tr>
+<tr>
+<td>C5</td>
+<td>El acoplamiento síncrono genera <strong>502/504</strong> o timeouts en cadena (Render cold start)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Alta prioridad Marketplace:</strong> <code>POST reservas</code> (C1, C2, C5), notificaciones post-reserva, invalidación de disponibilidad.<br />
+<strong>Baja prioridad inicial:</strong> <code>GET categorías</code>, <code>GET localizaciones</code> (mantener REST; opcional cache por eventos).</p>
+<h3 id="42-criterios-de-diseño-de-mensajes">4.2. Criterios de diseño de mensajes</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Criterio</th>
+<th>Regla</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M1</td>
+<td><strong>Envelope estándar</strong></td>
+<td><code>{ "eventId", "eventType", "schemaVersion", "occurredAt", "correlationId", "causationId", "producer", "payload" }</code></td>
+</tr>
+<tr>
+<td>M2</td>
+<td><strong>Payload mínimo</strong></td>
+<td>IDs y datos necesarios; evitar “god events” con joins de 5 tablas</td>
+</tr>
+<tr>
+<td>M3</td>
+<td><strong>Inmutabilidad</strong></td>
+<td>Los eventos no se editan; correcciones = nuevo evento <code>ReservaCorregida</code></td>
+</tr>
+<tr>
+<td>M4</td>
+<td><strong>Timezone</strong></td>
+<td><code>occurredAt</code> en UTC ISO-8601</td>
+</tr>
+<tr>
+<td>M5</td>
+<td><strong>PII</strong></td>
+<td>No publicar contraseñas ni tokens; enmascarar documentos si el bus no es privado end-to-end</td>
+</tr>
+</tbody>
+</table>
+<h3 id="43-criterios-de-infraestructura-rabbitmq">4.3. Criterios de infraestructura RabbitMQ</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Criterio</th>
+<th>Recomendación</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R1</td>
+<td><strong>Alta disponibilidad</strong></td>
+<td>Cluster 3 nodos o RabbitMQ en CloudAMQP / Amazon MQ según presupuesto</td>
+</tr>
+<tr>
+<td>R2</td>
+<td><strong>TLS</strong></td>
+<td><code>amqps://</code> en producción</td>
+</tr>
+<tr>
+<td>R3</td>
+<td><strong>Usuarios y vhosts</strong></td>
+<td><code>vhost /redcar-marketplace</code>; usuario por MS con permisos mínimos</td>
+</tr>
+<tr>
+<td>R4</td>
+<td><strong>Política de colas</strong></td>
+<td><code>x-message-ttl</code> en holds; <code>x-dead-letter-exchange</code> hacia <code>redcar.dlx</code></td>
+</tr>
+<tr>
+<td>R5</td>
+<td><strong>Prefetch</strong></td>
+<td><code>prefetchCount</code> bajo (10–50) en consumidores .NET para back-pressure</td>
+</tr>
+<tr>
+<td>R6</td>
+<td><strong>Persistencia</strong></td>
+<td>Mensajes <code>deliveryMode=2</code> en eventos críticos de reserva</td>
+</tr>
+<tr>
+<td>R7</td>
+<td><strong>Observabilidad</strong></td>
+<td>Prometheus plugin + correlación OpenTelemetry (<code>traceparent</code> en headers)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="44-criterios-de-implementación-net-cuando-se-codifique">4.4. Criterios de implementación .NET (cuando se codifique)</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Criterio</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>N1</td>
+<td>Librería: <strong>MassTransit.RabbitMQ</strong> o <strong>EasyNetQ</strong> (equipo debe elegir una; MassTransit aporta sagas out-of-the-box)</td>
+</tr>
+<tr>
+<td>N2</td>
+<td>Contratos compartidos en <code>EUROPCAR_V2/shared/RedCar.Shared.Events</code> (nuevo proyecto, sin referencias a EF)</td>
+</tr>
+<tr>
+<td>N3</td>
+<td>Publicación solo vía <strong>Outbox</strong> desde capa <code>DataManagement</code> / transacción de negocio</td>
+</tr>
+<tr>
+<td>N4</td>
+<td>Consumidores en <code>*.Api</code> como <code>IHostedService</code> o workers dedicados por MS</td>
+</tr>
+<tr>
+<td>N5</td>
+<td>Tests de integración con <strong>Testcontainers</strong> (<code>rabbitmq:3-management</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="45-qué-no-migrar-al-evb-criterios-de-exclusión">4.5. Qué <strong>no</strong> migrar al EvB (criterios de exclusión)</h3>
+<ul>
+<li>Lecturas simples de catálogo sin efecto colateral.</li>
+<li>Login JWT (<code>Seguridad</code>) — permanece síncrono salvo auditoría asíncrona opcional.</li>
+<li>Health checks y Swagger.</li>
+<li>Operaciones que requieren respuesta inmediata con <strong>garantía fuerte</strong> sin diseño de saga (hasta tener hold + confirmación).</li>
+</ul>
+<hr />
+<h2 id="5-mejores-prácticas-con-rabbitmq">5. Mejores prácticas con RabbitMQ</h2>
+<h3 id="51-topología-recomendada-para-redcar-marketplace">5.1. Topología recomendada para RedCar Marketplace</h3>
+<pre><code>vhost: /redcar-marketplace
+
+Exchanges (durables):
+  redcar.events.topic     type=topic     # eventos de dominio
+  redcar.commands.direct  type=direct    # comandos punto a punto
+  redcar.dlx.topic        type=topic     # dead letter
+
+Ejemplo routing keys:
+  redcar.reservas.reserva.creada.v1
+  redcar.reservas.reserva.cancelada.v1
+  redcar.reservas.disponibilidad.consultada.v1
+  redcar.clientes.cliente.actualizado.v1
+  redcar.catalogo.vehiculo.estado_cambiado.v1
+  redcar.localizaciones.localizacion.actualizada.v1
+</code></pre>
+<p><strong>Regla:</strong> cada <strong>servicio consumidor</strong> declara su cola:</p>
+<ul>
+<li><code>reservas.integration</code> ← binding <code>redcar.catalogo.vehiculo.#</code> (si necesita reaccionar)</li>
+<li><code>catalogo.projection</code> ← binding <code>redcar.reservas.reserva.#</code></li>
+<li><code>middleware.saga.reservas</code> ← binding <code>redcar.reservas.#</code> + comandos directos</li>
+</ul>
+<h3 id="52-tabla-de-decisiones-exchange-queue">5.2. Tabla de decisiones Exchange / Queue</h3>
+<table>
+<thead>
+<tr>
+<th>Escenario</th>
+<th>Exchange</th>
+<th>Patrón</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Un MS debe procesar comando</td>
+<td><code>direct</code> + cola <code>clientes.commands</code></td>
+<td>Competencia de consumidores</td>
+</tr>
+<tr>
+<td>Varios MS reaccionan al mismo hecho</td>
+<td><code>topic</code> + una cola por MS</td>
+<td>Fan-out con colas dedicadas</td>
+</tr>
+<tr>
+<td>Retry con backoff</td>
+<td>Cola principal + TTL DLX a <code>retry.30s</code> → re-bind</td>
+<td>Delayed retry</td>
+</tr>
+<tr>
+<td>Poison message</td>
+<td>DLQ <code>*.dlq</code> + alerta</td>
+<td>Operaciones manual</td>
+</tr>
+</tbody>
+</table>
+<h3 id="53-idempotencia-y-orden">5.3. Idempotencia y orden</h3>
+<ul>
+<li><strong>Idempotencia:</strong> clave natural = <code>eventId</code> (UUID v7 recomendado).</li>
+<li><strong>Orden:</strong> RabbitMQ garantiza orden <strong>por cola</strong>, no global. Particionar por <code>idVehiculo</code> o <code>codigoReserva</code> si un mismo agregado debe procesarse en orden (consistent hash en routing key opcional).</li>
+<li><strong>Duplicados:</strong> esperados; diseñar consumidores <strong>at-least-once</strong> → efecto <strong>exactly-once</strong> vía inbox.</li>
+</ul>
+<h3 id="54-seguridad">5.4. Seguridad</h3>
+<ul>
+<li>Credenciales por MS en variables <code>RabbitMQ__*</code>.</li>
+<li>Rotación de contraseñas y <strong>separación</strong> dev/staging/prod por vhost.</li>
+<li>No publicar JWT en mensajes; propagar <code>correlationId</code> y validar en consumidor si el evento exige contexto de usuario (preferir eventos con <code>idUsuario</code> / <code>idCliente</code> ya resueltos).</li>
+</ul>
+<h3 id="55-observabilidad-mínima-viable">5.5. Observabilidad mínima viable</h3>
+<table>
+<thead>
+<tr>
+<th>Señal</th>
+<th>Herramienta</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Profundidad de cola</td>
+<td>RabbitMQ Management / Prometheus</td>
+</tr>
+<tr>
+<td>Tasa publish/consume</td>
+<td>OpenTelemetry metrics</td>
+</tr>
+<tr>
+<td>Trazas distribuidas</td>
+<td><code>correlationId</code> + export OTLP</td>
+</tr>
+<tr>
+<td>Log estructurado</td>
+<td><code>EventId</code>, <code>EventType</code>, <code>Consumer</code> en Serilog</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="6-microservicios-a-actualizar-marketplace">6. Microservicios a actualizar (Marketplace)</h2>
+<h3 id="61-matriz-de-impacto">6.1. Matriz de impacto</h3>
+<table>
+<thead>
+<tr>
+<th>Microservicio</th>
+<th>Prioridad EvB</th>
+<th>Rol en Marketplace</th>
+<th>Cambios esperados</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>RedCar.Reservas</strong></td>
+<td><strong>Crítica (P0)</strong></td>
+<td>Disponibilidad, crear/cancelar reserva, factura</td>
+<td>Productor principal: <code>ReservaCreada</code>, <code>ReservaCancelada</code>, <code>DisponibilidadRechazada</code>; Outbox; consumir eventos de Catálogo para validación async; reducir HTTP saliente a Catálogo</td>
+</tr>
+<tr>
+<td><strong>RedCar.Clientes</strong></td>
+<td><strong>Alta (P0)</strong></td>
+<td>Upsert cliente/conductores en crear reserva</td>
+<td>Consumidor de <code>CrearReservaSaga</code> o comando <code>UpsertClienteCommand</code>; productor <code>ClienteActualizado</code>, <code>ConductoresRegistrados</code></td>
+</tr>
+<tr>
+<td><strong>RedCar.Catalogo</strong></td>
+<td><strong>Alta (P1)</strong></td>
+<td>Vehículos, categorías, extras en búsqueda</td>
+<td>Productor <code>VehiculoEstadoCambiado</code>, <code>VehiculoActualizado</code>; consumidor de reservas para proyección de disponibilidad/cache; opcional: API de lectura sin cambios</td>
+</tr>
+<tr>
+<td><strong>RedCar.Localizaciones</strong></td>
+<td><strong>Media (P2)</strong></td>
+<td>Enriquecimiento en listados y detalle</td>
+<td>Productor <code>LocalizacionActualizada</code> (baja frecuencia); consumidor opcional para materializar vistas en otros MS</td>
+</tr>
+<tr>
+<td><strong>RedCar.Seguridad</strong></td>
+<td><strong>Baja (P3)</strong></td>
+<td>Auth del canal (embebido en MW)</td>
+<td>Productor opcional <code>UsuarioAutenticado</code> / <code>IntentoLoginFallido</code> hacia <code>audit</code>; no bloquea Marketplace</td>
+</tr>
+<tr>
+<td><strong>Middleware.RedCar</strong></td>
+<td><strong>Alta (P0)</strong></td>
+<td>BFF público</td>
+<td>De orquestador síncrono a: publicar comando <code>IniciarReservaSaga</code>, suscribirse a eventos de finalización, polling/WebSocket opcional para UX; mantener GET síncronos en fase 1</td>
+</tr>
+</tbody>
+</table>
+<h3 id="62-detalle-por-microservicio">6.2. Detalle por microservicio</h3>
+<h4 id="ms-reservas-redcarreservas">MS Reservas (<code>RedCar.Reservas.*</code>)</h4>
+<p><strong>Motivo:</strong> es el <strong>agregado raíz</strong> del proceso de booking y ya contiene lógica transaccional (gRPC <code>CrearReserva</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Área del proyecto</th>
+<th>Actualización</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DataAccess</code></td>
+<td>Tablas <code>outbox_messages</code>, <code>inbox_processed_events</code></td>
+</tr>
+<tr>
+<td><code>DataManagement</code></td>
+<td>Publicar eventos en la misma transacción que persiste reserva</td>
+</tr>
+<tr>
+<td><code>Business</code></td>
+<td>Saga local: estados <code>PENDIENTE</code> → <code>CONFIRMADA</code> / <code>CANCELADA</code></td>
+</tr>
+<tr>
+<td><code>Api</code></td>
+<td>Hosted consumers RabbitMQ; endpoint REST puede delegar a “aceptar comando” async</td>
+</tr>
+<tr>
+<td>Config</td>
+<td><code>RabbitMQ__Host</code>, <code>Exchange__Events</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Eventos a publicar (mínimo viable):</strong></p>
+<ul>
+<li><code>redcar.reservas.reserva.creada.v1</code></li>
+<li><code>redcar.reservas.reserva.cancelada.v1</code></li>
+<li><code>redcar.reservas.reserva.hold_expirada.v1</code> (si se implementa hold)</li>
+</ul>
+<h4 id="ms-clientes-redcarclientes">MS Clientes (<code>RedCar.Clientes.*</code>)</h4>
+<p><strong>Motivo:</strong> hoy el middleware hace <strong>upsert síncrono</strong> antes de gRPC a Reservas.</p>
+<table>
+<thead>
+<tr>
+<th>Cambio</th>
+<th>Descripción</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Consumidor</td>
+<td>Escucha <code>redcar.reservas.saga.cliente_requerido.v1</code> o comando directo con datos del booking</td>
+</tr>
+<tr>
+<td>Productor</td>
+<td>Emite <code>redcar.clientes.cliente.actualizado.v1</code> para que Reservas enlace <code>idCliente</code></td>
+</tr>
+<tr>
+<td>API REST</td>
+<td>Mantener endpoints admin; booking puede dejar de llamar REST directo desde MW</td>
+</tr>
+</tbody>
+</table>
+<h4 id="ms-catálogo-redcarcatalogo">MS Catálogo (<code>RedCar.Catalogo.*</code>)</h4>
+<p><strong>Motivo:</strong> validación de vehículo <code>DISPONIBLE</code> y datos de listado; Reservas ya llama por HTTP.</p>
+<table>
+<thead>
+<tr>
+<th>Cambio</th>
+<th>Descripción</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Productor</td>
+<td>Cambios de estado de vehículo → evento (invalida suposiciones de disponibilidad)</td>
+</tr>
+<tr>
+<td>Consumidor</td>
+<td><code>reserva.creada</code> / <code>cancelada</code> → actualizar proyección o caché distribuida</td>
+</tr>
+<tr>
+<td>Lectura</td>
+<td><code>GET vehiculos</code> puede permanecer REST para el Middleware en fase 1</td>
+</tr>
+</tbody>
+</table>
+<h4 id="ms-localizaciones-redcarlocalizaciones">MS Localizaciones (<code>RedCar.Localizaciones.*</code>)</h4>
+<p><strong>Motivo:</strong> principalmente <strong>lectura</strong> en Marketplace; bajo volumen de escritura.</p>
+<table>
+<thead>
+<tr>
+<th>Cambio</th>
+<th>Descripción</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Productor</td>
+<td>Solo si hay CRUD admin que deba propagarse</td>
+</tr>
+<tr>
+<td>Consumidor</td>
+<td>Opcional para réplicas locales en otros MS</td>
+</tr>
+</tbody>
+</table>
+<h4 id="ms-seguridad-redcarseguridad">MS Seguridad (<code>RedCar.Seguridad.*</code>)</h4>
+<p><strong>Motivo:</strong> no está en el camino crítico del booking V2 salvo emisión de JWT.</p>
+<table>
+<thead>
+<tr>
+<th>Cambio</th>
+<th>Descripción</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>EvB</td>
+<td>Fase posterior: eventos de auditoría hacia cola <code>audit.integration</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="middleware-middlewareredcar">Middleware (<code>Middleware.RedCar.*</code>)</h4>
+<p><strong>Motivo:</strong> hoy concentra el <strong>ESB</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>Cambio</th>
+<th>Descripción</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ReservaOrchestrator</code></td>
+<td>Evolucionar a <strong>Saga Gateway</strong>: POST devuelve <code>202 Accepted</code> + <code>sagaId</code> o mantiene 201 cuando saga completa en &lt;timeout configurable</td>
+</tr>
+<tr>
+<td><code>MarketplaceOrchestrator</code></td>
+<td>Fase 1 sin cambios en GET; fase 2 sustituir N llamadas disponibilidad por <strong>proyección</strong> <code>VehiculoDisponibilidadActualizada</code></td>
+</tr>
+<tr>
+<td><code>DataAccess</code></td>
+<td>Cliente RabbitMQ publish-only + subscribe a <code>saga.completed</code></td>
+</tr>
+<tr>
+<td>Orquestación gRPC</td>
+<td>Retirar gradualmente cuando Reservas exponga comando async equivalente</td>
+</tr>
+</tbody>
+</table>
+<h3 id="63-proyecto-compartido-nuevo-recomendado">6.3. Proyecto compartido nuevo (recomendado)</h3>
+<table>
+<thead>
+<tr>
+<th>Proyecto</th>
+<th>Contenido</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RedCar.Shared.Events</code></td>
+<td>Records C# / contratos JSON Schema de eventos y comandos Marketplace</td>
+</tr>
+<tr>
+<td><code>RedCar.Shared.Messaging</code> (opcional)</td>
+<td>Envelope, headers AMQP, constantes de routing keys</td>
+</tr>
+</tbody>
+</table>
+<p>Sin referencias circulares: los MS <strong>no</strong> deben importar <code>Business</code> de otro MS.</p>
+<h3 id="64-servicios-de-plataforma-adicionales-no-son-ms-de-dominio">6.4. Servicios de plataforma adicionales (no son MS de dominio)</h3>
+<table>
+<thead>
+<tr>
+<th>Componente</th>
+<th>Función</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>RabbitMQ cluster</strong></td>
+<td>Broker EvB</td>
+</tr>
+<tr>
+<td><strong>Outbox dispatcher</strong> (worker por MS o librería)</td>
+<td>Lee outbox y publica</td>
+</tr>
+<tr>
+<td><strong>RedCar.Saga.Reservas</strong> (opcional)</td>
+<td>Coordinador si no se desea lógica saga en Middleware</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="7-catálogo-de-eventos-de-dominio">7. Catálogo de eventos de dominio</h2>
+<h3 id="71-eventos-núcleo-marketplace-v1">7.1. Eventos núcleo Marketplace (v1)</h3>
+<table>
+<thead>
+<tr>
+<th>Event type</th>
+<th>Productor</th>
+<th>Consumidores típicos</th>
+<th>Dispara</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>reserva.iniciada</code></td>
+<td>Middleware / Reservas</td>
+<td>Clientes, Reservas</td>
+<td>POST booking reserva</td>
+</tr>
+<tr>
+<td><code>cliente.actualizado</code></td>
+<td>Clientes</td>
+<td>Reservas</td>
+<td>Tras upsert</td>
+</tr>
+<tr>
+<td><code>conductores.registrados</code></td>
+<td>Clientes</td>
+<td>Reservas</td>
+<td>Tras upsert conductores</td>
+</tr>
+<tr>
+<td><code>reserva.creada</code></td>
+<td>Reservas</td>
+<td>Catálogo, Middleware, (notificaciones)</td>
+<td>TX commit reserva</td>
+</tr>
+<tr>
+<td><code>reserva.cancelada</code></td>
+<td>Reservas</td>
+<td>Catálogo, Middleware</td>
+<td>PATCH cancelar</td>
+</tr>
+<tr>
+<td><code>reserva.rechazada</code></td>
+<td>Reservas</td>
+<td>Middleware</td>
+<td>Conflicto disponibilidad</td>
+</tr>
+<tr>
+<td><code>vehiculo.estado_cambiado</code></td>
+<td>Catálogo</td>
+<td>Reservas</td>
+<td>Admin baja vehículo</td>
+</tr>
+<tr>
+<td><code>disponibilidad.invalidada</code></td>
+<td>Reservas</td>
+<td>Catálogo (proyección)</td>
+<td>Tras crear/cancelar</td>
+</tr>
+</tbody>
+</table>
+<h3 id="72-comandos-cola-direct-no-fan-out">7.2. Comandos (cola direct, no fan-out)</h3>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Cola</th>
+<th>Productor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CrearReservaCommand</code></td>
+<td><code>reservas.commands</code></td>
+<td>Middleware</td>
+</tr>
+<tr>
+<td><code>UpsertClienteCommand</code></td>
+<td><code>clientes.commands</code></td>
+<td>Saga / Middleware</td>
+</tr>
+<tr>
+<td><code>CancelarReservaCommand</code></td>
+<td><code>reservas.commands</code></td>
+<td>Middleware</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="8-arquitectura-objetivo-del-event-bus">8. Arquitectura objetivo del Event Bus</h2>
+<h3 id="81-vista-de-contenedores-c4-simplificado">8.1. Vista de contenedores (C4 simplificado)</h3>
+<div class="mermaid-wrap"><pre class="mermaid">
+flowchart TB
+    subgraph Canal["Canal público"]
+        FE[Frontend React/Vite]
+    end
+
+    subgraph BFF["Capa de exposición"]
+        MW[Middleware.RedCar.Api<br/>BFF + Saga Gateway HTTP]
+    end
+
+    subgraph EvB["Event Bus — RabbitMQ"]
+        EX_EVT[(exchange: redcar.events.topic)]
+        EX_CMD[(exchange: redcar.commands.direct)]
+        EX_DLX[(exchange: redcar.dlx.topic)]
+    end
+
+    subgraph Dominio["Microservicios EUROPCAR_V2"]
+        CAT[RedCar.Catalogo]
+        LOC[RedCar.Localizaciones]
+        CLI[RedCar.Clientes]
+        RES[RedCar.Reservas]
+        SEG[RedCar.Seguridad]
+    end
+
+    subgraph Datos["PostgreSQL por schema"]
+        DB_CAT[(catalogo)]
+        DB_LOC[(localizaciones)]
+        DB_CLI[(clientes)]
+        DB_RES[(reservas)]
+        DB_SEC[(security)]
+    end
+
+    FE -->|HTTPS JWT| MW
+    MW -->|GET síncronos fase 1| CAT
+    MW -->|GET síncronos fase 1| LOC
+    MW -->|publish comando / subscribe saga| EX_CMD
+    MW -->|subscribe eventos| EX_EVT
+
+    MW --> SEG
+    SEG --> DB_SEC
+
+    CAT --> DB_CAT
+    LOC --> DB_LOC
+    CLI --> DB_CLI
+    RES --> DB_RES
+
+    RES -->|outbox publish| EX_EVT
+    CLI -->|outbox publish| EX_EVT
+    CAT -->|outbox publish| EX_EVT
+
+    EX_EVT -->|binding| RES
+    EX_EVT -->|binding| CAT
+    EX_EVT -->|binding| CLI
+    EX_EVT -->|binding| MW
+
+    EX_CMD -->|routing key| RES
+    EX_CMD -->|routing key| CLI
+
+    RES -.->|consume| EX_EVT
+    CAT -.->|consume| EX_EVT
+    CLI -.->|consume| EX_CMD
+
+    EX_EVT -->|DLQ| EX_DLX
+</pre></div>
+
+<h3 id="82-flujo-objetivo-crear-reserva-saga-orquestada">8.2. Flujo objetivo: crear reserva (saga orquestada)</h3>
+<div class="mermaid-wrap"><pre class="mermaid">
+sequenceDiagram
+    participant FE as Frontend
+    participant MW as Middleware
+    participant RMQ as RabbitMQ
+    participant CLI as MS Clientes
+    participant RES as MS Reservas
+    participant CAT as MS Catálogo
+
+    FE->>MW: POST /booking/reservas
+    MW->>RMQ: publish IniciarReservaSaga (correlationId)
+    MW-->>FE: 202 Accepted + sagaId (opción A) o espera timeout (opción B)
+
+    RMQ->>RES: CrearReservaCommand
+    RES->>RES: Validar + hold (TX + outbox)
+    RES->>RMQ: reserva.hold_creada
+
+    RMQ->>CLI: UpsertClienteCommand
+    CLI->>CLI: Upsert (TX + outbox)
+    CLI->>RMQ: cliente.actualizado
+
+    RMQ->>RES: cliente.actualizado
+    RES->>RES: Confirmar reserva (TX + outbox)
+    RES->>RMQ: reserva.creada
+
+    RMQ->>CAT: reserva.creada
+    CAT->>CAT: Invalidar proyección disponibilidad
+
+    RMQ->>MW: reserva.creada
+    MW-->>FE: Notificación / poll → 201 + codigoReserva
+</pre></div>
+
+<h3 id="83-flujo-objetivo-búsqueda-de-vehículos-híbrido">8.3. Flujo objetivo: búsqueda de vehículos (híbrido)</h3>
+<table>
+<thead>
+<tr>
+<th>Fase</th>
+<th>Comportamiento</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Fase 1</strong></td>
+<td>Middleware sigue llamando REST a Catálogo + Reservas (sin cambio UX)</td>
+</tr>
+<tr>
+<td><strong>Fase 2</strong></td>
+<td>Catálogo mantiene proyección <code>vehiculo_disponibilidad</code> alimentada por <code>reserva.creada</code> / <code>cancelada</code></td>
+</tr>
+<tr>
+<td><strong>Fase 3</strong></td>
+<td>Middleware lee una sola API o caché; elimina bucle N+1 a Reservas</td>
+</tr>
+</tbody>
+</table>
+<h3 id="84-diagrama-de-despliegue-render-docker">8.4. Diagrama de despliegue (Render / Docker)</h3>
+<div class="mermaid-wrap"><pre class="mermaid">
+flowchart LR
+    subgraph Render["Render / Contenedores"]
+        FE_S[Static Site Frontend]
+        MW_S[Web Service Middleware]
+        CAT_S[Web Service Catálogo]
+        LOC_S[Web Service Localizaciones]
+        CLI_S[Web Service Clientes]
+        RES_S[Web Service Reservas]
+    end
+
+    subgraph Managed["Infra gestionada"]
+        RMQ_Cloud[RabbitMQ Cluster<br/>CloudAMQP / self-hosted]
+        PG[(Supabase PostgreSQL)]
+    end
+
+    FE_S --> MW_S
+    MW_S --> RMQ_Cloud
+    CAT_S --> RMQ_Cloud
+    LOC_S --> RMQ_Cloud
+    CLI_S --> RMQ_Cloud
+    RES_S --> RMQ_Cloud
+
+    CAT_S --> PG
+    LOC_S --> PG
+    CLI_S --> PG
+    RES_S --> PG
+    MW_S --> PG
+</pre></div>
+
+<blockquote>
+<p><strong>Nota de despliegue:</strong> RabbitMQ no sustituye PostgreSQL; cada MS conserva su <strong>bounded context</strong> y base. El bus solo transporta <strong>hechos</strong> y <strong>comandos</strong>.</p>
+</blockquote>
+<hr />
+<h2 id="9-estrategia-de-migración-por-fases">9. Estrategia de migración por fases</h2>
+<table>
+<thead>
+<tr>
+<th>Fase</th>
+<th>Duración orientativa</th>
+<th>Entregable</th>
+<th>Riesgo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>0 — Fundaciones</strong></td>
+<td>1–2 sprints</td>
+<td>RabbitMQ en dev, <code>RedCar.Shared.Events</code>, outbox en Reservas, observabilidad</td>
+<td>Bajo</td>
+</tr>
+<tr>
+<td><strong>1 — Publicar sin consumir</strong></td>
+<td>1 sprint</td>
+<td>Reservas publica <code>reserva.creada</code> en shadow mode; middleware sigue síncrono</td>
+<td>Bajo</td>
+</tr>
+<tr>
+<td><strong>2 — Saga crear reserva</strong></td>
+<td>2–3 sprints</td>
+<td>Clientes + Reservas por comandos; MW adapta POST</td>
+<td>Medio</td>
+</tr>
+<tr>
+<td><strong>3 — Proyección disponibilidad</strong></td>
+<td>2 sprints</td>
+<td>Catálogo consume eventos; reduce llamadas N+1</td>
+<td>Medio</td>
+</tr>
+<tr>
+<td><strong>4 — Cancelación y factura async</strong></td>
+<td>1–2 sprints</td>
+<td>Eventos cancelación; factura puede seguir REST</td>
+<td>Bajo</td>
+</tr>
+<tr>
+<td><strong>5 — Retirar orquestación gRPC</strong></td>
+<td>1 sprint</td>
+<td>Deprecar path gRPC desde MW si hay paridad comando</td>
+<td>Alto si no hay tests</td>
+</tr>
+<tr>
+<td><strong>6 — Seguridad / auditoría</strong></td>
+<td>Opcional</td>
+<td>Eventos login a cola audit</td>
+<td>Bajo</td>
+</tr>
+</tbody>
+</table>
+<p>En cada fase: <strong>feature flag</strong> <code>EvB:Enabled</code>, pruebas de carga en búsqueda de vehículos, y <strong>rollback</strong> = desactivar flag y volver a orquestación síncrona.</p>
+<hr />
+<h2 id="10-riesgos-métricas-y-criterios-de-aceptación">10. Riesgos, métricas y criterios de aceptación</h2>
+<h3 id="101-riesgos-principales">10.1. Riesgos principales</h3>
+<table>
+<thead>
+<tr>
+<th>Riesgo</th>
+<th>Mitigación</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Doble reserva (race)</td>
+<td>Hold + confirmación; idempotency key en comando</td>
+</tr>
+<tr>
+<td>Mensajes perdidos</td>
+<td>Outbox + persistent messages + publisher confirms</td>
+</tr>
+<tr>
+<td>Orden incorrecto</td>
+<td>Una cola por agregado <code>codigoReserva</code> o saga state machine</td>
+</tr>
+<tr>
+<td>Complejidad operativa</td>
+<td>Runbooks DLQ, dashboards, alertas profundidad cola</td>
+</tr>
+<tr>
+<td>Cold start Render + async</td>
+<td>Timeout UX (202 + polling) o WebSocket saga status</td>
+</tr>
+</tbody>
+</table>
+<h3 id="102-métricas-de-éxito">10.2. Métricas de éxito</h3>
+<table>
+<thead>
+<tr>
+<th>Métrica</th>
+<th>Objetivo orientativo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>p95 <code>POST /reservas</code> (UX percibido)</td>
+<td>≤ 3 s con saga async o ≤ 5 s síncrono en fase transición</td>
+</tr>
+<tr>
+<td>Tasa error 502/504 middleware</td>
+<td>−50 % vs baseline Render</td>
+</tr>
+<tr>
+<td>Duplicados procesados sin efecto</td>
+<td>100 % idempotencia en consumidores P0</td>
+</tr>
+<tr>
+<td>Lag de consumo</td>
+<td>p95 &lt; 2 s en <code>reservas.integration</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="103-criterios-de-aceptación-de-la-migración-marketplace">10.3. Criterios de aceptación de la migración Marketplace</h3>
+<ol>
+<li>Crear reserva funciona con <strong>Middleware + EvB</strong> con paridad de contrato <code>{ status, mensaje, data }</code>.</li>
+<li>Cancelar reserva emite <code>reserva.cancelada</code> y Catálogo refleja disponibilidad en &lt; 5 s (eventual).</li>
+<li>Ningún MS accede al schema de otro MS (solo eventos + APIs públicas).</li>
+<li>DLQ vacía en operación normal; procedimiento documentado de replay.</li>
+<li>Trazas correlacionan <code>correlationId</code> desde HTTP hasta consumidor.</li>
+</ol>
+<hr />
+<h2 id="11-referencias">11. Referencias</h2>
+<table>
+<thead>
+<tr>
+<th>Recurso</th>
+<th>Enlace / ubicación en repo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Arquitectura middleware (ESB actual)</td>
+<td><code>Middleware.RedCar/README.md</code></td>
+</tr>
+<tr>
+<td>Microservicios y puertos</td>
+<td><code>EUROPCAR_V2/README.md</code></td>
+</tr>
+<tr>
+<td>Despliegue Render</td>
+<td><code>docs/RedCar-Render-Microservicios-y-Middleware.md</code></td>
+</tr>
+<tr>
+<td>RabbitMQ tutorials</td>
+<td>https://www.rabbitmq.com/tutorials</td>
+</tr>
+<tr>
+<td>Enterprise Integration Patterns</td>
+<td>Hohpe &amp; Woolf — Message Bus, Event Message</td>
+</tr>
+<tr>
+<td>Transactional Outbox</td>
+<td>https://microservices.io/patterns/data/transactional-outbox.html</td>
+</tr>
+<tr>
+<td>MassTransit + RabbitMQ</td>
+<td>https://masstransit.io/documentation/configuration/integrations/rabbitmq</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="anexo-a-mapeo-endpoints-marketplace-futuro-evb">Anexo A — Mapeo endpoints Marketplace → futuro EvB</h2>
+<table>
+<thead>
+<tr>
+<th>Endpoint Middleware</th>
+<th>Orquestador actual</th>
+<th>Integración objetivo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET .../vehiculos</code></td>
+<td>Marketplace</td>
+<td>REST fase 1 → proyección eventos fase 3</td>
+</tr>
+<tr>
+<td><code>GET .../vehiculos/{id}</code></td>
+<td>Marketplace</td>
+<td>REST</td>
+</tr>
+<tr>
+<td><code>GET .../reservas/{id}/disponibilidad</code></td>
+<td>Reserva</td>
+<td>REST → evento consulta opcional</td>
+</tr>
+<tr>
+<td><code>GET .../localizaciones</code></td>
+<td>Marketplace</td>
+<td>REST</td>
+</tr>
+<tr>
+<td><code>GET .../categorias</code>, <code>GET .../extras</code></td>
+<td>Marketplace</td>
+<td>REST</td>
+</tr>
+<tr>
+<td><code>POST .../reservas</code></td>
+<td>Reserva</td>
+<td><strong>Saga + RabbitMQ (P0)</strong></td>
+</tr>
+<tr>
+<td><code>GET/PATCH .../reservas/{codigo}</code></td>
+<td>Reserva</td>
+<td>Eventos + REST lectura</td>
+</tr>
+<tr>
+<td><code>GET .../factura</code></td>
+<td>Factura</td>
+<td>REST (baja prioridad async)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="anexo-b-glosario">Anexo B — Glosario</h2>
+<table>
+<thead>
+<tr>
+<th>Término</th>
+<th>Definición breve</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ESB</strong></td>
+<td>Bus de servicios empresarial; hub que integra aplicaciones con transformación y ruteo.</td>
+</tr>
+<tr>
+<td><strong>EvB</strong></td>
+<td>Bus de eventos; infraestructura pub/sub de hechos de dominio.</td>
+</tr>
+<tr>
+<td><strong>BFF</strong></td>
+<td>Backend for Frontend; API adaptada al canal web.</td>
+</tr>
+<tr>
+<td><strong>Outbox</strong></td>
+<td>Patrón que garantiza publicación atómica con persistencia local.</td>
+</tr>
+<tr>
+<td><strong>Saga</strong></td>
+<td>Transacción distribuida por pasos compensables.</td>
+</tr>
+<tr>
+<td><strong>Routing key</strong></td>
+<td>Clave AMQP que decide el enrutamiento en exchange <code>topic</code>.</td>
+</tr>
+</tbody>
+</table>
+      </article>
+      <p class="footer-note">Documento generado para el equipo RedCar / Europcar V2. Para implementación, abrir tareas por microservicio según la matriz de la sección 6 y validar contratos en <code>RedCar.Shared.Events</code> antes de codificar consumidores.</p>
+    </main>
+  </div>
+  <p class="print-hint">Ctrl+P para imprimir / PDF</p>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "dark",
+      themeVariables: {
+        primaryColor: "#1a2332",
+        primaryTextColor: "#e8edf4",
+        primaryBorderColor: "#f97316",
+        lineColor: "#64748b",
+        secondaryColor: "#243044",
+        tertiaryColor: "#0f1419",
+        fontFamily: "DM Sans, sans-serif"
+      },
+      flowchart: { curve: "basis" },
+      sequence: { actorMargin: 50 }
+    });
+  </script>
+</body>
+</html>

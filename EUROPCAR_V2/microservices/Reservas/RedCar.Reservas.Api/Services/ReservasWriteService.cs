@@ -5,9 +5,12 @@ using System.Text.Json.Serialization;
 using Grpc.Core;
 using Microsoft.EntityFrameworkCore;
 using RedCar.Reservas.Api.Contracts;
+using RedCar.Reservas.Api.Messaging;
 using RedCar.Reservas.DataAccess.Context;
 using RedCar.Reservas.DataAccess.Entities;
 using RedCar.Shared.Contracts.Common;
+using RedCar.Shared.Events;
+using RedCar.Shared.Events.Reservas;
 using RedCar.Shared.Protos.Reservas;
 
 namespace RedCar.Reservas.Api.Services;
@@ -27,6 +30,7 @@ public sealed class ReservasWriteService
 
     private readonly ReservasDbContext _db;
     private readonly ReservasReadService _read;
+    private readonly OutboxService _outbox;
     private readonly IHttpClientFactory _httpFactory;
     private readonly IConfiguration _configuration;
     private readonly ILogger<ReservasWriteService> _logger;
@@ -34,18 +38,23 @@ public sealed class ReservasWriteService
     public ReservasWriteService(
         ReservasDbContext db,
         ReservasReadService read,
+        OutboxService outbox,
         IHttpClientFactory httpFactory,
         IConfiguration configuration,
         ILogger<ReservasWriteService> logger)
     {
         _db = db;
         _read = read;
+        _outbox = outbox;
         _httpFactory = httpFactory;
         _configuration = configuration;
         _logger = logger;
     }
 
-    public async Task<CrearReservaResponse> CrearReservaAsync(CrearReservaRequest request, CancellationToken ct)
+    public Task<CrearReservaResponse> CrearReservaAsync(CrearReservaRequest request, CancellationToken ct) =>
+        CrearReservaAsync(request, ct, correlationId: null);
+
+    public async Task<CrearReservaResponse> CrearReservaAsync(CrearReservaRequest request, CancellationToken ct, Guid? correlationId)
     {
         ValidateCrearRequest(request);
 
@@ -194,12 +203,8 @@ public sealed class ReservasWriteService
         }
 
         _db.Reservas.Add(reserva);
-        await _db.SaveChangesAsync(ct);
 
-        _logger.LogInformation("Reserva creada {Codigo} cliente={Cliente} vehiculo={Vehiculo}",
-            codigoReserva, idCliente, request.IdVehiculo);
-
-        return new CrearReservaResponse
+        var response = new CrearReservaResponse
         {
             CodigoReserva = codigoReserva,
             EstadoReserva = "CONFIRMADA",
@@ -211,6 +216,21 @@ public sealed class ReservasWriteService
             Iva = (double)iva,
             Total = (double)total
         };
+
+        var cid = correlationId ?? Guid.CreateVersion7();
+        _outbox.Stage(RoutingKeys.ReservaCreada, cid, new ReservaCreadaPayload(
+                codigoReserva, "CONFIRMADA", request.IdVehiculo, request.IdLocalizacionRecogida, idCliente,
+                now.ToString("O", CultureInfo.InvariantCulture), cantidadDias,
+                (double)subtotalVehiculo, (double)subtotalExtras, (double)subtotal, (double)iva, (double)total));
+        _outbox.Stage(RoutingKeys.DisponibilidadInvalidada, cid,
+            new DisponibilidadInvalidadaPayload(request.IdVehiculo, request.IdLocalizacionRecogida, "reserva_creada"));
+
+        await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Reserva creada {Codigo} cliente={Cliente} vehiculo={Vehiculo}",
+            codigoReserva, idCliente, request.IdVehiculo);
+
+        return response;
     }
 
     public async Task<CancelarReservaResponse> CancelarReservaAsync(CancelarReservaRequest request, CancellationToken ct)
@@ -251,14 +271,23 @@ public sealed class ReservasWriteService
             : request.UsuarioCancelacion.Trim();
         reserva.FechaModificacionUtc = cancelUtc;
 
-        await _db.SaveChangesAsync(ct);
-
-        return new CancelarReservaResponse
+        var cancelResponse = new CancelarReservaResponse
         {
             CodigoReserva = reserva.CodigoReserva,
             EstadoReserva = reserva.EstadoReserva,
             FechaCancelacionUtc = cancelUtc.ToString("O", CultureInfo.InvariantCulture)
         };
+
+        var correlationId = Guid.CreateVersion7();
+        _outbox.Stage(RoutingKeys.ReservaCancelada, correlationId, new ReservaCanceladaPayload(
+            reserva.CodigoReserva, reserva.EstadoReserva, reserva.IdVehiculo,
+            cancelUtc.ToString("O", CultureInfo.InvariantCulture)));
+        _outbox.Stage(RoutingKeys.DisponibilidadInvalidada, correlationId,
+            new DisponibilidadInvalidadaPayload(reserva.IdVehiculo, reserva.IdLocalizacionRecogida, "reserva_cancelada"));
+
+        await _db.SaveChangesAsync(ct);
+
+        return cancelResponse;
     }
 
     private static void ValidateCrearRequest(CrearReservaRequest request)
