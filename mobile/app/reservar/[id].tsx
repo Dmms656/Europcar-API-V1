@@ -2,44 +2,66 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { router, useLocalSearchParams } from 'expo-router';
 import { bookingApi } from '@/src/api/bookingApi';
+import { Button } from '@/src/components/ui/Button';
+import { Card } from '@/src/components/ui/Card';
+import { Input } from '@/src/components/ui/Input';
+import { Screen } from '@/src/components/ui/Screen';
+import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
+import { radius, spacing } from '@/src/theme/layout';
 import { getErrorMessage, unwrapData } from '@/src/utils/apiResponse';
 
+function parseDate(value?: string, fallbackDays = 2) {
+  if (value) {
+    const d = new Date(`${value}T12:00:00`);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  const d = new Date();
+  d.setDate(d.getDate() + fallbackDays);
+  return d;
+}
+
 export default function ReservarScreen() {
-  const { id, idLocalizacion: locParam } = useLocalSearchParams<{ id: string; idLocalizacion?: string }>();
+  const { id, idLocalizacion: locParam, fechaRecogida: frParam, fechaDevolucion: fdParam } =
+    useLocalSearchParams<{
+      id: string;
+      idLocalizacion?: string;
+      fechaRecogida?: string;
+      fechaDevolucion?: string;
+    }>();
+
+  const user = useAuthStore((s) => s.user);
   const idVehiculo = Number(id);
   const idLocalizacion = Number(locParam || 1);
 
   const [vehiculo, setVehiculo] = useState<{ marca?: string; modelo?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [fechaInicio, setFechaInicio] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 2);
-    return d;
-  });
-  const [fechaFin, setFechaFin] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 5);
-    return d;
-  });
+  const [fechaInicio, setFechaInicio] = useState(() => parseDate(frParam, 2));
+  const [fechaFin, setFechaFin] = useState(() => parseDate(fdParam, 5));
   const [showPicker, setShowPicker] = useState<'inicio' | 'fin' | null>(null);
 
-  const [nombres, setNombres] = useState('');
-  const [apellidos, setApellidos] = useState('');
-  const [cedula, setCedula] = useState('');
-  const [correo, setCorreo] = useState('');
-  const [telefono, setTelefono] = useState('');
+  const splitName = (full?: string) => {
+    if (!full) return { nombres: '', apellidos: '' };
+    const parts = full.trim().split(/\s+/);
+    return { nombres: parts[0] ?? '', apellidos: parts.slice(1).join(' ') };
+  };
+
+  const fromUser = splitName(user?.nombreCompleto);
+  const [nombres, setNombres] = useState(fromUser.nombres);
+  const [apellidos, setApellidos] = useState(fromUser.apellidos);
+  const [cedula, setCedula] = useState(user?.numeroIdentificacion ?? '');
+  const [correo, setCorreo] = useState(user?.correo ?? '');
+  const [telefono, setTelefono] = useState(user?.telefono ?? '');
 
   useEffect(() => {
     bookingApi
@@ -47,6 +69,16 @@ export default function ReservarScreen() {
       .then((res) => setVehiculo(unwrapData(res)))
       .finally(() => setLoading(false));
   }, [idVehiculo]);
+
+  useEffect(() => {
+    if (!user) return;
+    const { nombres: n, apellidos: a } = splitName(user.nombreCompleto);
+    if (n) setNombres(n);
+    if (a) setApellidos(a);
+    if (user.numeroIdentificacion) setCedula(user.numeroIdentificacion);
+    if (user.correo) setCorreo(user.correo);
+    if (user.telefono) setTelefono(user.telefono);
+  }, [user]);
 
   const formatDate = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -82,7 +114,7 @@ export default function ReservarScreen() {
           numeroIdentificacion: cedula.trim(),
           correo: correo.trim(),
           telefono: telefono.trim(),
-          numeroLicencia: 'PENDIENTE',
+          numeroLicencia: cedula.trim(),
           fechaVencimientoLicencia: '2035-12-31',
           edadConductor: 25,
         },
@@ -95,7 +127,7 @@ export default function ReservarScreen() {
       Alert.alert(
         'Reserva confirmada',
         `Código: ${data?.codigoReserva ?? '—'}`,
-        [{ text: 'OK', onPress: () => router.replace('/(tabs)/reservas') }]
+        [{ text: 'OK', onPress: () => router.replace('/(tabs)/reservas') }],
       );
     } catch (e) {
       Alert.alert('Error', getErrorMessage(e));
@@ -113,96 +145,62 @@ export default function ReservarScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <Screen>
       <Text style={styles.title}>
         Reservar {vehiculo?.marca} {vehiculo?.modelo}
       </Text>
 
-      <Pressable style={styles.dateBtn} onPress={() => setShowPicker('inicio')}>
-        <Text style={styles.label}>Recogida</Text>
-        <Text style={styles.dateValue}>{formatDate(fechaInicio)}</Text>
-      </Pressable>
-      <Pressable style={styles.dateBtn} onPress={() => setShowPicker('fin')}>
-        <Text style={styles.label}>Devolución</Text>
-        <Text style={styles.dateValue}>{formatDate(fechaFin)}</Text>
-      </Pressable>
+      <Card>
+        <Pressable style={styles.dateBtn} onPress={() => setShowPicker('inicio')}>
+          <Text style={styles.label}>Recogida</Text>
+          <Text style={styles.dateValue}>{formatDate(fechaInicio)}</Text>
+        </Pressable>
+        <Pressable style={styles.dateBtn} onPress={() => setShowPicker('fin')}>
+          <Text style={styles.label}>Devolución</Text>
+          <Text style={styles.dateValue}>{formatDate(fechaFin)}</Text>
+        </Pressable>
 
-      {showPicker && (
-        <DateTimePicker
-          value={showPicker === 'inicio' ? fechaInicio : fechaFin}
-          mode="date"
-          minimumDate={new Date()}
-          onChange={(_, date) => {
-            setShowPicker(null);
-            if (!date) return;
-            if (showPicker === 'inicio') setFechaInicio(date);
-            else setFechaFin(date);
-          }}
-        />
-      )}
+        {showPicker ? (
+          <DateTimePicker
+            value={showPicker === 'inicio' ? fechaInicio : fechaFin}
+            mode="date"
+            minimumDate={new Date()}
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={(_, date) => {
+              if (Platform.OS === 'android') setShowPicker(null);
+              if (!date) return;
+              if (showPicker === 'inicio') setFechaInicio(date);
+              else setFechaFin(date);
+              if (Platform.OS === 'ios') setShowPicker(null);
+            }}
+          />
+        ) : null}
+      </Card>
 
       <Text style={styles.section}>Datos del cliente</Text>
-      {[
-        { label: 'Nombres', value: nombres, set: setNombres },
-        { label: 'Apellidos', value: apellidos, set: setApellidos },
-        { label: 'Cédula', value: cedula, set: setCedula },
-        { label: 'Correo', value: correo, set: setCorreo, keyboard: 'email-address' as const },
-        { label: 'Teléfono', value: telefono, set: setTelefono, keyboard: 'phone-pad' as const },
-      ].map((f) => (
-        <TextInput
-          key={f.label}
-          style={styles.input}
-          placeholder={f.label}
-          placeholderTextColor={colors.textMuted}
-          value={f.value}
-          onChangeText={f.set}
-          keyboardType={f.keyboard}
-          autoCapitalize="none"
-        />
-      ))}
+      <Input label="Nombres" value={nombres} onChangeText={setNombres} />
+      <Input label="Apellidos" value={apellidos} onChangeText={setApellidos} />
+      <Input label="Cédula" value={cedula} onChangeText={setCedula} />
+      <Input label="Correo" value={correo} onChangeText={setCorreo} keyboardType="email-address" autoCapitalize="none" />
+      <Input label="Teléfono" value={telefono} onChangeText={setTelefono} keyboardType="phone-pad" />
 
-      <Pressable style={styles.cta} onPress={confirmar} disabled={submitting}>
-        {submitting ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.ctaText}>Confirmar reserva</Text>
-        )}
-      </Pressable>
-    </ScrollView>
+      <Button label="Confirmar reserva" onPress={confirmar} loading={submitting} variant="client" style={{ marginTop: spacing.md }} />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 20, paddingBottom: 40 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg },
-  title: { color: colors.text, fontSize: 22, fontWeight: '700', marginBottom: 20 },
-  section: { color: colors.text, fontWeight: '600', marginTop: 16, marginBottom: 8 },
+  title: { color: colors.text, fontSize: 22, fontWeight: '700', marginBottom: spacing.md },
+  section: { color: colors.text, fontWeight: '600', marginBottom: spacing.sm },
   dateBtn: {
-    backgroundColor: colors.surface,
-    padding: 14,
-    borderRadius: 10,
-    marginBottom: 10,
+    backgroundColor: colors.bgSecondary,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
   },
   label: { color: colors.textMuted, fontSize: 12 },
-  dateValue: { color: colors.text, fontSize: 16, marginTop: 4 },
-  input: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
-    color: colors.text,
-    marginBottom: 10,
-  },
-  cta: {
-    marginTop: 24,
-    backgroundColor: colors.accent,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  ctaText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  dateValue: { color: colors.text, fontSize: 16, marginTop: 4, fontWeight: '600' },
 });

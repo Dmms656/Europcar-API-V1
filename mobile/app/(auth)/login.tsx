@@ -1,22 +1,27 @@
 import { useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { router } from 'expo-router';
 import { authApi } from '@/src/api/authApi';
+import { Button } from '@/src/components/ui/Button';
+import { Input } from '@/src/components/ui/Input';
+import { Screen } from '@/src/components/ui/Screen';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
+import { radius, spacing } from '@/src/theme/layout';
 import { getErrorMessage, unwrapData } from '@/src/utils/apiResponse';
+
+type Tab = 'admin' | 'cliente';
 
 export default function LoginScreen() {
   const login = useAuthStore((s) => s.login);
+  const [tab, setTab] = useState<Tab>('cliente');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -47,9 +52,16 @@ export default function LoginScreen() {
         setError('Respuesta de login inválida');
         return;
       }
+
       const isAdmin = data.roles?.some((r) => ['ADMIN', 'AGENTE', 'AGENTE_POS'].includes(r));
-      await login({ ...data, token: data.token }, isAdmin ? 'admin' : 'cliente');
-      router.replace('/(tabs)');
+      if (tab === 'admin' && !isAdmin) {
+        setError('Este usuario no tiene permisos de administración');
+        return;
+      }
+
+      const userType = tab === 'admin' && isAdmin ? 'admin' : 'cliente';
+      await login({ ...data, token: data.token }, userType);
+      router.replace(userType === 'admin' ? '/(admin)' : '/(tabs)/cuenta');
     } catch (e) {
       setError(getErrorMessage(e));
     } finally {
@@ -58,68 +70,127 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <Text style={styles.brand}>Europcar</Text>
-      <Text style={styles.subtitle}>Inicia sesión con tu cuenta</Text>
+    <Screen scroll padded={false}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.hero}>
+          <View style={styles.logoCircle}>
+            <Text style={styles.logoIcon}>🚗</Text>
+          </View>
+          <Text style={styles.brand}>Europcar Rental</Text>
+          <Text style={styles.subtitle}>Accede a tu cuenta</Text>
+          {tab === 'admin' ? (
+            <Text style={styles.demo}>Demo: usuario admin · contraseña 12345</Text>
+          ) : null}
+        </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Usuario"
-        placeholderTextColor={colors.textMuted}
-        autoCapitalize="none"
-        value={username}
-        onChangeText={setUsername}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Contraseña"
-        placeholderTextColor={colors.textMuted}
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+        <View style={styles.card}>
+          <View style={styles.tabs}>
+            <Pressable
+              style={[styles.tab, tab === 'admin' && styles.tabActiveAdmin]}
+              onPress={() => { setTab('admin'); setError(''); }}
+            >
+              <Text style={[styles.tabText, tab === 'admin' && styles.tabTextActive]}>🛡 Administrador</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.tab, tab === 'cliente' && styles.tabActiveClient]}
+              onPress={() => { setTab('cliente'); setError(''); }}
+            >
+              <Text style={[styles.tabText, tab === 'cliente' && styles.tabTextActiveClient]}>👤 Cliente</Text>
+            </Pressable>
+          </View>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+          <Input
+            label="Usuario"
+            placeholder="Tu usuario"
+            autoCapitalize="none"
+            value={username}
+            onChangeText={setUsername}
+          />
+          <Input
+            label="Contraseña"
+            placeholder="••••••••"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
 
-      <Pressable style={styles.button} onPress={handleLogin} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Entrar</Text>}
-      </Pressable>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <Pressable onPress={() => router.push('/register')}>
-        <Text style={styles.link}>Crear cuenta</Text>
-      </Pressable>
+          <Button
+            label={loading ? 'Entrando…' : 'Iniciar sesión'}
+            onPress={handleLogin}
+            loading={loading}
+            variant={tab === 'admin' ? 'primary' : 'client'}
+          />
 
-      <Pressable onPress={() => router.back()}>
-        <Text style={[styles.link, { marginTop: 12 }]}>Continuar sin cuenta</Text>
-      </Pressable>
-    </KeyboardAvoidingView>
+          {tab === 'cliente' ? (
+            <Pressable onPress={() => router.push('/register')} style={styles.linkWrap}>
+              <Text style={styles.link}>¿No tienes cuenta? Regístrate</Text>
+            </Pressable>
+          ) : null}
+
+          <Pressable onPress={() => router.back()} style={styles.linkWrap}>
+            <Text style={styles.linkMuted}>Continuar sin cuenta</Text>
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg, padding: 24, justifyContent: 'center' },
-  brand: { color: colors.text, fontSize: 32, fontWeight: '800', textAlign: 'center' },
-  subtitle: { color: colors.textMuted, textAlign: 'center', marginBottom: 32, marginTop: 8 },
-  input: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 14,
-    color: colors.text,
-    marginBottom: 12,
-  },
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: 10,
-    padding: 16,
+  flex: { flex: 1 },
+  hero: {
     alignItems: 'center',
-    marginTop: 8,
+    paddingTop: spacing.xxl,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.lg,
   },
-  buttonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  error: { color: colors.danger, marginBottom: 8 },
-  link: { color: colors.primary, textAlign: 'center', marginTop: 20 },
+  logoCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: radius.full,
+    backgroundColor: colors.primaryGhost,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  logoIcon: { fontSize: 28 },
+  brand: { color: colors.text, fontSize: 26, fontWeight: '800' },
+  subtitle: { color: colors.textSecondary, marginTop: 6 },
+  demo: { color: colors.textMuted, fontSize: 12, marginTop: 8, textAlign: 'center' },
+  card: {
+    flex: 1,
+    marginHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.xl,
+  },
+  tabs: {
+    flexDirection: 'row',
+    backgroundColor: colors.bgSecondary,
+    borderRadius: radius.md,
+    padding: 4,
+    marginBottom: spacing.lg,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+  },
+  tabActiveAdmin: { backgroundColor: colors.primary },
+  tabActiveClient: { backgroundColor: colors.accent },
+  tabText: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
+  tabTextActive: { color: colors.white },
+  tabTextActiveClient: { color: colors.white },
+  error: { color: colors.danger, marginBottom: spacing.md, fontSize: 13 },
+  linkWrap: { marginTop: spacing.lg, alignItems: 'center' },
+  link: { color: colors.accent, fontWeight: '600' },
+  linkMuted: { color: colors.textMuted },
 });

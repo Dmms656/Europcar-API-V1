@@ -7,12 +7,15 @@ const TOKEN_KEY = 'rc_access_token';
 const USER_KEY = 'rc_user';
 const USER_TYPE_KEY = 'rc_user_type';
 
-type UserProfile = {
+export type UserProfile = {
   username?: string;
   correo?: string;
   roles?: string[];
   nombreCompleto?: string;
   idCliente?: number;
+  telefono?: string;
+  direccion?: string;
+  numeroIdentificacion?: string;
 };
 
 type AuthState = {
@@ -27,7 +30,19 @@ type AuthState = {
   refreshProfile: () => Promise<UserProfile | null>;
   clearAuth: () => Promise<void>;
   isAdmin: () => boolean;
+  hasAdminRole: () => boolean;
 };
+
+function hasAdminRoleInRoles(roles?: string[]) {
+  return roles?.some((r) => ['ADMIN', 'AGENTE', 'AGENTE_POS'].includes(r)) ?? false;
+}
+
+function resolveUserType(stored: 'admin' | 'cliente' | null, roles?: string[]): 'admin' | 'cliente' {
+  const canAdmin = hasAdminRoleInRoles(roles);
+  if (stored === 'admin' && canAdmin) return 'admin';
+  if (stored === 'cliente') return 'cliente';
+  return canAdmin ? 'admin' : 'cliente';
+}
 
 async function persistAuth(token: string | null, user: UserProfile | null, userType: string | null) {
   if (token) await SecureStore.setItemAsync(TOKEN_KEY, token);
@@ -72,9 +87,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const res = await authApi.me();
       const data = unwrapData<UserProfile>(res);
       if (!data) return get().user;
-      const roles = data.roles ?? [];
-      const isAdmin = roles.some((r) => ['ADMIN', 'AGENTE', 'AGENTE_POS'].includes(r));
-      const resolvedType = isAdmin ? 'admin' : 'cliente';
+      const stored = get().userType;
+      const resolvedType = resolveUserType(stored, data.roles);
       const token = get().accessToken;
       await persistAuth(token, data, resolvedType);
       set({ user: data, userType: resolvedType, isAuthenticated: true, sessionChecked: true });
@@ -85,28 +99,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   restoreSession: async () => {
+    let token: string | null = null;
+    let storedType: 'admin' | 'cliente' | null = null;
+
     try {
-      const [token, userRaw, userType] = await Promise.all([
+      const [t, userRaw, userTypeRaw] = await Promise.all([
         SecureStore.getItemAsync(TOKEN_KEY),
         SecureStore.getItemAsync(USER_KEY),
         SecureStore.getItemAsync(USER_TYPE_KEY),
       ]);
+      token = t;
+      storedType = (userTypeRaw as 'admin' | 'cliente') || null;
 
       if (token && userRaw) {
         set({
           accessToken: token,
           user: JSON.parse(userRaw),
           isAuthenticated: true,
-          userType: (userType as 'admin' | 'cliente') || 'cliente',
+          userType: storedType || 'cliente',
         });
       }
 
       const res = await authApi.me();
       const data = unwrapData<UserProfile>(res);
       if (data) {
-        const roles = data.roles ?? [];
-        const isAdmin = roles.some((r) => ['ADMIN', 'AGENTE', 'AGENTE_POS'].includes(r));
-        const resolvedType = isAdmin ? 'admin' : 'cliente';
+        const resolvedType = resolveUserType(storedType, data.roles);
         await persistAuth(token, data, resolvedType);
         set({
           user: data,
@@ -125,4 +142,5 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   isAdmin: () => get().userType === 'admin',
+  hasAdminRole: () => hasAdminRoleInRoles(get().user?.roles),
 }));

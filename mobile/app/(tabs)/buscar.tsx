@@ -11,6 +11,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { bookingApi } from '@/src/api/bookingApi';
 import { VehiculoCard } from '@/src/components/VehiculoCard';
 import { colors } from '@/src/theme/colors';
+import { spacing } from '@/src/theme/layout';
 import { unwrapData } from '@/src/utils/apiResponse';
 
 type Vehiculo = {
@@ -24,26 +25,39 @@ type Vehiculo = {
 };
 
 export default function BuscarScreen() {
-  const params = useLocalSearchParams<{ idLocalizacion?: string }>();
+  const params = useLocalSearchParams<{
+    idLocalizacion?: string;
+    fechaRecogida?: string;
+    fechaDevolucion?: string;
+  }>();
+
   const idLocalizacion = Number(params.idLocalizacion || 1);
+  const fechaRecogida = params.fechaRecogida || (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().slice(0, 10);
+  })();
+  const fechaDevolucion = params.fechaDevolucion || (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 4);
+    return d.toISOString().slice(0, 10);
+  })();
+
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    const now = new Date();
-    const fin = new Date(now);
-    fin.setDate(fin.getDate() + 3);
     const res = await bookingApi.buscarVehiculos({
       idLocalizacion,
-      fechaRecogida: now.toISOString(),
-      fechaDevolucion: fin.toISOString(),
+      fechaRecogida: `${fechaRecogida}T10:00:00`,
+      fechaDevolucion: `${fechaDevolucion}T10:00:00`,
       page: 1,
       limit: 20,
     });
     const data = unwrapData<{ vehiculos?: Vehiculo[]; items?: Vehiculo[] }>(res);
     setVehiculos(data?.vehiculos ?? data?.items ?? []);
-  }, [idLocalizacion]);
+  }, [idLocalizacion, fechaRecogida, fechaDevolucion]);
 
   useEffect(() => {
     load().finally(() => setLoading(false));
@@ -70,12 +84,28 @@ export default function BuscarScreen() {
       data={vehiculos}
       keyExtractor={(item) => String(item.idVehiculo)}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-      ListHeaderComponent={<Text style={styles.header}>{vehiculos.length} vehículos disponibles</Text>}
+      ListHeaderComponent={
+        <View style={styles.header}>
+          <Text style={styles.title}>{vehiculos.length} vehículos disponibles</Text>
+          <Text style={styles.dates}>
+            {fechaRecogida} → {fechaDevolucion}
+          </Text>
+        </View>
+      }
       ListEmptyComponent={<Text style={styles.empty}>No hay vehículos para esta búsqueda</Text>}
       renderItem={({ item }) => (
         <VehiculoCard
           vehiculo={item}
-          onPress={() => router.push(`/reservar/${item.idVehiculo}?idLocalizacion=${idLocalizacion}`)}
+          onPress={() =>
+            router.push({
+              pathname: `/reservar/${item.idVehiculo}`,
+              params: {
+                idLocalizacion: String(idLocalizacion),
+                fechaRecogida,
+                fechaDevolucion,
+              },
+            })
+          }
         />
       )}
     />
@@ -84,8 +114,10 @@ export default function BuscarScreen() {
 
 const styles = StyleSheet.create({
   list: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 16 },
+  content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg },
-  header: { color: colors.textMuted, marginBottom: 12 },
+  header: { marginBottom: spacing.md },
+  title: { color: colors.text, fontWeight: '700', fontSize: 18 },
+  dates: { color: colors.textMuted, marginTop: 4 },
   empty: { color: colors.textMuted, textAlign: 'center', marginTop: 40 },
 });

@@ -3,6 +3,8 @@ import { ActivityIndicator, View } from 'react-native';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Updates from 'expo-updates';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AuthRedirect } from '@/src/components/AuthRedirect';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { registerForPushNotifications } from '@/src/notifications/push';
 import { colors } from '@/src/theme/colors';
@@ -27,7 +29,7 @@ export default function RootLayout() {
           }
         }
       } catch {
-        /* OTA opcional; no bloquear arranque */
+        /* OTA opcional */
       }
       await restoreSession();
       setReady(true);
@@ -50,18 +52,23 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack
-      screenOptions={{
-        headerStyle: { backgroundColor: colors.surface },
-        headerTintColor: colors.text,
-        contentStyle: { backgroundColor: colors.bg },
-      }}
-    >
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="(auth)/login" options={{ title: 'Iniciar sesión', presentation: 'modal' }} />
-      <Stack.Screen name="(auth)/register" options={{ title: 'Crear cuenta', presentation: 'modal' }} />
-      <Stack.Screen name="reservar/[id]" options={{ title: 'Reservar' }} />
-      <Stack.Screen name="reserva/[codigo]" options={{ title: 'Detalle reserva' }} />
-    </Stack>
+    <SafeAreaProvider>
+      <AuthRedirect />
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: colors.surface },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '700' },
+          contentStyle: { backgroundColor: colors.bg },
+        }}
+      >
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(admin)" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)/login" options={{ title: 'Iniciar sesión', presentation: 'modal' }} />
+        <Stack.Screen name="(auth)/register" options={{ title: 'Crear cuenta', presentation: 'modal' }} />
+        <Stack.Screen name="reservar/[id]" options={{ title: 'Reservar' }} />
+        <Stack.Screen name="reserva/[codigo]" options={{ title: 'Detalle reserva' }} />
+      </Stack>
+    </SafeAreaProvider>
   );
 }
