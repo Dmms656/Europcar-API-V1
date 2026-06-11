@@ -118,6 +118,12 @@ export default function HomeScreen() {
       )}
 
       <Button label="Buscar vehículos" onPress={buscar} variant="client" style={{ marginTop: spacing.lg }} />
+      <Button
+        label="Ver catálogo completo"
+        onPress={() => router.push('/(tabs)/catalogo')}
+        variant="ghost"
+        style={{ marginTop: spacing.sm }}
+      />
     </Screen>
   );
 }

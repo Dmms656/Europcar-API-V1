@@ -10,6 +10,8 @@ type Props = {
     precioDia?: number;
     imagenUrl?: string;
     transmision?: string;
+    categoria?: string;
+    localizacion?: string;
     disponible?: boolean;
   };
   onPress: () => void;
@@ -28,7 +30,10 @@ export function VehiculoCard({ vehiculo, onPress }: Props) {
       )}
       <View style={styles.body}>
         <Text style={styles.title}>{titulo || vehiculo.codigoInterno}</Text>
-        <Text style={styles.meta}>{vehiculo.transmision ?? '—'}</Text>
+        {vehiculo.categoria ? <Text style={styles.category}>{vehiculo.categoria}</Text> : null}
+        <Text style={styles.meta}>
+          {[vehiculo.transmision, vehiculo.localizacion].filter(Boolean).join(' · ') || '—'}
+        </Text>
         <View style={styles.row}>
           <Text style={styles.price}>${vehiculo.precioDia ?? '—'}/día</Text>
           {vehiculo.disponible !== false && (
@@ -58,7 +63,8 @@ const styles = StyleSheet.create({
   placeholderText: { color: colors.textMuted },
   body: { padding: 14 },
   title: { color: colors.text, fontSize: 17, fontWeight: '700' },
-  meta: { color: colors.textMuted, marginTop: 4 },
+  category: { color: colors.accent, fontSize: 12, fontWeight: '600', marginTop: 2 },
+  meta: { color: colors.textMuted, marginTop: 4, fontSize: 13 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
   price: { color: colors.accent, fontWeight: '700', fontSize: 16 },
   badge: {

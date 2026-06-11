@@ -1,7 +1,11 @@
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
-import { adminClientesApi, adminReservasApi, adminVehiculosApi } from '@/src/api/adminApi';
+import {
+  adminClientesApi,
+  listAdminReservas,
+  loadAdminVehiculosWithRetry,
+} from '@/src/api/adminApi';
 import { Card } from '@/src/components/ui/Card';
 import { Screen } from '@/src/components/ui/Screen';
 import { useAuthStore } from '@/src/store/useAuthStore';
@@ -25,14 +29,11 @@ export default function AdminDashboard() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [vRes, cRes, rRes] = await Promise.all([
-        adminVehiculosApi.getAll(),
-        adminClientesApi.getAll(),
-        adminReservasApi.getAll(),
+      const [vehiculos, clientes, reservas] = await Promise.all([
+        loadAdminVehiculosWithRetry(1).catch(() => [] as Record<string, unknown>[]),
+        adminClientesApi.getAll().then((r) => unwrapData<unknown[]>(r) ?? []).catch(() => []),
+        listAdminReservas().catch(() => []),
       ]);
-      const vehiculos = unwrapData<Record<string, unknown>[]>(vRes) ?? [];
-      const clientes = unwrapData<unknown[]>(cRes) ?? [];
-      const reservas = unwrapData<unknown[]>(rRes) ?? [];
       setStats({
         totalVehiculos: vehiculos.length,
         disponibles: vehiculos.filter((v) => v.estadoOperativo === 'DISPONIBLE').length,

@@ -1,11 +1,13 @@
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { adminVehiculosApi } from '@/src/api/adminApi';
+import { bookingApi } from '@/src/api/bookingApi';
+import { loadAdminVehiculosWithRetry } from '@/src/api/adminApi';
 import { Card } from '@/src/components/ui/Card';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/layout';
-import { getErrorMessage, unwrapData } from '@/src/utils/apiResponse';
+import { getErrorMessage } from '@/src/utils/apiResponse';
+import { getPayload, loadCatalogFromBooking } from '@/src/utils/bookingNormalize';
 
 type Vehiculo = {
   idVehiculo?: number;
@@ -29,15 +31,42 @@ export default function AdminVehiculosScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [usedFallback, setUsedFallback] = useState(false);
 
   const load = useCallback(async () => {
     setError('');
+    setUsedFallback(false);
     try {
-      const res = await adminVehiculosApi.getAll();
-      const data = unwrapData<Vehiculo[]>(res);
-      setItems(Array.isArray(data) ? data : []);
+      const data = await loadAdminVehiculosWithRetry();
+      setItems(data as Vehiculo[]);
     } catch (e) {
-      setError(getErrorMessage(e));
+      const msg = getErrorMessage(e);
+      if (msg.includes('429')) {
+        try {
+          const locRes = await bookingApi.getLocalizaciones({ page: 1, limit: 5 });
+          const payload = getPayload<{ items?: { idLocalizacion: number }[] }>(locRes);
+          const locs = payload.items ?? [];
+          const fleet = await loadCatalogFromBooking(locs, (params) => bookingApi.buscarVehiculos(params), {
+            maxLocations: 5,
+            delayMs: 500,
+          });
+          setItems(
+            fleet.map((v) => ({
+              idVehiculo: v.idVehiculo,
+              marca: v.marca,
+              modelo: v.modelo,
+              precioDia: v.precioDia,
+              estadoOperativo: 'DISPONIBLE',
+              codigoInterno: v.codigoInterno,
+            })),
+          );
+          setUsedFallback(true);
+          return;
+        } catch {
+          /* fall through */
+        }
+      }
+      setError(msg);
       setItems([]);
     } finally {
       setLoading(false);
@@ -71,6 +100,11 @@ export default function AdminVehiculosScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Vehículos</Text>
           <Text style={styles.sub}>{items.length} en flota</Text>
+          {usedFallback ? (
+            <Text style={styles.hint}>
+              Vista parcial vía catálogo booking (el inventario admin está limitado por el servidor).
+            </Text>
+          ) : null}
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </View>
       }
@@ -103,6 +137,7 @@ const styles = StyleSheet.create({
   header: { marginBottom: spacing.md },
   title: { color: colors.text, fontSize: 22, fontWeight: '800' },
   sub: { color: colors.textMuted, marginTop: 4 },
+  hint: { color: colors.warning, marginTop: 8, lineHeight: 18, fontSize: 13 },
   error: { color: colors.danger, marginTop: 8 },
   empty: { color: colors.textMuted, textAlign: 'center', marginTop: 40 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },

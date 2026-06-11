@@ -1,12 +1,11 @@
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { adminReservasApi } from '@/src/api/adminApi';
+import { listAdminReservas } from '@/src/api/adminApi';
 import { Card } from '@/src/components/ui/Card';
-import { Screen } from '@/src/components/ui/Screen';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/layout';
-import { getErrorMessage, unwrapData } from '@/src/utils/apiResponse';
+import { getErrorMessage } from '@/src/utils/apiResponse';
 
 type Reserva = {
   codigoReserva?: string;
@@ -14,7 +13,7 @@ type Reserva = {
   fechaInicio?: string;
   fechaFin?: string;
   total?: number;
-  cliente?: { nombreCompleto?: string; nombres?: string };
+  idCliente?: number;
 };
 
 export default function AdminReservasScreen() {
@@ -26,9 +25,8 @@ export default function AdminReservasScreen() {
   const load = useCallback(async () => {
     setError('');
     try {
-      const res = await adminReservasApi.getAll();
-      const data = unwrapData<Reserva[]>(res);
-      setItems(Array.isArray(data) ? data : []);
+      const data = await listAdminReservas();
+      setItems(data);
     } catch (e) {
       setError(getErrorMessage(e));
       setItems([]);
@@ -58,7 +56,7 @@ export default function AdminReservasScreen() {
       style={styles.list}
       contentContainerStyle={styles.content}
       data={items}
-      keyExtractor={(item, i) => item.codigoReserva ?? String(i)}
+      keyExtractor={(item, i) => item.codigoReserva ?? String(item.idCliente ?? i)}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       ListHeaderComponent={
         <View style={styles.header}>
@@ -72,7 +70,7 @@ export default function AdminReservasScreen() {
         <Card>
           <Text style={styles.code}>{item.codigoReserva ?? '—'}</Text>
           <Text style={styles.meta}>
-            {item.cliente?.nombreCompleto ?? item.cliente?.nombres ?? 'Cliente'} · {item.estadoReserva ?? '—'}
+            Cliente #{item.idCliente ?? '—'} · {item.estadoReserva ?? '—'}
           </Text>
           <Text style={styles.meta}>
             {item.fechaInicio?.slice(0, 10)} → {item.fechaFin?.slice(0, 10)}
