@@ -1,29 +1,25 @@
-# Opcional: Blueprint de Render (IaC). Si tu frontend ya está creado a mano en el dashboard,
-# añade la regla allí en su lugar: Redirects/Rewrites → Source `/*` → Destination `/index.html` → Rewrite.
-# Ver: https://render.com/docs/deploy-create-react-app#using-client-side-routing
+# Blueprint Render — sitio estático Europcar (Expo / REACT_NATIVE)
+# Si el servicio ya existe en el dashboard, replica estos valores allí.
+# Redirect SPA: Settings → Redirects/Rewrites → /* → /index.html (Rewrite)
 services:
   - type: web
     name: europcar-frontend
     runtime: static
-    rootDir: frontend
-    buildCommand: npm ci && npm run build
+    rootDir: REACT_NATIVE
+    buildCommand: npm ci && npm run build:web
     staticPublishPath: dist
     buildFilter:
       paths:
-        - frontend/**
+        - REACT_NATIVE/**
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
     envVars:
-      # Cloudinary - se inyectan durante "npm run build" y Vite las embebe en el bundle.
-      # El cloud_name es publico, queda en el blueprint.
-      - key: VITE_CLOUDINARY_CLOUD_NAME
-        value: dt4qaly0t
-      # El upload preset debe configurarse manualmente en el dashboard de Render
-      # (Environment > Add). sync:false evita que Render lo borre o lo lea de aqui.
-      - key: VITE_CLOUDINARY_UPLOAD_PRESET
+      - key: EXPO_PUBLIC_API_URL
         sync: false
-      # URL del middleware (axios). Debe incluir /api/v1. Ver frontend/.env.example
-      - key: VITE_API_URL
-        sync: false
+      # Cloudinary (cuando se porte subida de imágenes en admin vehículos):
+      # - key: EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME
+      #   sync: false
+      # - key: EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET
+      #   sync: false
