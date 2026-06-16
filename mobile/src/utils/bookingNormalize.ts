@@ -68,6 +68,66 @@ export type VehiculoBooking = {
   codigoInterno?: string;
 };
 
+/** Rellena datos del cliente desde perfil de sesión. */
+export function guestFormFromUserProfile(user: {
+  nombres?: string;
+  apellidos?: string;
+  nombreCompleto?: string;
+  username?: string;
+  numeroIdentificacion?: string;
+  correo?: string;
+  telefono?: string;
+} | null) {
+  if (!user) return null;
+  const nombres = (user.nombres || '').trim();
+  const apellidos = (user.apellidos || '').trim();
+  let nombre = nombres;
+  let apellido = apellidos;
+  if (!nombre && user.nombreCompleto) {
+    const parts = user.nombreCompleto.trim().split(/\s+/).filter(Boolean);
+    nombre = parts[0] || '';
+    apellido = apellido || (parts.length > 1 ? parts.slice(1).join(' ') : '');
+  }
+  return {
+    nombre,
+    apellido,
+    cedula: (user.numeroIdentificacion || '').trim(),
+    correo: (user.correo || '').trim(),
+    telefono: (user.telefono || '').trim(),
+    direccion: '',
+  };
+}
+
+export function normalizeContactoReserva(
+  user: { correo?: string; username?: string; numeroIdentificacion?: string } | null,
+  guestForm: { correo?: string; telefono?: string; cedula?: string },
+) {
+  const correoRaw = (guestForm.correo || user?.correo || '').trim();
+  const telefonoRaw = (guestForm.telefono || '').trim();
+  const slug =
+    String(user?.username || guestForm.cedula || 'cliente')
+      .replace(/\W/g, '')
+      .slice(0, 24) || 'cliente';
+  const correo = correoRaw && correoRaw.includes('@') ? correoRaw : `${slug}@reserva.europcar.ec`;
+  const telefono = telefonoRaw.length >= 7 ? telefonoRaw : '0999999999';
+  return { correo, telefono };
+}
+
+export function normalizeVehiculoDetalle(v: Record<string, unknown> | null) {
+  if (!v) return null;
+  const loc = v.localizacion;
+  const precioObj = v.precio as Record<string, unknown> | undefined;
+  const precioBase =
+    Number(v.precioBaseDia ?? v.precioDia ?? precioObj?.precioBaseDia ?? precioObj?.PrecioBaseDia ?? 0) || 0;
+  const norm = normalizeVehiculoFromBookingList(v);
+  return {
+    ...norm,
+    precioBaseDia: precioBase,
+    precioDia: Number(v.precioDia ?? precioBase) || precioBase,
+    imagenUrl: String(v.imagenUrl ?? v.ImagenUrl ?? norm.imagenUrl ?? '') || undefined,
+  };
+}
+
 export function normalizeVehiculoFromBookingList(v: Record<string, unknown>): VehiculoBooking {
   const loc = v.localizacion;
   const idLoc =

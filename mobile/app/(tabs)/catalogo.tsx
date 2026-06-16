@@ -15,7 +15,6 @@ import { VehiculoCard } from '@/src/components/VehiculoCard';
 import { colors } from '@/src/theme/colors';
 import { radius, spacing } from '@/src/theme/layout';
 import {
-  defaultRentalDateTimeLocalRange,
   getPayload,
   loadCatalogFromBooking,
   type VehiculoBooking,
@@ -31,7 +30,6 @@ export default function CatalogoScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [categoriaFilter, setCategoriaFilter] = useState('');
-  const { fechaRecogida, fechaDevolucion } = defaultRentalDateTimeLocalRange();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -92,11 +90,7 @@ export default function CatalogoScreen() {
     if (!id) return;
     router.push({
       pathname: `/reservar/${id}`,
-      params: {
-        idLocalizacion: String(v.idLocalizacion ?? 1),
-        fechaRecogida: fechaRecogida.slice(0, 10),
-        fechaDevolucion: fechaDevolucion.slice(0, 10),
-      },
+      params: v.idLocalizacion ? { idLocalizacion: String(v.idLocalizacion) } : {},
     });
   };
 
@@ -120,7 +114,7 @@ export default function CatalogoScreen() {
         <View style={styles.header}>
           <View style={styles.hero}>
             <Text style={styles.heroTitle}>Encuentra tu vehículo ideal</Text>
-            <Text style={styles.heroSub}>Explora la flota y reserva en minutos</Text>
+            <Text style={styles.heroSub}>Toca un vehículo para elegir fechas, extras y pagar</Text>
           </View>
 
           <Input
@@ -152,9 +146,7 @@ export default function CatalogoScreen() {
             })}
           </View>
 
-          <Text style={styles.count}>
-            {filtered.length} vehículos · {fechaRecogida.slice(0, 10)} → {fechaDevolucion.slice(0, 10)}
-          </Text>
+          <Text style={styles.count}>{filtered.length} vehículos disponibles</Text>
         </View>
       }
       ListEmptyComponent={

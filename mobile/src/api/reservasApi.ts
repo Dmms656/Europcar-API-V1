@@ -6,4 +6,6 @@ export const reservasApi = {
   getByCodigo: (codigo: string) => api.get(`/admin/Reservas/${codigo}`),
   cancelar: (idReserva: number, motivo: string) =>
     api.put(`/admin/Reservas/${idReserva}/cancelar`, { motivo }),
+  guestClient: (data: Record<string, unknown>) => api.post('/reservas/guest-client', data),
 };
+
