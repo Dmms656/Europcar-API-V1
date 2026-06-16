@@ -3,24 +3,24 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { bookingApi } from '@/src/api/bookingApi';
 import { reservasApi } from '@/src/api/reservasApi';
 import { Button } from '@/src/components/ui/Button';
 import { Card } from '@/src/components/ui/Card';
+import { DateTimeSelector } from '@/src/components/ui/DateTimeSelector';
 import { Input } from '@/src/components/ui/Input';
 import { Screen } from '@/src/components/ui/Screen';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
 import { radius, spacing } from '@/src/theme/layout';
 import { getErrorMessage, unwrapData } from '@/src/utils/apiResponse';
+import { formatDateTimeEs } from '@/src/utils/dateFormat';
 import {
   defaultRentalDateTimeLocalRange,
   getPayload,
@@ -84,7 +84,6 @@ export default function ReservarScreen() {
   const [checkingDisp, setCheckingDisp] = useState(false);
   const [dispBlocked, setDispBlocked] = useState(false);
   const [dispMsg, setDispMsg] = useState('');
-  const [picker, setPicker] = useState<'recogida' | 'devolucion' | null>(null);
   const [confirmada, setConfirmada] = useState<{ codigo: string; total: number } | null>(null);
 
   const [guestForm, setGuestForm] = useState({
@@ -380,29 +379,18 @@ export default function ReservarScreen() {
       {STEPS[step] === 'Fechas' && (
         <View>
           <Text style={styles.desc}>Selecciona cuándo recoges y devuelves el vehículo</Text>
-          <Pressable style={styles.dateRow} onPress={() => setPicker('recogida')}>
-            <Text style={styles.dateLabel}>Recogida</Text>
-            <Text style={styles.dateValue}>{toDateTimeLocalValue(fechaRecogida).replace('T', ' ')}</Text>
-          </Pressable>
-          <Pressable style={styles.dateRow} onPress={() => setPicker('devolucion')}>
-            <Text style={styles.dateLabel}>Devolución</Text>
-            <Text style={styles.dateValue}>{toDateTimeLocalValue(fechaDevolucion).replace('T', ' ')}</Text>
-          </Pressable>
-          {picker ? (
-            <DateTimePicker
-              value={picker === 'recogida' ? fechaRecogida : fechaDevolucion}
-              mode="datetime"
-              minimumDate={new Date()}
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={(_, date) => {
-                if (Platform.OS === 'android') setPicker(null);
-                if (!date) return;
-                if (picker === 'recogida') setFechaRecogida(date);
-                else setFechaDevolucion(date);
-                if (Platform.OS === 'ios') setPicker(null);
-              }}
-            />
-          ) : null}
+          <DateTimeSelector
+            label="Recogida"
+            value={fechaRecogida}
+            onChange={setFechaRecogida}
+            minimumDate={new Date()}
+          />
+          <DateTimeSelector
+            label="Devolución"
+            value={fechaDevolucion}
+            onChange={setFechaDevolucion}
+            minimumDate={fechaRecogida}
+          />
 
           <Text style={styles.section}>Sucursal recogida</Text>
           {localizaciones.map((loc) => {
@@ -469,8 +457,8 @@ export default function ReservarScreen() {
           <Text style={styles.section}>Vehículo</Text>
           <Text style={styles.rowText}>{titulo}</Text>
           <Text style={styles.section}>Fechas</Text>
-          <Text style={styles.rowText}>Recogida: {toDateTimeLocalValue(fechaRecogida).replace('T', ' ')}</Text>
-          <Text style={styles.rowText}>Devolución: {toDateTimeLocalValue(fechaDevolucion).replace('T', ' ')}</Text>
+          <Text style={styles.rowText}>Recogida: {formatDateTimeEs(fechaRecogida)}</Text>
+          <Text style={styles.rowText}>Devolución: {formatDateTimeEs(fechaDevolucion)}</Text>
           <Text style={styles.section}>Desglose</Text>
           <Text style={styles.rowText}>Vehículo ({dias} días): ${subtotalVehiculo.toFixed(2)}</Text>
           {extrasSel.map((ex) => (
