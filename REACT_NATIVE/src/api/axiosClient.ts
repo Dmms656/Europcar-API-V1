@@ -25,10 +25,14 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      useAuthStore.getState().clearAuth();
+      const url = String(error.config?.url ?? '');
+      // Solo invalidar sesión en rutas de auth; el booking público no debe cerrar sesión.
+      if (url.includes('/Auth/')) {
+        void useAuthStore.getState().clearAuth();
+      }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;

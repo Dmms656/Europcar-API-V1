@@ -64,7 +64,7 @@ export default function LoginScreen() {
 
       const userType = tab === 'admin' && isAdmin ? 'admin' : 'cliente';
       await login({ ...data, token: data.token }, userType);
-      router.replace(userType === 'admin' ? '/(admin)' : '/(tabs)/cuenta');
+      router.replace(userType === 'admin' ? '/(admin)' : '/cuenta');
     } catch (e) {
       setError(getErrorMessage(e));
     } finally {

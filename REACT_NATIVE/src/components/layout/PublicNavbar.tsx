@@ -26,7 +26,7 @@ export function PublicNavbar() {
   const logout = useAuthStore((s) => s.logout);
 
   const accountHref =
-    userType === 'admin' ? '/(admin)' : '/(tabs)/cuenta';
+    userType === 'admin' ? '/(admin)' : '/cuenta';
 
   const handleLogout = async () => {
     await logout();

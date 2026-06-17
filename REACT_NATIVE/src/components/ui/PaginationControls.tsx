@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '@/src/theme/colors';
 import { radius, spacing } from '@/src/theme/layout';
+import { flatStyle } from '@/src/utils/flatStyle';
 
 type Props = {
   page: number;
@@ -38,7 +39,7 @@ export function PaginationControls({
 
       <View style={styles.controls}>
         <Pressable
-          style={[styles.btn, page <= 1 && styles.btnDisabled]}
+          style={flatStyle([styles.btn, page <= 1 ? styles.btnDisabled : null])}
           onPress={() => onPageChange(page - 1)}
           disabled={page <= 1}
         >
@@ -50,7 +51,7 @@ export function PaginationControls({
         </Text>
 
         <Pressable
-          style={[styles.btn, page >= totalPages && styles.btnDisabled]}
+          style={flatStyle([styles.btn, page >= totalPages ? styles.btnDisabled : null])}
           onPress={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
         >
@@ -63,10 +64,10 @@ export function PaginationControls({
           {pageSizes.map((size) => (
             <Pressable
               key={size}
-              style={[styles.sizeBtn, pageSize === size && styles.sizeBtnActive]}
+              style={flatStyle([styles.sizeBtn, pageSize === size ? styles.sizeBtnActive : null])}
               onPress={() => onPageSizeChange(size)}
             >
-              <Text style={[styles.sizeText, pageSize === size && styles.sizeTextActive]}>{size}</Text>
+              <Text style={flatStyle([styles.sizeText, pageSize === size ? styles.sizeTextActive : null])}>{size}</Text>
             </Pressable>
           ))}
         </View>

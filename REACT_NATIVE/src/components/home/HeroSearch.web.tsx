@@ -97,7 +97,7 @@ export function HeroSearch() {
   const accountPath = isAuthenticated
     ? userType === 'admin'
       ? '/(admin)'
-      : '/(tabs)/cuenta'
+      : '/cuenta'
     : '/(auth)/login';
 
   return (

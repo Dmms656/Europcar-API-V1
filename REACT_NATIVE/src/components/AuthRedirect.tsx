@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { router, useSegments } from 'expo-router';
 import { useAuthStore } from '@/src/store/useAuthStore';
 
@@ -14,9 +15,10 @@ export function AuthRedirect() {
 
     const inAdmin = segments[0] === '(admin)';
     const inAuth = segments[0] === '(auth)';
+    const home = Platform.OS === 'web' ? '/' : '/(tabs)';
 
     if (!isAuthenticated) {
-      if (inAdmin) router.replace('/(tabs)');
+      if (inAdmin) router.replace(home);
       return;
     }
 
@@ -26,7 +28,7 @@ export function AuthRedirect() {
     }
 
     if (userType === 'cliente' && inAdmin) {
-      router.replace('/(tabs)/cuenta');
+      router.replace('/cuenta');
     }
   }, [sessionChecked, isAuthenticated, userType, segments]);
 

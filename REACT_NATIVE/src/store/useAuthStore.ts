@@ -118,6 +118,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         });
       }
 
+      if (!token) {
+        set({ sessionChecked: true });
+        return;
+      }
+
       const res = await authApi.me();
       const data = unwrapData<UserProfile>(res);
       if (data) {
@@ -133,6 +138,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return;
       }
     } catch {
+      if (token) {
+        set({ sessionChecked: true });
+        return;
+      }
       await persistAuth(null, null, null);
       set({ user: null, accessToken: null, isAuthenticated: false, userType: null });
     }

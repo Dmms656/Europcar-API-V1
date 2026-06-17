@@ -4,6 +4,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
 import { radius, spacing } from '@/src/theme/layout';
+import { flatStyle } from '@/src/utils/flatStyle';
 
 type NavItem = {
   href: string;
@@ -63,9 +64,9 @@ export function AdminSidebar() {
           const active = isActive(pathname, item.match);
           return (
             <Link key={item.href} href={item.href as never} asChild>
-              <Pressable style={[styles.link, active && styles.linkActive]}>
+              <Pressable style={flatStyle([styles.link, active ? styles.linkActive : null])}>
                 <Ionicons name={item.icon} size={20} color={active ? colors.primaryLight : colors.textSecondary} />
-                <Text style={[styles.linkText, active && styles.linkTextActive]}>{item.label}</Text>
+                <Text style={flatStyle([styles.linkText, active ? styles.linkTextActive : null])}>{item.label}</Text>
               </Pressable>
             </Link>
           );

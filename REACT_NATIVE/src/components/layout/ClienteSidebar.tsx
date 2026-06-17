@@ -4,6 +4,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
 import { radius, spacing } from '@/src/theme/layout';
+import { flatStyle } from '@/src/utils/flatStyle';
 
 type NavItem = {
   href: string;
@@ -13,7 +14,7 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/(tabs)/cuenta', label: 'Mi Cuenta', icon: 'person-circle-outline', match: ['cuenta'] },
+  { href: '/cuenta', label: 'Mi Cuenta', icon: 'person-circle-outline', match: ['cuenta'] },
   { href: '/(tabs)/reservas', label: 'Mis Reservas', icon: 'calendar-outline', match: ['reservas'] },
   { href: '/(tabs)/contratos', label: 'Mis Contratos', icon: 'document-text-outline', match: ['contratos'] },
   { href: '/(tabs)/facturas', label: 'Mis Facturas', icon: 'receipt-outline', match: ['facturas'] },
@@ -47,7 +48,7 @@ export function ClienteSidebar() {
 
   return (
     <View style={styles.sidebar}>
-      <Link href="/(tabs)/catalogo" asChild>
+      <Link href="/catalogo" asChild>
         <Pressable style={styles.cta}>
           <Ionicons name="car-sport-outline" size={18} color={colors.white} />
           <Text style={styles.ctaText}>Reservar vehículo</Text>
@@ -59,13 +60,13 @@ export function ClienteSidebar() {
           const active = isActive(pathname, item.match);
           return (
             <Link key={item.href} href={item.href as never} asChild>
-              <Pressable style={[styles.link, active && styles.linkActive]}>
+              <Pressable style={flatStyle([styles.link, active ? styles.linkActive : null])}>
                 <Ionicons
                   name={item.icon}
                   size={20}
                   color={active ? colors.accent : colors.textSecondary}
                 />
-                <Text style={[styles.linkText, active && styles.linkTextActive]}>{item.label}</Text>
+                <Text style={flatStyle([styles.linkText, active ? styles.linkTextActive : null])}>{item.label}</Text>
                 <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
               </Pressable>
             </Link>

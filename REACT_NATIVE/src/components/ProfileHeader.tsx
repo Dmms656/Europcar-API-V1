@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '@/src/theme/colors';
 import { radius, spacing } from '@/src/theme/layout';
+import { flatStyle } from '@/src/utils/flatStyle';
 
 type Props = {
   name: string;
@@ -14,13 +15,13 @@ export function ProfileHeader({ name, subtitle, badge, variant = 'cliente' }: Pr
   const isAdmin = variant === 'admin';
 
   return (
-    <View style={[styles.card, isAdmin ? styles.adminCard : styles.clientCard]}>
-      <View style={[styles.avatar, isAdmin ? styles.avatarAdmin : styles.avatarClient]}>
+    <View style={flatStyle([styles.card, isAdmin ? styles.adminCard : styles.clientCard])}>
+      <View style={flatStyle([styles.avatar, isAdmin ? styles.avatarAdmin : styles.avatarClient])}>
         <Text style={styles.initial}>{initial}</Text>
       </View>
       <Text style={styles.name}>{name}</Text>
       <Text style={styles.subtitle}>{subtitle}</Text>
-      <View style={[styles.badge, isAdmin ? styles.badgeAdmin : styles.badgeClient]}>
+      <View style={flatStyle([styles.badge, isAdmin ? styles.badgeAdmin : styles.badgeClient])}>
         <Text style={styles.badgeText}>{badge}</Text>
       </View>
     </View>
