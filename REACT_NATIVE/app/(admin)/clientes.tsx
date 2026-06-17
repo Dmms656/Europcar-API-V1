@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, FlatList, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { clientesApi } from '@/src/api/clientesApi';
 import { AdminScreen } from '@/src/components/admin/AdminScreen';
@@ -15,6 +15,7 @@ import { useClientPagination } from '@/src/hooks/useClientPagination';
 import { colors } from '@/src/theme/colors';
 import { radius, shadows, spacing } from '@/src/theme/layout';
 import { fonts } from '@/src/theme/typography';
+import { alertMessage, confirmAction } from '@/src/utils/confirm';
 import { getErrorMessage, unwrapData } from '@/src/utils/apiResponse';
 
 type Cliente = {
@@ -63,7 +64,7 @@ export default function AdminClientesScreen() {
   const load = useCallback(async () => {
     setError('');
     try {
-      const res = await clientesApi.getAll();
+      const res = await clientesApi.getAll({ page: 1, limit: 100 });
       setClientes(unwrapData<Cliente[]>(res) ?? []);
     } catch (e) {
       setError(getErrorMessage(e));
@@ -117,43 +118,36 @@ export default function AdminClientesScreen() {
 
   const handleSave = async () => {
     if (!form.numeroIdentificacion.trim() || !form.nombre1.trim() || !form.apellido1.trim()) {
-      Alert.alert('Error', 'Identificación, primer nombre y primer apellido son requeridos');
+      alertMessage('Error', 'Identificación, primer nombre y primer apellido son requeridos');
       return;
     }
     setSaving(true);
     try {
       if (editingId) {
         await clientesApi.update(editingId, form);
-        Alert.alert('Listo', 'Cliente actualizado');
+        alertMessage('Listo', 'Cliente actualizado');
       } else {
         await clientesApi.create(form);
-        Alert.alert('Listo', 'Cliente creado');
+        alertMessage('Listo', 'Cliente creado');
       }
       setShowModal(false);
       await load();
     } catch (e) {
-      Alert.alert('Error', getErrorMessage(e));
+      alertMessage('Error', getErrorMessage(e));
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = (id: number) => {
-    Alert.alert('Eliminar', '¿Eliminar este cliente?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await clientesApi.delete(id);
-            await load();
-          } catch (e) {
-            Alert.alert('Error', getErrorMessage(e));
-          }
-        },
-      },
-    ]);
+  const handleDelete = async (id: number) => {
+    const ok = await confirmAction('Eliminar', '¿Eliminar este cliente?');
+    if (!ok) return;
+    try {
+      await clientesApi.delete(id);
+      await load();
+    } catch (e) {
+      alertMessage('Error', getErrorMessage(e));
+    }
   };
 
   return (
@@ -219,8 +213,7 @@ export default function AdminClientesScreen() {
         }
       />
 
-      <Modal visible={showModal} title={editingId ? 'Editar cliente' : 'Nuevo cliente'} onClose={() => setShowModal(false)}>
-        <ScrollView showsVerticalScrollIndicator={false}>
+      <Modal visible={showModal} title={editingId ? 'Editar cliente' : 'Nuevo cliente'} onClose={() => setShowModal(false)} size="lg">
           <Select
             label="Tipo ID"
             value={form.tipoIdentificacion}
@@ -241,7 +234,6 @@ export default function AdminClientesScreen() {
           <Input label="Correo" value={form.correo} onChangeText={(v) => setForm({ ...form, correo: v })} autoCapitalize="none" keyboardType="email-address" />
           <Input label="Dirección" value={form.direccionPrincipal} onChangeText={(v) => setForm({ ...form, direccionPrincipal: v })} />
           <Button label={saving ? 'Guardando…' : 'Guardar'} onPress={handleSave} loading={saving} />
-        </ScrollView>
       </Modal>
     </View>
   );

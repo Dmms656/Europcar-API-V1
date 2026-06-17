@@ -14,7 +14,7 @@ public sealed class ClientesClient : HttpClientBase, IClientesClient
         return envelope?.Data;
     }
 
-    public async Task<IReadOnlyList<ClienteListItemDto>?> ListAllAsync(int page = 1, int limit = 500, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ClienteListItemDto>?> ListAllAsync(int page = 1, int limit = 100, CancellationToken ct = default)
     {
         var envelope = await GetAsync<MsApiEnvelope<IReadOnlyList<ClienteListItemDto>>>(
             $"/api/v1/clientes?page={page}&limit={limit}", ct);

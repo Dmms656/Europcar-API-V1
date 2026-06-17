@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Platform, Pressable, RefreshControl, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { catalogosApi } from '@/src/api/catalogosApi';
@@ -20,6 +20,8 @@ import { radius, shadows, spacing } from '@/src/theme/layout';
 import { fonts } from '@/src/theme/typography';
 import { getErrorMessage, unwrapData } from '@/src/utils/apiResponse';
 import { formatCurrency } from '@/src/utils/format';
+import { alertMessage, confirmAction } from '@/src/utils/confirm';
+import { flatStyle } from '@/src/utils/flatStyle';
 
 type Vehiculo = {
   idVehiculo: number;
@@ -59,6 +61,8 @@ const INITIAL_FORM = {
 };
 
 export default function AdminVehiculosScreen() {
+  const { width } = useWindowDimensions();
+  const isWide = Platform.OS === 'web' && width >= 720;
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
   const [marcas, setMarcas] = useState<SelectOption[]>([]);
   const [categorias, setCategorias] = useState<SelectOption[]>([]);
@@ -149,7 +153,7 @@ export default function AdminVehiculosScreen() {
 
   const handleSave = async () => {
     if (!form.placaVehiculo.trim() || !form.idMarca || !form.idCategoria || !form.idLocalizacion) {
-      Alert.alert('Error', 'Placa, marca, categoría y localización son requeridos');
+      alertMessage('Error', 'Placa, marca, categoría y localización son requeridos');
       return;
     }
     setSaving(true);
@@ -168,48 +172,41 @@ export default function AdminVehiculosScreen() {
       };
       if (editingId) {
         await vehiculosApi.update(editingId, payload);
-        Alert.alert('Listo', 'Vehículo actualizado');
+        alertMessage('Listo', 'Vehículo actualizado');
       } else {
         await vehiculosApi.create(payload);
-        Alert.alert('Listo', 'Vehículo creado');
+        alertMessage('Listo', 'Vehículo creado');
       }
       setShowModal(false);
       await loadAll();
     } catch (e) {
-      Alert.alert('Error', getErrorMessage(e));
+      alertMessage('Error', getErrorMessage(e));
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = (id: number) => {
-    Alert.alert('Eliminar', '¿Eliminar este vehículo?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await vehiculosApi.delete(id);
-            await loadAll();
-          } catch (e) {
-            Alert.alert('Error', getErrorMessage(e));
-          }
-        },
-      },
-    ]);
+  const handleDelete = async (id: number) => {
+    const ok = await confirmAction('Eliminar', '¿Eliminar este vehículo?');
+    if (!ok) return;
+    try {
+      await vehiculosApi.delete(id);
+      await loadAll();
+    } catch (e) {
+      alertMessage('Error', getErrorMessage(e));
+    }
   };
 
   const changeEstado = async (v: Vehiculo, estado: string) => {
     if (v.estadoOperativo === 'ALQUILADO') {
-      Alert.alert('Error', 'ALQUILADO no es editable manualmente');
+      alertMessage('Error', 'ALQUILADO no es editable manualmente');
       return;
     }
     try {
       await vehiculosApi.cambiarEstadoOperativo(v.idVehiculo, estado);
       await loadAll();
     } catch (e) {
-      Alert.alert('Error', getErrorMessage(e));
+      alertMessage('Error', getErrorMessage(e));
     }
   };
 
@@ -285,29 +282,64 @@ export default function AdminVehiculosScreen() {
         }
       />
 
-      <Modal visible={showModal} title={editingId ? 'Editar vehículo' : 'Nuevo vehículo'} onClose={() => setShowModal(false)}>
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <Input label="Placa *" value={form.placaVehiculo} onChangeText={(v) => setForm({ ...form, placaVehiculo: v })} autoCapitalize="characters" />
-          <Select label="Marca *" value={form.idMarca} onValueChange={(v) => setForm({ ...form, idMarca: v })} options={marcas} />
-          <Select label="Categoría *" value={form.idCategoria} onValueChange={(v) => setForm({ ...form, idCategoria: v })} options={categorias} />
-          <Input label="Modelo *" value={form.modeloVehiculo} onChangeText={(v) => setForm({ ...form, modeloVehiculo: v })} />
-          <Input label="Año" value={form.anioFabricacion} onChangeText={(v) => setForm({ ...form, anioFabricacion: v })} keyboardType="number-pad" />
-          <Input label="Color" value={form.colorVehiculo} onChangeText={(v) => setForm({ ...form, colorVehiculo: v })} />
-          <Select label="Combustible" value={form.tipoCombustible} onValueChange={(v) => setForm({ ...form, tipoCombustible: v })} options={[
-            { label: 'Gasolina', value: 'GASOLINA' }, { label: 'Diesel', value: 'DIESEL' },
-            { label: 'Híbrido', value: 'HIBRIDO' }, { label: 'Eléctrico', value: 'ELECTRICO' },
-          ]} />
-          <Select label="Transmisión" value={form.tipoTransmision} onValueChange={(v) => setForm({ ...form, tipoTransmision: v })} options={[
-            { label: 'Automática', value: 'AUTOMATICA' }, { label: 'Manual', value: 'MANUAL' },
-          ]} />
-          <Select label="Localización *" value={form.idLocalizacion} onValueChange={(v) => setForm({ ...form, idLocalizacion: v })} options={localizaciones} />
-          <Input label="Pasajeros" value={form.capacidadPasajeros} onChangeText={(v) => setForm({ ...form, capacidadPasajeros: v })} keyboardType="number-pad" />
-          <Input label="Precio/día *" value={form.precioBaseDia} onChangeText={(v) => setForm({ ...form, precioBaseDia: v })} keyboardType="decimal-pad" />
-          <Input label="Kilometraje" value={form.kilometrajeActual} onChangeText={(v) => setForm({ ...form, kilometrajeActual: v })} keyboardType="number-pad" />
-          <ImageUploader value={form.imagenReferencialUrl} onChange={(url) => setForm({ ...form, imagenReferencialUrl: url })} />
-          <Input label="Observaciones" value={form.observacionesGenerales} onChangeText={(v) => setForm({ ...form, observacionesGenerales: v })} />
-          <Button label={saving ? 'Guardando…' : 'Guardar'} onPress={handleSave} loading={saving} />
-        </ScrollView>
+      <Modal visible={showModal} title={editingId ? 'Editar vehículo' : 'Nuevo vehículo'} onClose={() => setShowModal(false)} size="xl">
+        <ImageUploader
+          value={form.imagenReferencialUrl}
+          onChange={(url) => setForm({ ...form, imagenReferencialUrl: url })}
+        />
+
+        <View style={flatStyle([styles.formGrid, isWide ? styles.formGridWide : null])}>
+          <View style={flatStyle([styles.formCol, isWide ? styles.formColWide : null])}>
+            <Input label="Placa *" value={form.placaVehiculo} onChangeText={(v) => setForm({ ...form, placaVehiculo: v })} autoCapitalize="characters" />
+          </View>
+          <View style={flatStyle([styles.formCol, isWide ? styles.formColWide : null])}>
+            <Select label="Marca *" value={form.idMarca} onValueChange={(v) => setForm({ ...form, idMarca: v })} options={marcas} />
+          </View>
+          <View style={flatStyle([styles.formCol, isWide ? styles.formColWide : null])}>
+            <Select label="Categoría *" value={form.idCategoria} onValueChange={(v) => setForm({ ...form, idCategoria: v })} options={categorias} />
+          </View>
+          <View style={flatStyle([styles.formCol, isWide ? styles.formColWide : null])}>
+            <Input label="Modelo *" value={form.modeloVehiculo} onChangeText={(v) => setForm({ ...form, modeloVehiculo: v })} />
+          </View>
+          <View style={flatStyle([styles.formCol, isWide ? styles.formColWide : null])}>
+            <Input label="Año" value={form.anioFabricacion} onChangeText={(v) => setForm({ ...form, anioFabricacion: v })} keyboardType="number-pad" />
+          </View>
+          <View style={flatStyle([styles.formCol, isWide ? styles.formColWide : null])}>
+            <Input label="Color" value={form.colorVehiculo} onChangeText={(v) => setForm({ ...form, colorVehiculo: v })} />
+          </View>
+          <View style={flatStyle([styles.formCol, isWide ? styles.formColWide : null])}>
+            <Select label="Combustible" value={form.tipoCombustible} onValueChange={(v) => setForm({ ...form, tipoCombustible: v })} options={[
+              { label: 'Gasolina', value: 'GASOLINA' }, { label: 'Diesel', value: 'DIESEL' },
+              { label: 'Híbrido', value: 'HIBRIDO' }, { label: 'Eléctrico', value: 'ELECTRICO' },
+            ]} />
+          </View>
+          <View style={flatStyle([styles.formCol, isWide ? styles.formColWide : null])}>
+            <Select label="Transmisión" value={form.tipoTransmision} onValueChange={(v) => setForm({ ...form, tipoTransmision: v })} options={[
+              { label: 'Automática', value: 'AUTOMATICA' }, { label: 'Manual', value: 'MANUAL' },
+            ]} />
+          </View>
+          <View style={flatStyle([styles.formCol, isWide ? styles.formColWide : null])}>
+            <Select label="Localización *" value={form.idLocalizacion} onValueChange={(v) => setForm({ ...form, idLocalizacion: v })} options={localizaciones} />
+          </View>
+          <View style={flatStyle([styles.formCol, isWide ? styles.formColWide : null])}>
+            <Input label="Pasajeros" value={form.capacidadPasajeros} onChangeText={(v) => setForm({ ...form, capacidadPasajeros: v })} keyboardType="number-pad" />
+          </View>
+          <View style={flatStyle([styles.formCol, isWide ? styles.formColWide : null])}>
+            <Input label="Maletas" value={form.capacidadMaletas} onChangeText={(v) => setForm({ ...form, capacidadMaletas: v })} keyboardType="number-pad" />
+          </View>
+          <View style={flatStyle([styles.formCol, isWide ? styles.formColWide : null])}>
+            <Input label="Puertas" value={form.numeroPuertas} onChangeText={(v) => setForm({ ...form, numeroPuertas: v })} keyboardType="number-pad" />
+          </View>
+          <View style={flatStyle([styles.formCol, isWide ? styles.formColWide : null])}>
+            <Input label="Precio/día *" value={form.precioBaseDia} onChangeText={(v) => setForm({ ...form, precioBaseDia: v })} keyboardType="decimal-pad" />
+          </View>
+          <View style={flatStyle([styles.formCol, isWide ? styles.formColWide : null])}>
+            <Input label="Kilometraje" value={form.kilometrajeActual} onChangeText={(v) => setForm({ ...form, kilometrajeActual: v })} keyboardType="number-pad" />
+          </View>
+        </View>
+
+        <Input label="Observaciones" value={form.observacionesGenerales} onChangeText={(v) => setForm({ ...form, observacionesGenerales: v })} />
+        <Button label={saving ? 'Guardando…' : 'Guardar'} onPress={handleSave} loading={saving} style={{ marginTop: spacing.md }} />
       </Modal>
     </View>
   );
@@ -327,4 +359,8 @@ const styles = StyleSheet.create({
   loc: { color: colors.textSecondary, fontSize: 13 },
   actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
   btn: { flex: 1, minHeight: 42, paddingVertical: 8 },
+  formGrid: { gap: spacing.sm },
+  formGridWide: { flexDirection: 'row', flexWrap: 'wrap' },
+  formCol: { width: '100%' },
+  formColWide: { width: '48%', minWidth: 280, flexGrow: 1 },
 });

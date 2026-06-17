@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useBreakpoint } from '@/src/hooks/useBreakpoint';
 import { useAuthStore } from '@/src/store/useAuthStore';
+import { confirmAction } from '@/src/utils/confirm';
 import { colors } from '@/src/theme/colors';
 import { spacing, radius } from '@/src/theme/layout';
 import { fonts } from '@/src/theme/typography';
@@ -26,9 +27,11 @@ export function PublicNavbar() {
   const logout = useAuthStore((s) => s.logout);
 
   const accountHref =
-    userType === 'admin' ? '/(admin)' : '/cuenta';
+    userType === 'admin' ? '/(admin)' : '/mi-cuenta';
 
   const handleLogout = async () => {
+    const ok = await confirmAction('Cerrar sesión', '¿Seguro que deseas cerrar sesión?');
+    if (!ok) return;
     await logout();
     router.replace('/');
   };

@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Link, usePathname, router } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
 import { radius, spacing } from '@/src/theme/layout';
 import { flatStyle } from '@/src/utils/flatStyle';
+import { confirmAction } from '@/src/utils/confirm';
 
 type NavItem = {
   href: string;
@@ -40,18 +41,11 @@ export function AdminSidebar() {
 
   const visible = NAV_ITEMS.filter((item) => item.roles.length === 0 || hasAnyRole(...item.roles));
 
-  const handleLogout = () => {
-    Alert.alert('Cerrar sesión', '¿Seguro que deseas cerrar sesión?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Salir',
-        style: 'destructive',
-        onPress: async () => {
-          await logout();
-          router.replace('/');
-        },
-      },
-    ]);
+  const handleLogout = async () => {
+    const ok = await confirmAction('Cerrar sesión', '¿Seguro que deseas cerrar sesión?');
+    if (!ok) return;
+    await logout();
+    router.replace('/');
   };
 
   const initial = (user?.username || 'A').charAt(0).toUpperCase();

@@ -20,9 +20,16 @@ public sealed class LegacyClientesController : ControllerBase
     public LegacyClientesController(IClientesClient clientes) => _clientes = clientes;
 
     [HttpGet]
-    public async Task<IActionResult> GetAll(CancellationToken ct)
+    public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int limit = 100, CancellationToken ct = default)
     {
-        var items = await _clientes.ListAllAsync(ct: ct) ?? Array.Empty<ClienteListItemDto>();
+        var safeLimit = limit switch
+        {
+            <= 0 => 50,
+            > 200 => 200,
+            _ => limit
+        };
+        var safePage = page <= 0 ? 1 : page;
+        var items = await _clientes.ListAllAsync(safePage, safeLimit, ct) ?? Array.Empty<ClienteListItemDto>();
         return Ok(ApiResponse<object>.Ok(items.Select(LegacyAdminDtoMapper.ToCliente).ToList(), traceId: HttpContext.TraceIdentifier));
     }
 

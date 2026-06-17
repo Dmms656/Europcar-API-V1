@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Link, usePathname, router } from 'expo-router';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
 import { radius, spacing } from '@/src/theme/layout';
 import { flatStyle } from '@/src/utils/flatStyle';
+import { confirmAction } from '@/src/utils/confirm';
 
 type NavItem = {
   href: string;
@@ -13,12 +14,13 @@ type NavItem = {
   match: string[];
 };
 
+/** Rutas alineadas con frontend/ ClienteLayout */
 const NAV_ITEMS: NavItem[] = [
-  { href: '/cuenta', label: 'Mi Cuenta', icon: 'person-circle-outline', match: ['cuenta'] },
-  { href: '/(tabs)/reservas', label: 'Mis Reservas', icon: 'calendar-outline', match: ['reservas'] },
-  { href: '/(tabs)/contratos', label: 'Mis Contratos', icon: 'document-text-outline', match: ['contratos'] },
-  { href: '/(tabs)/facturas', label: 'Mis Facturas', icon: 'receipt-outline', match: ['facturas'] },
-  { href: '/(tabs)/historial', label: 'Historial', icon: 'time-outline', match: ['historial'] },
+  { href: '/mi-cuenta', label: 'Mi Cuenta', icon: 'person-circle-outline', match: ['mi-cuenta'] },
+  { href: '/mis-reservas', label: 'Mis Reservas', icon: 'calendar-outline', match: ['mis-reservas', 'reservas'] },
+  { href: '/mis-contratos', label: 'Mis Contratos', icon: 'document-text-outline', match: ['mis-contratos', 'contratos'] },
+  { href: '/mis-facturas', label: 'Mis Facturas', icon: 'receipt-outline', match: ['mis-facturas', 'facturas'] },
+  { href: '/historial', label: 'Historial', icon: 'time-outline', match: ['historial'] },
 ];
 
 function isActive(pathname: string, match: string[]) {
@@ -30,18 +32,11 @@ export function ClienteSidebar() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
 
-  const handleLogout = () => {
-    Alert.alert('Cerrar sesión', '¿Seguro que deseas cerrar sesión?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Salir',
-        style: 'destructive',
-        onPress: async () => {
-          await logout();
-          router.replace('/');
-        },
-      },
-    ]);
+  const handleLogout = async () => {
+    const ok = await confirmAction('Cerrar sesión', '¿Seguro que deseas cerrar sesión?');
+    if (!ok) return;
+    await logout();
+    router.replace('/');
   };
 
   const initial = (user?.nombreCompleto || user?.username || 'U').charAt(0).toUpperCase();

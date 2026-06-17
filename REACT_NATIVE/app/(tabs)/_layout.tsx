@@ -50,7 +50,7 @@ export default function TabLayout() {
       />
       <Tabs.Screen name="buscar" options={{ href: null }} />
       <Tabs.Screen
-        name="reservas"
+        name="mis-reservas"
         options={{
           title: 'Reservas',
           tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} />,
@@ -64,14 +64,14 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="cuenta"
+        name="mi-cuenta"
         options={{
           title: 'Mi cuenta',
           tabBarIcon: ({ color, size }) => <Ionicons name="person-circle-outline" size={size} color={color} />,
         }}
       />
-      <Tabs.Screen name="contratos" options={{ href: null, title: 'Mis Contratos' }} />
-      <Tabs.Screen name="facturas" options={{ href: null, title: 'Mis Facturas' }} />
+      <Tabs.Screen name="mis-contratos" options={{ href: null, title: 'Mis Contratos' }} />
+      <Tabs.Screen name="mis-facturas" options={{ href: null, title: 'Mis Facturas' }} />
     </Tabs>
   );
 

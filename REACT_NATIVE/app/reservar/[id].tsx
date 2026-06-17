@@ -338,7 +338,7 @@ export default function ReservarScreen() {
         <Text style={styles.confirmTitle}>¡Reserva confirmada!</Text>
         <Text style={styles.confirmCode}>{confirmada.codigo}</Text>
         <Text style={styles.muted}>Pago simulado exitoso · ${confirmada.total.toFixed(2)} USD</Text>
-        <Button label="Ver mis reservas" onPress={() => router.replace('/(tabs)/reservas')} variant="client" style={{ marginTop: spacing.xl, width: '100%' }} />
+        <Button label="Ver mis reservas" onPress={() => router.replace('/mis-reservas')} variant="client" style={{ marginTop: spacing.xl, width: '100%' }} />
         <Button label="Volver al catálogo" onPress={() => router.replace('/(tabs)/catalogo')} variant="ghost" style={{ marginTop: spacing.sm, width: '100%' }} />
       </Screen>
     );

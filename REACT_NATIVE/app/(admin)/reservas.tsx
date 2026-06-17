@@ -98,29 +98,47 @@ export default function AdminReservasScreen() {
   const loadAll = useCallback(async () => {
     setError('');
     try {
-      const [cRes, vRes, lRes, ciRes, rList] = await Promise.all([
-        clientesApi.getAll(),
+      const [cRes, vRes, lRes, ciRes, rList] = await Promise.allSettled([
+        clientesApi.getAll({ page: 1, limit: 100 }),
         vehiculosApi.getAll(),
         catalogosApi.getLocalizaciones(),
         catalogosApi.getCiudades(),
         listAdminReservas(),
       ]);
-      setClientes(unwrapData<Cliente[]>(cRes) ?? []);
-      setVehiculos(unwrapData<Vehiculo[]>(vRes) ?? []);
-      const rawL = unwrapData<Record<string, unknown>[]>(lRes) ?? [];
-      setLocalizaciones(
-        rawL.map((l) => ({
-          idLocalizacion: Number(l.idLocalizacion ?? l.id),
-          nombreLocalizacion: String(l.nombreLocalizacion ?? l.nombre ?? ''),
-          idCiudad: Number(l.idCiudad ?? 0) || undefined,
-        })),
-      );
-      const rawC = unwrapData<Record<string, unknown>[]>(ciRes) ?? [];
-      setCiudades(rawC.map((c) => ({
-        idCiudad: Number(c.idCiudad ?? c.id),
-        idPais: Number(c.idPais ?? 0) || undefined,
-      })));
-      setReservas(rList);
+      if (cRes.status === 'fulfilled') {
+        setClientes(unwrapData<Cliente[]>(cRes.value) ?? []);
+      } else {
+        setClientes([]);
+      }
+      if (vRes.status === 'fulfilled') {
+        setVehiculos(unwrapData<Vehiculo[]>(vRes.value) ?? []);
+      }
+      if (lRes.status === 'fulfilled') {
+        const rawL = unwrapData<Record<string, unknown>[]>(lRes.value) ?? [];
+        setLocalizaciones(
+          rawL.map((l) => ({
+            idLocalizacion: Number(l.idLocalizacion ?? l.id),
+            nombreLocalizacion: String(l.nombreLocalizacion ?? l.nombre ?? ''),
+            idCiudad: Number(l.idCiudad ?? 0) || undefined,
+          })),
+        );
+      }
+      if (ciRes.status === 'fulfilled') {
+        const rawC = unwrapData<Record<string, unknown>[]>(ciRes.value) ?? [];
+        setCiudades(rawC.map((c) => ({
+          idCiudad: Number(c.idCiudad ?? c.id),
+          idPais: Number(c.idPais ?? 0) || undefined,
+        })));
+      }
+      if (rList.status === 'fulfilled') {
+        setReservas(rList.value);
+      } else {
+        setReservas([]);
+        throw rList.reason;
+      }
+      if (cRes.status === 'rejected') {
+        setError(getErrorMessage(cRes.reason));
+      }
     } catch (e) {
       setError(getErrorMessage(e));
       setReservas([]);

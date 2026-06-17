@@ -40,9 +40,9 @@ function hasAdminRoleInRoles(roles?: string[]) {
 }
 
 function resolveUserType(stored: 'admin' | 'cliente' | null, roles?: string[]): 'admin' | 'cliente' {
+  if (stored === 'cliente') return 'cliente';
   const canAdmin = hasAdminRoleInRoles(roles);
   if (stored === 'admin' && canAdmin) return 'admin';
-  if (stored === 'cliente') return 'cliente';
   return canAdmin ? 'admin' : 'cliente';
 }
 

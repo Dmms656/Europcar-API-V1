@@ -223,9 +223,9 @@ export default function CuentaScreen() {
         <Card>
           <Text style={styles.cardTitle}>Accesos rápidos</Text>
           <View style={styles.quickLinks}>
-            <QuickLink icon="document-text-outline" label="Mis contratos" onPress={() => router.push('/(tabs)/contratos')} />
-            <QuickLink icon="receipt-outline" label="Mis facturas" onPress={() => router.push('/(tabs)/facturas')} />
-            <QuickLink icon="calendar-outline" label="Mis reservas" onPress={() => router.push('/(tabs)/reservas')} />
+            <QuickLink icon="document-text-outline" label="Mis contratos" onPress={() => router.push('/mis-contratos')} />
+            <QuickLink icon="receipt-outline" label="Mis facturas" onPress={() => router.push('/mis-facturas')} />
+            <QuickLink icon="calendar-outline" label="Mis reservas" onPress={() => router.push('/mis-reservas')} />
           </View>
         </Card>
       ) : null}

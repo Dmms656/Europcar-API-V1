@@ -28,7 +28,7 @@ export function AuthRedirect() {
     }
 
     if (userType === 'cliente' && inAdmin) {
-      router.replace('/cuenta');
+      router.replace('/mi-cuenta');
     }
   }, [sessionChecked, isAuthenticated, userType, segments]);
 

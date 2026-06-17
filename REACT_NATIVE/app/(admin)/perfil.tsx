@@ -13,7 +13,7 @@ export default function AdminCuentaScreen() {
 
   const handleLogout = async () => {
     await logout();
-    router.replace('/(tabs)');
+    router.replace('/');
   };
 
   return (

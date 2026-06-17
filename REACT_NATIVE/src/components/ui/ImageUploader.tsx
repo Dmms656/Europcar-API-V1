@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -25,6 +25,10 @@ export function ImageUploader({ value, onChange, label = 'Imagen del vehículo' 
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [preview, setPreview] = useState(value || '');
+
+  useEffect(() => {
+    setPreview(value || '');
+  }, [value]);
 
   const pickAndUpload = async () => {
     setError('');
@@ -82,7 +86,7 @@ export function ImageUploader({ value, onChange, label = 'Imagen del vehículo' 
         disabled={uploading}
       >
         {preview ? (
-          <Image source={{ uri: preview }} style={styles.preview} resizeMode="cover" />
+          <Image source={{ uri: preview }} style={styles.preview} resizeMode="contain" />
         ) : (
           <View style={styles.placeholder}>
             <Ionicons name="cloud-upload-outline" size={32} color={colors.textMuted} />
@@ -124,7 +128,7 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderColor: colors.borderLight,
     borderRadius: radius.lg,
-    minHeight: 160,
+    minHeight: Platform.OS === 'web' ? 220 : 160,
     overflow: 'hidden',
     backgroundColor: colors.bgSecondary,
   },
@@ -132,7 +136,7 @@ const styles = StyleSheet.create({
   placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, minHeight: 160 },
   hint: { color: colors.text, marginTop: spacing.sm, fontFamily: fonts.semiBold },
   sub: { color: colors.textMuted, fontSize: 12, marginTop: 4 },
-  preview: { width: '100%', height: 180 },
+  preview: { width: '100%', height: Platform.OS === 'web' ? 220 : 180, backgroundColor: colors.bgSecondary },
   overlay: {
     ...(StyleSheet.absoluteFill as object),
     backgroundColor: 'rgba(0,0,0,0.45)',

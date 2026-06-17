@@ -32,7 +32,7 @@ export default function AdminLayout() {
       <Tabs.Screen name="clientes" options={{ title: 'Clientes', tabBarIcon: ({ color, size }) => <Ionicons name="people-outline" size={size} color={color} /> }} />
       <Tabs.Screen name="vehiculos" options={{ title: 'Vehículos', tabBarIcon: ({ color, size }) => <Ionicons name="car-outline" size={size} color={color} /> }} />
       <Tabs.Screen name="mas" options={{ title: 'Más', tabBarIcon: ({ color, size }) => <Ionicons name="ellipsis-horizontal" size={size} color={color} /> }} />
-      <Tabs.Screen name="cuenta" options={{ href: null }} />
+      <Tabs.Screen name="perfil" options={{ href: null }} />
       <Tabs.Screen name="contratos" options={{ href: null, title: 'Contratos' }} />
       <Tabs.Screen name="pagos" options={{ href: null, title: 'Pagos' }} />
       <Tabs.Screen name="mantenimientos" options={{ href: null, title: 'Mantenimientos' }} />

@@ -21,7 +21,7 @@ const MODULES: Module[] = [
   { route: '/(admin)/ubicaciones', label: 'Países y Ciudades', icon: 'earth-outline', roles: ['ADMIN', 'AGENTE_POS'] },
   { route: '/(admin)/extras', label: 'Extras', icon: 'cube-outline', roles: ['ADMIN', 'AGENTE_POS'] },
   { route: '/(admin)/usuarios', label: 'Usuarios', icon: 'shield-checkmark-outline', roles: ['ADMIN'] },
-  { route: '/(admin)/cuenta', label: 'Mi cuenta admin', icon: 'person-circle-outline', roles: [] },
+  { route: '/(admin)/perfil', label: 'Mi cuenta admin', icon: 'person-circle-outline', roles: [] },
 ];
 
 export default function AdminMasScreen() {

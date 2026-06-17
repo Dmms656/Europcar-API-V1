@@ -1,23 +1,16 @@
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { authApi } from '@/src/api/authApi';
+import { AuthShell } from '@/src/components/ui/AuthShell';
 import { Button } from '@/src/components/ui/Button';
-import { GradientBackground } from '@/src/components/ui/GradientBackground';
 import { Input } from '@/src/components/ui/Input';
-import { Screen } from '@/src/components/ui/Screen';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
-import { radius, shadows, spacing } from '@/src/theme/layout';
+import { radius, spacing } from '@/src/theme/layout';
 import { fonts } from '@/src/theme/typography';
+import { flatStyle } from '@/src/utils/flatStyle';
 import { getErrorMessage, unwrapData } from '@/src/utils/apiResponse';
 
 type Tab = 'admin' | 'cliente';
@@ -64,7 +57,7 @@ export default function LoginScreen() {
 
       const userType = tab === 'admin' && isAdmin ? 'admin' : 'cliente';
       await login({ ...data, token: data.token }, userType);
-      router.replace(userType === 'admin' ? '/(admin)' : '/cuenta');
+      router.replace(userType === 'admin' ? '/(admin)' : '/mi-cuenta');
     } catch (e) {
       setError(getErrorMessage(e));
     } finally {
@@ -73,88 +66,72 @@ export default function LoginScreen() {
   };
 
   return (
-    <GradientBackground variant="auth">
-      <Screen scroll padded={false} style={styles.screen}>
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <View style={styles.hero}>
-            <View style={styles.logoCircle}>
-              <Ionicons name="car-sport" size={32} color={colors.primaryLight} />
-            </View>
-            <Text style={styles.brand}>Europcar Rental</Text>
-            <Text style={styles.subtitle}>Accede a tu cuenta</Text>
-            {tab === 'admin' ? (
-              <Text style={styles.demo}>Demo: usuario admin · contraseña 12345</Text>
-            ) : null}
-          </View>
-
-          <View style={styles.card}>
-          <View style={styles.tabs}>
-            <Pressable
-              style={[styles.tab, tab === 'admin' && styles.tabActiveAdmin]}
-              onPress={() => { setTab('admin'); setError(''); }}
-            >
-              <Text style={[styles.tabText, tab === 'admin' && styles.tabTextActive]}>🛡 Administrador</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.tab, tab === 'cliente' && styles.tabActiveClient]}
-              onPress={() => { setTab('cliente'); setError(''); }}
-            >
-              <Text style={[styles.tabText, tab === 'cliente' && styles.tabTextActiveClient]}>👤 Cliente</Text>
-            </Pressable>
-          </View>
-
-          <Input
-            label="Usuario"
-            placeholder="Tu usuario"
-            autoCapitalize="none"
-            value={username}
-            onChangeText={setUsername}
-          />
-          <Input
-            label="Contraseña"
-            placeholder="••••••••"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          <Button
-            label={loading ? 'Entrando…' : 'Iniciar sesión'}
-            onPress={handleLogin}
-            loading={loading}
-            variant={tab === 'admin' ? 'primary' : 'client'}
-          />
-
-          {tab === 'cliente' ? (
-            <Pressable onPress={() => router.push('/register')} style={styles.linkWrap}>
-              <Text style={styles.link}>¿No tienes cuenta? Regístrate</Text>
-            </Pressable>
-          ) : null}
-
-          <Pressable onPress={() => router.back()} style={styles.linkWrap}>
-            <Text style={styles.linkMuted}>Continuar sin cuenta</Text>
-          </Pressable>
+    <AuthShell>
+      <View style={styles.hero}>
+        <View style={styles.logoCircle}>
+          <Ionicons name="car-sport" size={32} color={colors.primaryLight} />
         </View>
-        </KeyboardAvoidingView>
-      </Screen>
-    </GradientBackground>
+        <Text style={styles.brand}>Europcar Rental</Text>
+        <Text style={styles.subtitle}>Accede a tu cuenta</Text>
+        {tab === 'admin' ? (
+          <Text style={styles.demo}>Demo: usuario admin · contraseña 12345</Text>
+        ) : null}
+      </View>
+
+      <View style={styles.tabs}>
+        <Pressable
+          style={flatStyle([styles.tab, tab === 'admin' ? styles.tabActiveAdmin : null])}
+          onPress={() => { setTab('admin'); setError(''); }}
+        >
+          <Text style={flatStyle([styles.tabText, tab === 'admin' ? styles.tabTextActive : null])}>🛡 Administrador</Text>
+        </Pressable>
+        <Pressable
+          style={flatStyle([styles.tab, tab === 'cliente' ? styles.tabActiveClient : null])}
+          onPress={() => { setTab('cliente'); setError(''); }}
+        >
+          <Text style={flatStyle([styles.tabText, tab === 'cliente' ? styles.tabTextActiveClient : null])}>👤 Cliente</Text>
+        </Pressable>
+      </View>
+
+      <Input
+        label={tab === 'admin' ? 'Usuario' : 'Usuario / Correo'}
+        placeholder={tab === 'admin' ? 'admin' : 'cliente.carlos'}
+        autoCapitalize="none"
+        value={username}
+        onChangeText={setUsername}
+      />
+      <Input
+        label="Contraseña"
+        placeholder="Ingrese su contraseña"
+        secureTextEntry
+        value={password}
+        onChangeText={setPassword}
+      />
+
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      <Button
+        label={loading ? 'Entrando…' : tab === 'admin' ? 'Acceder al Panel' : 'Acceder a Mi Cuenta'}
+        onPress={handleLogin}
+        loading={loading}
+        variant={tab === 'admin' ? 'primary' : 'client'}
+      />
+
+      {tab === 'cliente' ? (
+        <Pressable onPress={() => router.push('/register')} style={styles.linkWrap}>
+          <Text style={styles.link}>¿No tienes cuenta? Regístrate</Text>
+        </Pressable>
+      ) : null}
+
+      <Pressable onPress={() => router.back()} style={styles.linkWrap}>
+        <Text style={styles.linkMuted}>← Volver al inicio</Text>
+      </Pressable>
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: 'transparent' },
-  flex: { flex: 1 },
-  hero: {
-    alignItems: 'center',
-    paddingTop: spacing.xxl,
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.lg,
-  },
+  hero: { alignItems: 'center', marginBottom: spacing.lg },
   logoCircle: {
     width: 72,
     height: 72,
@@ -165,21 +142,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
-    ...shadows.glow,
   },
-  brand: { color: colors.text, fontSize: 28, fontFamily: fonts.extraBold },
-  subtitle: { color: colors.textSecondary, marginTop: 6, fontFamily: fonts.regular },
+  brand: { color: colors.text, fontSize: 26, fontFamily: fonts.extraBold },
+  subtitle: { color: colors.textSecondary, marginTop: 6, fontFamily: fonts.regular, textAlign: 'center' },
   demo: { color: colors.textMuted, fontSize: 12, marginTop: 8, textAlign: 'center', fontFamily: fonts.regular },
-  card: {
-    flex: 1,
-    marginHorizontal: spacing.lg,
-    backgroundColor: 'rgba(17,24,39,0.92)',
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.xl,
-    ...shadows.md,
-  },
   tabs: {
     flexDirection: 'row',
     backgroundColor: colors.bgSecondary,
@@ -201,5 +167,5 @@ const styles = StyleSheet.create({
   error: { color: colors.danger, marginBottom: spacing.md, fontSize: 13 },
   linkWrap: { marginTop: spacing.lg, alignItems: 'center' },
   link: { color: colors.accent, fontFamily: fonts.semiBold },
-  linkMuted: { color: colors.textMuted },
+  linkMuted: { color: colors.textMuted, fontFamily: fonts.regular },
 });
