@@ -1,0 +1,56 @@
+import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import { colors } from '@/src/theme/colors';
+import { radius, spacing } from '@/src/theme/layout';
+import { fonts } from '@/src/theme/typography';
+
+export type SelectOption = { label: string; value: string };
+
+type Props = {
+  label?: string;
+  value: string;
+  onValueChange: (v: string) => void;
+  options: SelectOption[];
+  placeholder?: string;
+};
+
+export function Select({ label, value, onValueChange, options, placeholder = 'Seleccionar' }: Props) {
+  return (
+    <View style={styles.wrap}>
+      {label ? <Text style={styles.label}>{label}</Text> : null}
+      <View style={styles.pickerWrap}>
+        <Picker
+          selectedValue={value}
+          onValueChange={onValueChange}
+          style={styles.picker}
+          dropdownIconColor={colors.textMuted}
+          itemStyle={Platform.OS === 'ios' ? styles.iosItem : undefined}
+        >
+          <Picker.Item label={placeholder} value="" color={colors.textMuted} />
+          {options.map((o) => (
+            <Picker.Item key={o.value} label={o.label} value={o.value} color={colors.text} />
+          ))}
+        </Picker>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: { marginBottom: spacing.md },
+  label: { color: colors.textSecondary, fontSize: 13, marginBottom: 6, fontFamily: fonts.semiBold },
+  pickerWrap: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    minHeight: 48,
+    justifyContent: 'center',
+  },
+  picker: {
+    color: colors.text,
+    ...(Platform.OS === 'web' ? { outlineStyle: 'none' } as object : {}),
+  },
+  iosItem: { color: colors.text, fontSize: 15 },
+});

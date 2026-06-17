@@ -8,13 +8,16 @@ import {
   View,
 } from 'react-native';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { authApi } from '@/src/api/authApi';
 import { Button } from '@/src/components/ui/Button';
+import { GradientBackground } from '@/src/components/ui/GradientBackground';
 import { Input } from '@/src/components/ui/Input';
 import { Screen } from '@/src/components/ui/Screen';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
-import { radius, spacing } from '@/src/theme/layout';
+import { radius, shadows, spacing } from '@/src/theme/layout';
+import { fonts } from '@/src/theme/typography';
 import { getErrorMessage, unwrapData } from '@/src/utils/apiResponse';
 
 type Tab = 'admin' | 'cliente';
@@ -70,23 +73,24 @@ export default function LoginScreen() {
   };
 
   return (
-    <Screen scroll padded={false}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={styles.hero}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoIcon}>🚗</Text>
+    <GradientBackground variant="auth">
+      <Screen scroll padded={false} style={styles.screen}>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.hero}>
+            <View style={styles.logoCircle}>
+              <Ionicons name="car-sport" size={32} color={colors.primaryLight} />
+            </View>
+            <Text style={styles.brand}>Europcar Rental</Text>
+            <Text style={styles.subtitle}>Accede a tu cuenta</Text>
+            {tab === 'admin' ? (
+              <Text style={styles.demo}>Demo: usuario admin · contraseña 12345</Text>
+            ) : null}
           </View>
-          <Text style={styles.brand}>Europcar Rental</Text>
-          <Text style={styles.subtitle}>Accede a tu cuenta</Text>
-          {tab === 'admin' ? (
-            <Text style={styles.demo}>Demo: usuario admin · contraseña 12345</Text>
-          ) : null}
-        </View>
 
-        <View style={styles.card}>
+          <View style={styles.card}>
           <View style={styles.tabs}>
             <Pressable
               style={[styles.tab, tab === 'admin' && styles.tabActiveAdmin]}
@@ -136,12 +140,14 @@ export default function LoginScreen() {
             <Text style={styles.linkMuted}>Continuar sin cuenta</Text>
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
-    </Screen>
+        </KeyboardAvoidingView>
+      </Screen>
+    </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { backgroundColor: 'transparent' },
   flex: { flex: 1 },
   hero: {
     alignItems: 'center',
@@ -150,26 +156,29 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
   },
   logoCircle: {
-    width: 64,
-    height: 64,
+    width: 72,
+    height: 72,
     borderRadius: radius.full,
-    backgroundColor: colors.primaryGhost,
+    backgroundColor: 'rgba(13,148,136,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(13,148,136,0.35)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
+    ...shadows.glow,
   },
-  logoIcon: { fontSize: 28 },
-  brand: { color: colors.text, fontSize: 26, fontWeight: '800' },
-  subtitle: { color: colors.textSecondary, marginTop: 6 },
-  demo: { color: colors.textMuted, fontSize: 12, marginTop: 8, textAlign: 'center' },
+  brand: { color: colors.text, fontSize: 28, fontFamily: fonts.extraBold },
+  subtitle: { color: colors.textSecondary, marginTop: 6, fontFamily: fonts.regular },
+  demo: { color: colors.textMuted, fontSize: 12, marginTop: 8, textAlign: 'center', fontFamily: fonts.regular },
   card: {
     flex: 1,
     marginHorizontal: spacing.lg,
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(17,24,39,0.92)',
     borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.xl,
+    ...shadows.md,
   },
   tabs: {
     flexDirection: 'row',
@@ -186,11 +195,11 @@ const styles = StyleSheet.create({
   },
   tabActiveAdmin: { backgroundColor: colors.primary },
   tabActiveClient: { backgroundColor: colors.accent },
-  tabText: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
+  tabText: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.semiBold },
   tabTextActive: { color: colors.white },
   tabTextActiveClient: { color: colors.white },
   error: { color: colors.danger, marginBottom: spacing.md, fontSize: 13 },
   linkWrap: { marginTop: spacing.lg, alignItems: 'center' },
-  link: { color: colors.accent, fontWeight: '600' },
+  link: { color: colors.accent, fontFamily: fonts.semiBold },
   linkMuted: { color: colors.textMuted },
 });

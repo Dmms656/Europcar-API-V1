@@ -22,4 +22,7 @@ export const catalogosApi = {
   cambiarEstadoExtra: (id: number | string, estado: string, motivo?: string) =>
     api.put(`/Catalogos/extras/${id}/estado`, { estado, motivo }),
   deleteExtra: (id: number | string) => api.delete(`/Catalogos/extras/${id}`),
+  getMarcas: () => api.get('/Catalogos/marcas'),
+  getCategorias: () => api.get('/Catalogos/categorias'),
+  getLocalizaciones: () => api.get('/Catalogos/localizaciones'),
 };

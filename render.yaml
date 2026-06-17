@@ -18,8 +18,7 @@ services:
     envVars:
       - key: EXPO_PUBLIC_API_URL
         sync: false
-      # Cloudinary (cuando se porte subida de imágenes en admin vehículos):
-      # - key: EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME
-      #   sync: false
-      # - key: EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET
-      #   sync: false
+      - key: EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET
+        sync: false

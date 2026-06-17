@@ -4,11 +4,20 @@ import { ActivityIndicator, View } from 'react-native';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Updates from 'expo-updates';
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+  useFonts,
+} from '@expo-google-fonts/inter';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthRedirect } from '@/src/components/AuthRedirect';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { registerForPushNotifications } from '@/src/notifications/push';
 import { colors } from '@/src/theme/colors';
+import { fonts } from '@/src/theme/typography';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -17,6 +26,13 @@ export default function RootLayout() {
   const sessionChecked = useAuthStore((s) => s.sessionChecked);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const [ready, setReady] = useState(false);
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+  });
 
   useEffect(() => {
     (async () => {
@@ -43,7 +59,7 @@ export default function RootLayout() {
     registerForPushNotifications().catch(() => undefined);
   }, [isAuthenticated]);
 
-  if (!ready || !sessionChecked) {
+  if (!fontsLoaded || !ready || !sessionChecked) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg }}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -58,7 +74,7 @@ export default function RootLayout() {
         screenOptions={{
           headerStyle: { backgroundColor: colors.surface },
           headerTintColor: colors.text,
-          headerTitleStyle: { fontWeight: '700' },
+          headerTitleStyle: { fontWeight: '700', fontFamily: fonts.bold },
           contentStyle: { backgroundColor: colors.bg },
         }}
       >

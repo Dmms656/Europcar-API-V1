@@ -1,11 +1,9 @@
 import api from './axiosClient';
+import { clientesApi } from './clientesApi';
+import { vehiculosApi } from './vehiculosApi';
 import { unwrapData } from '@/src/utils/apiResponse';
 
-export const adminVehiculosApi = {
-  getAll: () => api.get('/admin/Vehiculos'),
-  getDisponibles: () => api.get('/admin/Vehiculos/disponibles'),
-  getById: (id: number | string) => api.get(`/admin/Vehiculos/${id}`),
-};
+export const adminVehiculosApi = vehiculosApi;
 
 export const adminClientesApi = {
   getAll: (params?: Record<string, unknown>) => api.get('/admin/Clientes', { params }),
@@ -30,7 +28,7 @@ type ReservaRow = {
 
 /** No existe GET /admin/Reservas — agrega por cliente como en la web. */
 export async function listAdminReservas(): Promise<ReservaRow[]> {
-  const clientesRes = await adminClientesApi.getAll();
+  const clientesRes = await clientesApi.getAll();
   const clientes = unwrapData<ClienteRow[]>(clientesRes) ?? [];
   if (!clientes.length) return [];
 

@@ -17,7 +17,7 @@ export function Screen({ children, scroll = true, padded = true, style }: Props)
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={[styles.safe, style]} edges={['bottom']}>
       {scroll ? (
         <ScrollView
           style={styles.flex}

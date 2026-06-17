@@ -1,8 +1,10 @@
 import { Link, usePathname } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
-import { spacing, radius } from '@/src/theme/layout';
+import { spacing, radius, shadows } from '@/src/theme/layout';
+import { fonts } from '@/src/theme/typography';
 
 const NAV_LINKS = [
   { href: '/(tabs)/' as const, label: 'Inicio', match: ['/', '/(tabs)', '/(tabs)/index'] },
@@ -26,7 +28,10 @@ export function PublicNavbar() {
   return (
     <View style={styles.bar}>
       <View style={styles.inner}>
-        <Text style={styles.brand}>Europcar</Text>
+        <View style={styles.brandRow}>
+          <Ionicons name="car-sport" size={22} color={colors.primaryLight} />
+          <Text style={styles.brand}>Europcar</Text>
+        </View>
 
         <View style={styles.links}>
           {NAV_LINKS.map((link) => (
@@ -79,6 +84,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
+    ...shadows.sm,
   },
   inner: {
     flexDirection: 'row',
@@ -88,10 +94,11 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     gap: spacing.xl,
   },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   brand: {
     color: colors.primaryLight,
     fontSize: 20,
-    fontWeight: '800',
+    fontFamily: fonts.extraBold,
     letterSpacing: 0.5,
   },
   links: {
@@ -106,11 +113,11 @@ const styles = StyleSheet.create({
   linkText: {
     color: colors.textSecondary,
     fontSize: 15,
-    fontWeight: '500',
+    fontFamily: fonts.medium,
   },
   linkTextActive: {
     color: colors.text,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
   },
   actions: {
     flexDirection: 'row',
@@ -124,7 +131,7 @@ const styles = StyleSheet.create({
   },
   ghostBtnText: {
     color: colors.textSecondary,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
   primaryBtn: {
     backgroundColor: colors.primary,
@@ -134,6 +141,6 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: {
     color: colors.white,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
   },
 });
