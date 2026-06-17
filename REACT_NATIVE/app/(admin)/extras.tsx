@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { catalogosApi } from '@/src/api/catalogosApi';
 import { AdminScreen } from '@/src/components/admin/AdminScreen';
@@ -16,6 +16,7 @@ import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/layout';
 import { getErrorMessage, unwrapData } from '@/src/utils/apiResponse';
+import { alertMessage } from '@/src/utils/confirm';
 import { formatCurrency } from '@/src/utils/format';
 
 type Extra = {
@@ -84,7 +85,7 @@ export default function AdminExtrasScreen() {
 
   const handleSave = async () => {
     if (!form.codigoExtra.trim() || !form.nombreExtra.trim()) {
-      Alert.alert('Error', 'Código y nombre son requeridos');
+      void alertMessage('Error', 'Código y nombre son requeridos');
       return;
     }
     setSaving(true);
@@ -98,15 +99,15 @@ export default function AdminExtrasScreen() {
       };
       if (editingId) {
         await catalogosApi.updateExtra(editingId, payload);
-        Alert.alert('Listo', 'Extra actualizado');
+        void alertMessage('Listo', 'Extra actualizado');
       } else {
         await catalogosApi.createExtra(payload);
-        Alert.alert('Listo', 'Extra creado');
+        void alertMessage('Listo', 'Extra creado');
       }
       setShowModal(false);
       await load();
     } catch (e) {
-      Alert.alert('Error', getErrorMessage(e));
+      void alertMessage('Error', getErrorMessage(e));
     } finally {
       setSaving(false);
     }
@@ -119,7 +120,7 @@ export default function AdminExtrasScreen() {
       await catalogosApi.cambiarEstadoExtra(e.idExtra, nuevo);
       await load();
     } catch (err) {
-      Alert.alert('Error', getErrorMessage(err));
+      void alertMessage('Error', getErrorMessage(err));
     }
   };
 

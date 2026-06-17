@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { authApi } from '@/src/api/authApi';
@@ -14,7 +14,7 @@ import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/layout';
 import { getErrorMessage } from '@/src/utils/apiResponse';
 import { validators } from '@/src/utils/validation';
-import { confirmAction } from '@/src/utils/confirm';
+import { confirmAction, alertMessage } from '@/src/utils/confirm';
 import { logoutAndGoHome } from '@/src/utils/authActions';
 
 export default function CuentaScreen() {
@@ -64,7 +64,7 @@ export default function CuentaScreen() {
     }
     if (Object.keys(errs).length > 0) {
       setFieldErrors(errs);
-      Alert.alert('Error', Object.values(errs)[0]);
+      void alertMessage('Error', Object.values(errs)[0]);
       return;
     }
     setFieldErrors({});
@@ -77,9 +77,9 @@ export default function CuentaScreen() {
       });
       await refreshProfile();
       setEditing(false);
-      Alert.alert('Listo', 'Datos actualizados correctamente');
+      void alertMessage('Listo', 'Datos actualizados correctamente');
     } catch (e) {
-      Alert.alert('Error', getErrorMessage(e));
+      void alertMessage('Error', getErrorMessage(e));
     } finally {
       setSaving(false);
     }
@@ -96,7 +96,7 @@ export default function CuentaScreen() {
     if (matchErr) errs.confirmPassword = matchErr;
     if (Object.keys(errs).length > 0) {
       setFieldErrors(errs);
-      Alert.alert('Error', Object.values(errs)[0]);
+      void alertMessage('Error', Object.values(errs)[0]);
       return;
     }
     setFieldErrors({});
@@ -108,9 +108,9 @@ export default function CuentaScreen() {
       });
       setChangingPassword(false);
       setPwdForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      Alert.alert('Listo', 'Contraseña actualizada');
+      void alertMessage('Listo', 'Contraseña actualizada');
     } catch (e) {
-      Alert.alert('Error', getErrorMessage(e));
+      void alertMessage('Error', getErrorMessage(e));
     } finally {
       setSaving(false);
     }

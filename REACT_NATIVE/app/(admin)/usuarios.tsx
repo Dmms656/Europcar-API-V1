@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { usuariosApi } from '@/src/api/usuariosApi';
 import { AdminScreen } from '@/src/components/admin/AdminScreen';
@@ -15,6 +15,7 @@ import { useClientPagination } from '@/src/hooks/useClientPagination';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/layout';
 import { getErrorMessage, unwrapData } from '@/src/utils/apiResponse';
+import { alertMessage, confirmAction } from '@/src/utils/confirm';
 
 type Usuario = {
   idUsuario?: number;
@@ -69,18 +70,18 @@ export default function AdminUsuariosScreen() {
 
   const handleCreate = async () => {
     if (!form.username || !form.correo || !form.password || form.roles.length === 0) {
-      Alert.alert('Error', 'Completa todos los campos');
+      void alertMessage('Error', 'Completa todos los campos');
       return;
     }
     setSaving(true);
     try {
       await usuariosApi.create(form);
-      Alert.alert('Listo', 'Usuario creado');
+      void alertMessage('Listo', 'Usuario creado');
       setShowModal(false);
       setForm({ username: '', correo: '', password: '', roles: [] });
       await load();
     } catch (e) {
-      Alert.alert('Error', getErrorMessage(e));
+      void alertMessage('Error', getErrorMessage(e));
     } finally {
       setSaving(false);
     }
@@ -88,17 +89,17 @@ export default function AdminUsuariosScreen() {
 
   const handleSaveRoles = async () => {
     if (!editingUser?.idUsuario || selectedRoles.length === 0) {
-      Alert.alert('Error', 'Selecciona al menos un rol');
+      void alertMessage('Error', 'Selecciona al menos un rol');
       return;
     }
     setSaving(true);
     try {
       await usuariosApi.updateRoles(editingUser.idUsuario, selectedRoles);
-      Alert.alert('Listo', 'Roles actualizados');
+      void alertMessage('Listo', 'Roles actualizados');
       setShowRolesModal(false);
       await load();
     } catch (e) {
-      Alert.alert('Error', getErrorMessage(e));
+      void alertMessage('Error', getErrorMessage(e));
     } finally {
       setSaving(false);
     }
@@ -112,27 +113,23 @@ export default function AdminUsuariosScreen() {
       await usuariosApi.updateEstado(u.idUsuario, nuevo);
       await load();
     } catch (e) {
-      Alert.alert('Error', getErrorMessage(e));
+      void alertMessage('Error', getErrorMessage(e));
     }
   };
 
-  const handleDelete = (u: Usuario) => {
+  const handleDelete = async (u: Usuario) => {
     if (!u.idUsuario) return;
-    Alert.alert('Eliminar usuario', `¿Eliminar a ${u.username}?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await usuariosApi.delete(u.idUsuario!);
-            await load();
-          } catch (e) {
-            Alert.alert('Error', getErrorMessage(e));
-          }
-        },
-      },
-    ]);
+    const ok = await confirmAction('Eliminar usuario', `¿Eliminar a ${u.username}?`, {
+      confirmLabel: 'Eliminar',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await usuariosApi.delete(u.idUsuario);
+      await load();
+    } catch (e) {
+      void alertMessage('Error', getErrorMessage(e));
+    }
   };
 
   const RolePicker = ({ selected, onToggle }: { selected: string[]; onToggle: (r: string) => void }) => (

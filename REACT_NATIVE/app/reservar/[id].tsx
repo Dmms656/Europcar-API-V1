@@ -35,6 +35,7 @@ import {
   toDateTimeLocalValue,
   type VehiculoBooking,
 } from '@/src/utils/bookingNormalize';
+import { loadReservationClientData, principalDisplayName } from '@/src/utils/reservationClient';
 
 const STEPS = ['Identificación', 'Fechas', 'Conductores', 'Extras', 'Resumen', 'Pago'] as const;
 const IVA_RATE = 0.15;
@@ -158,6 +159,7 @@ export default function ReservarScreen() {
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const refreshProfile = useAuthStore((s) => s.refreshProfile);
+  const patchUser = useAuthStore((s) => s.patchUser);
 
   const defaults = defaultRentalDateTimeLocalRange();
 
@@ -250,28 +252,32 @@ export default function ReservarScreen() {
         if (cancelled) return;
 
         const currentUser = useAuthStore.getState().user;
+        const { guestForm: loadedForm, user: enrichedUser } = await loadReservationClientData(currentUser);
+        if (cancelled) return;
+
+        if (enrichedUser && enrichedUser !== currentUser) {
+          await patchUser(enrichedUser);
+        }
+
+        if (loadedForm) {
+          setGuestForm((prev) => ({ ...prev, ...loadedForm }));
+        }
+
         if (currentUser?.idCliente) {
           setGuestClientId(currentUser.idCliente);
         }
 
-        const profile = guestFormFromUserProfile(currentUser);
-        if (profile) {
-          setGuestForm((prev) => ({ ...prev, ...profile }));
+        const displayName = principalDisplayName(loadedForm ?? { nombre: '', apellido: '', cedula: '', correo: '', telefono: '', direccion: '' }, enrichedUser ?? currentUser);
+        if (displayName) {
+          setConductores([buildPrincipalConductor(displayName, loadedForm?.telefono || enrichedUser?.telefono || '')]);
         }
 
-        const nombreCliente =
-          currentUser?.nombreCompleto ||
-          `${profile?.nombre || ''} ${profile?.apellido || ''}`.trim() ||
-          currentUser?.username ||
-          '';
-        if (nombreCliente) {
-          setConductores([
-            buildPrincipalConductor(nombreCliente, profile?.telefono || currentUser?.telefono || ''),
-          ]);
+        const titular = displayName.toUpperCase();
+        if (titular) {
+          setPago((prev) => ({ ...prev, nombreTitular: prev.nombreTitular || titular }));
         }
 
-        const canSkip = Boolean(isAuthenticated);
-        if (canSkip) {
+        if (isAuthenticated) {
           setStep((s) => (s === 0 ? 1 : s));
         }
       } finally {
@@ -282,7 +288,7 @@ export default function ReservarScreen() {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, refreshProfile, idVehiculo]);
+  }, [isAuthenticated, refreshProfile, patchUser, idVehiculo]);
 
   useEffect(() => {
     if (skipIdentificacion && step === 0) {
@@ -529,9 +535,15 @@ export default function ReservarScreen() {
     }
 
     const cliente = resolveCliente(user, guestForm);
-    if (!cliente?.nombre || !cliente?.cedula) {
-      alertMessage('Identificación', 'Indica tu cédula antes de pagar');
-      setStep(skipIdentificacion ? 1 : 0);
+    if (!cliente?.cedula) {
+      alertMessage(
+        'Identificación',
+        'No encontramos tu cédula en el perfil. Cierra sesión, vuelve a entrar o contacta soporte.',
+      );
+      return;
+    }
+    if (!cliente?.nombre) {
+      alertMessage('Identificación', 'Indica tu nombre antes de pagar');
       return;
     }
 
@@ -951,6 +963,16 @@ export default function ReservarScreen() {
       {STEPS[step] === 'Pago' && (
         <View>
           <Text style={styles.stepTitle}>Pasarela de pago</Text>
+          {!guestForm.cedula && isAuthenticated ? (
+            <View style={styles.infoBox}>
+              <Text style={styles.infoText}>Confirma tu cédula para completar la reserva.</Text>
+              <Input
+                label="Cédula / Pasaporte *"
+                value={guestForm.cedula}
+                onChangeText={(v) => setGuestForm({ ...guestForm, cedula: v })}
+              />
+            </View>
+          ) : null}
           <PaymentCardVisual
             numeroTarjeta={pago.numeroTarjeta}
             nombreTitular={pago.nombreTitular}

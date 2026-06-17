@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, FlatList, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { listAdminReservas } from '@/src/api/adminApi';
 import { catalogosApi } from '@/src/api/catalogosApi';
@@ -20,6 +20,7 @@ import { colors } from '@/src/theme/colors';
 import { shadows, spacing } from '@/src/theme/layout';
 import { fonts } from '@/src/theme/typography';
 import { getErrorMessage, unwrapData } from '@/src/utils/apiResponse';
+import { alertMessage, confirmAction } from '@/src/utils/confirm';
 import { formatCurrency } from '@/src/utils/format';
 
 type Reserva = {
@@ -168,7 +169,7 @@ export default function AdminReservasScreen() {
       setReservas(data ? [data] : []);
     } catch {
       setReservas([]);
-      Alert.alert('No encontrada', 'No se encontró la reserva');
+      void alertMessage('No encontrada', 'No se encontró la reserva');
     } finally {
       setLoading(false);
     }
@@ -182,7 +183,7 @@ export default function AdminReservasScreen() {
       const res = await reservasApi.getByCliente(Number(id));
       setReservas(unwrapData<Reserva[]>(res) ?? []);
     } catch (e) {
-      Alert.alert('Error', getErrorMessage(e));
+      void alertMessage('Error', getErrorMessage(e));
       setReservas([]);
     } finally {
       setLoading(false);
@@ -197,7 +198,7 @@ export default function AdminReservasScreen() {
 
   const openEdit = (r: Reserva) => {
     if (r.estadoReserva !== 'PENDIENTE') {
-      Alert.alert('Info', 'Solo las reservas pendientes pueden editarse');
+      void alertMessage('Info', 'Solo las reservas pendientes pueden editarse');
       return;
     }
     setEditing(r);
@@ -231,7 +232,7 @@ export default function AdminReservasScreen() {
 
   const handleSave = async () => {
     const err = validateForm();
-    if (err) { Alert.alert('Error', err); return; }
+    if (err) { void alertMessage('Error', err); return; }
     setSaving(true);
     try {
       if (editing?.idReserva) {
@@ -243,7 +244,7 @@ export default function AdminReservasScreen() {
           fechaHoraDevolucion: form.fechaDevolucion.toISOString(),
           canalReserva: form.canalReserva,
         });
-        Alert.alert('Listo', 'Reserva actualizada');
+        void alertMessage('Listo', 'Reserva actualizada');
       } else {
         const res = await reservasApi.create({
           idCliente: Number(form.idCliente),
@@ -257,12 +258,12 @@ export default function AdminReservasScreen() {
           conductores: [{ usarClienteTitular: true, esPrincipal: true }],
         });
         const data = unwrapData<{ codigoReserva?: string }>(res);
-        Alert.alert('Listo', `Reserva creada: ${data?.codigoReserva ?? 'OK'}`);
+        void alertMessage('Listo', `Reserva creada: ${data?.codigoReserva ?? 'OK'}`);
       }
       setShowModal(false);
       await loadAll();
     } catch (e) {
-      Alert.alert('Error', getErrorMessage(e));
+      void alertMessage('Error', getErrorMessage(e));
     } finally {
       setSaving(false);
     }
@@ -273,26 +274,22 @@ export default function AdminReservasScreen() {
       await reservasApi.confirmar(id);
       await loadAll();
     } catch (e) {
-      Alert.alert('Error', getErrorMessage(e));
+      void alertMessage('Error', getErrorMessage(e));
     }
   };
 
-  const cancelar = (id: number) => {
-    Alert.alert('Cancelar', '¿Cancelar esta reserva?', [
-      { text: 'No', style: 'cancel' },
-      {
-        text: 'Sí, cancelar',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await reservasApi.cancelar(id, 'Cancelado desde panel');
-            await loadAll();
-          } catch (e) {
-            Alert.alert('Error', getErrorMessage(e));
-          }
-        },
-      },
-    ]);
+  const cancelar = async (id: number) => {
+    const ok = await confirmAction('Cancelar', '¿Cancelar esta reserva?', {
+      confirmLabel: 'Sí, cancelar',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await reservasApi.cancelar(id, 'Cancelado desde panel');
+      await loadAll();
+    } catch (e) {
+      void alertMessage('Error', getErrorMessage(e));
+    }
   };
 
   const locOptions = localizaciones.map((l) => ({

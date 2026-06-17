@@ -12,6 +12,7 @@ import {
   useFonts,
 } from '@expo-google-fonts/inter';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AppDialogHost } from '@/src/components/ui/AppDialogHost';
 import { AuthRedirect } from '@/src/components/AuthRedirect';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
@@ -80,6 +81,7 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
+      <AppDialogHost />
       <AuthRedirect />
       <Stack
         screenOptions={{

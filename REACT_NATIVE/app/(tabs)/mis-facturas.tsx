@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { facturasApi, type FacturaItem } from '@/src/api/facturasApi';
 import { FacturaCard } from '@/src/components/domain/FacturaCard';
 import { EmptyState } from '@/src/components/ui/EmptyState';
@@ -12,6 +12,7 @@ import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/layout';
 import { getErrorMessage, unwrapData } from '@/src/utils/apiResponse';
+import { alertMessage } from '@/src/utils/confirm';
 
 export default function FacturasScreen() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -44,7 +45,7 @@ export default function FacturasScreen() {
       const data = unwrapData<FacturaItem[]>(res);
       setFacturas(Array.isArray(data) ? data : []);
     } catch (e) {
-      Alert.alert('Error', getErrorMessage(e));
+      void alertMessage('Error', getErrorMessage(e));
       setFacturas([]);
     } finally {
       setLoading(false);

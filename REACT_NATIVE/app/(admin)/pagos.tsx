@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { pagosApi } from '@/src/api/pagosApi';
 import { AdminScreen } from '@/src/components/admin/AdminScreen';
@@ -15,6 +15,7 @@ import { useClientPagination } from '@/src/hooks/useClientPagination';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/layout';
 import { getErrorMessage, unwrapData } from '@/src/utils/apiResponse';
+import { alertMessage } from '@/src/utils/confirm';
 import { formatCurrency, formatDateEs } from '@/src/utils/format';
 
 type Pago = {
@@ -64,7 +65,7 @@ export default function AdminPagosScreen() {
 
   const handleSave = async () => {
     if (!form.reservaRef.trim() || !form.monto) {
-      Alert.alert('Error', 'Reserva y monto son requeridos');
+      void alertMessage('Error', 'Reserva y monto son requeridos');
       return;
     }
     setSaving(true);
@@ -78,12 +79,12 @@ export default function AdminPagosScreen() {
         estadoPago: form.estadoPago,
         monto: Number(form.monto),
       });
-      Alert.alert('Listo', 'Pago registrado');
+      void alertMessage('Listo', 'Pago registrado');
       setShowModal(false);
       setForm(initialForm);
       await load();
     } catch (e) {
-      Alert.alert('Error', getErrorMessage(e));
+      void alertMessage('Error', getErrorMessage(e));
     } finally {
       setSaving(false);
     }

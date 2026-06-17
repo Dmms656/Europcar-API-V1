@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { contratosApi, type ContratoItem } from '@/src/api/contratosApi';
 import { AdminScreen } from '@/src/components/admin/AdminScreen';
@@ -15,6 +15,7 @@ import { useClientPagination } from '@/src/hooks/useClientPagination';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/layout';
 import { getErrorMessage, unwrapData } from '@/src/utils/apiResponse';
+import { alertMessage } from '@/src/utils/confirm';
 import { contratoCodigo, contratoEstado, formatCurrency, formatDateEs } from '@/src/utils/format';
 
 export default function AdminContratosScreen() {
@@ -44,7 +45,7 @@ export default function AdminContratosScreen() {
   const crearContrato = async () => {
     const ref = reservaRef.trim();
     if (!ref) {
-      Alert.alert('Error', 'Ingresa ID o código de reserva');
+      void alertMessage('Error', 'Ingresa ID o código de reserva');
       return;
     }
     setSaving(true);
@@ -52,12 +53,12 @@ export default function AdminContratosScreen() {
       const isNumeric = /^\d+$/.test(ref);
       const payload = isNumeric ? { idReserva: Number(ref) } : { codigoReserva: ref.toUpperCase() };
       await contratosApi.create(payload);
-      Alert.alert('Listo', 'Contrato creado');
+      void alertMessage('Listo', 'Contrato creado');
       setShowCrear(false);
       setReservaRef('');
       await load();
     } catch (e) {
-      Alert.alert('Error', getErrorMessage(e));
+      void alertMessage('Error', getErrorMessage(e));
     } finally {
       setSaving(false);
     }

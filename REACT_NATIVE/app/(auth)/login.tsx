@@ -43,6 +43,7 @@ export default function LoginScreen() {
         roles?: string[];
         correo?: string;
         nombreCompleto?: string;
+        idCliente?: number;
       }>(res);
       if (!data?.token) {
         setError('Respuesta de login inválida');

@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { catalogosApi } from '@/src/api/catalogosApi';
 import { AdminScreen } from '@/src/components/admin/AdminScreen';
@@ -12,6 +12,7 @@ import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/layout';
 import { getErrorMessage, unwrapData } from '@/src/utils/apiResponse';
+import { alertMessage } from '@/src/utils/confirm';
 
 type Pais = { id?: number; codigo?: string; nombre?: string; estado?: string };
 type Ciudad = { idCiudad?: number; id?: number; nombreCiudad?: string; nombre?: string; nombrePais?: string; estadoCiudad?: string };
@@ -47,7 +48,7 @@ export default function AdminUbicacionesScreen() {
 
   const savePais = async () => {
     if (!paisForm.nombrePais.trim()) {
-      Alert.alert('Error', 'Nombre requerido');
+      void alertMessage('Error', 'Nombre requerido');
       return;
     }
     setSaving(true);
@@ -60,7 +61,7 @@ export default function AdminUbicacionesScreen() {
       setPaisForm({ codigoIso2: '', nombrePais: '' });
       await load();
     } catch (e) {
-      Alert.alert('Error', getErrorMessage(e));
+      void alertMessage('Error', getErrorMessage(e));
     } finally {
       setSaving(false);
     }
@@ -68,7 +69,7 @@ export default function AdminUbicacionesScreen() {
 
   const saveCiudad = async () => {
     if (!ciudadForm.nombreCiudad.trim() || !ciudadForm.idPais) {
-      Alert.alert('Error', 'País y nombre requeridos');
+      void alertMessage('Error', 'País y nombre requeridos');
       return;
     }
     setSaving(true);
@@ -81,7 +82,7 @@ export default function AdminUbicacionesScreen() {
       setCiudadForm({ idPais: '', nombreCiudad: '' });
       await load();
     } catch (e) {
-      Alert.alert('Error', getErrorMessage(e));
+      void alertMessage('Error', getErrorMessage(e));
     } finally {
       setSaving(false);
     }
@@ -94,7 +95,7 @@ export default function AdminUbicacionesScreen() {
       await catalogosApi.cambiarEstadoPais(p.id, nuevo);
       await load();
     } catch (e) {
-      Alert.alert('Error', getErrorMessage(e));
+      void alertMessage('Error', getErrorMessage(e));
     }
   };
 

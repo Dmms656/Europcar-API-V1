@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { authApi } from '@/src/api/authApi';
 import { unwrapData } from '@/src/utils/apiResponse';
+import { mergeUserProfile, normalizeAuthProfile } from '@/src/utils/authProfile';
+import { clienteDtoToGuestForm } from '@/src/utils/bookingNormalize';
 import { multiGet, setItem, removeItem } from '@/src/utils/storage';
 
 const TOKEN_KEY = 'rc_access_token';
@@ -30,6 +32,7 @@ type AuthState = {
   logout: () => Promise<void>;
   restoreSession: () => Promise<void>;
   refreshProfile: () => Promise<UserProfile | null>;
+  patchUser: (partial: UserProfile) => Promise<void>;
   clearAuth: () => Promise<void>;
   isAdmin: () => boolean;
   hasAdminRole: () => boolean;
@@ -46,6 +49,31 @@ function resolveUserType(stored: 'admin' | 'cliente' | null, roles?: string[]): 
   const canAdmin = hasAdminRoleInRoles(roles);
   if (stored === 'admin' && canAdmin) return 'admin';
   return canAdmin ? 'admin' : 'cliente';
+}
+
+async function enrichUserFromClienteApi(user: UserProfile | null): Promise<UserProfile | null> {
+  if (!user?.idCliente) return user;
+  if (user.numeroIdentificacion?.trim()) return user;
+  try {
+    const { clientesApi } = await import('@/src/api/clientesApi');
+    const res = await clientesApi.getById(user.idCliente);
+    const dto = unwrapData<Record<string, unknown>>(res);
+    const fromCliente = clienteDtoToGuestForm(dto);
+    if (!fromCliente) return user;
+    return (
+      mergeUserProfile(user, {
+        nombres: fromCliente.nombre,
+        apellidos: fromCliente.apellido,
+        numeroIdentificacion: fromCliente.cedula,
+        telefono: fromCliente.telefono,
+        correo: fromCliente.correo,
+        nombreCompleto:
+          [fromCliente.nombre, fromCliente.apellido].filter(Boolean).join(' ').trim() || user.nombreCompleto,
+      }) ?? user
+    );
+  } catch {
+    return user;
+  }
 }
 
 async function persistAuth(token: string | null, user: UserProfile | null, userType: string | null) {
@@ -66,9 +94,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   login: async (loginResponse, type = 'cliente') => {
     const token = loginResponse.token ?? null;
-    const user: UserProfile = { ...loginResponse };
+    const incoming = normalizeAuthProfile(loginResponse as UserProfile & Record<string, unknown>);
+    const user: UserProfile = mergeUserProfile(null, incoming) ?? { ...loginResponse };
     await persistAuth(token, user, type);
     set({ user, accessToken: token, isAuthenticated: true, userType: type, sessionChecked: true });
+    try {
+      await get().refreshProfile();
+    } catch {
+      /* login ya dejó sesión usable */
+    }
   },
 
   logout: async () => {
@@ -81,6 +115,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user: null, accessToken: null, isAuthenticated: false, userType: null, sessionChecked: true });
   },
 
+  patchUser: async (partial) => {
+    const merged = mergeUserProfile(get().user, partial);
+    if (!merged) return;
+    await persistAuth(get().accessToken, merged, get().userType);
+    set({ user: merged });
+  },
+
   clearAuth: async () => {
     await persistAuth(null, null, null);
     set({ user: null, accessToken: null, isAuthenticated: false, userType: null, sessionChecked: true });
@@ -89,14 +130,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   refreshProfile: async () => {
     try {
       const res = await authApi.me();
-      const data = unwrapData<UserProfile>(res);
-      if (!data) return get().user;
+      const incoming = normalizeAuthProfile(unwrapData<Record<string, unknown>>(res));
+      if (!incoming) return get().user;
+      let merged = mergeUserProfile(get().user, incoming);
+      merged = (await enrichUserFromClienteApi(merged)) ?? merged;
       const stored = get().userType;
-      const resolvedType = resolveUserType(stored, data.roles);
+      const resolvedType = resolveUserType(stored, merged?.roles);
       const token = get().accessToken;
-      await persistAuth(token, data, resolvedType);
-      set({ user: data, userType: resolvedType, isAuthenticated: true, sessionChecked: true });
-      return data;
+      await persistAuth(token, merged, resolvedType);
+      set({ user: merged, userType: resolvedType, isAuthenticated: true, sessionChecked: true });
+      return merged;
     } catch {
       return get().user;
     }
@@ -126,12 +169,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       const res = await authApi.me();
-      const data = unwrapData<UserProfile>(res);
-      if (data) {
-        const resolvedType = resolveUserType(storedType, data.roles);
-        await persistAuth(token, data, resolvedType);
+      const incoming = normalizeAuthProfile(unwrapData<Record<string, unknown>>(res));
+      if (incoming) {
+        let merged = mergeUserProfile(get().user, incoming);
+        merged = (await enrichUserFromClienteApi(merged)) ?? merged;
+        const resolvedType = resolveUserType(storedType, merged?.roles);
+        await persistAuth(token, merged, resolvedType);
         set({
-          user: data,
+          user: merged,
           accessToken: token,
           isAuthenticated: true,
           userType: resolvedType,

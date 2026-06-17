@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { localizacionesApi } from '@/src/api/localizacionesApi';
 import { AdminScreen } from '@/src/components/admin/AdminScreen';
@@ -16,6 +16,7 @@ import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/layout';
 import { getErrorMessage, unwrapData } from '@/src/utils/apiResponse';
+import { alertMessage } from '@/src/utils/confirm';
 
 type Localizacion = {
   idLocalizacion?: number;
@@ -85,7 +86,7 @@ export default function AdminLocalizacionesScreen() {
 
   const handleSave = async () => {
     if (!form.codigoLocalizacion.trim() || !form.nombreLocalizacion.trim()) {
-      Alert.alert('Error', 'Código y nombre son requeridos');
+      void alertMessage('Error', 'Código y nombre son requeridos');
       return;
     }
     setSaving(true);
@@ -103,11 +104,11 @@ export default function AdminLocalizacionesScreen() {
       } else {
         await localizacionesApi.create(payload);
       }
-      Alert.alert('Listo', 'Localización guardada');
+      void alertMessage('Listo', 'Localización guardada');
       setShowModal(false);
       await load();
     } catch (e) {
-      Alert.alert('Error', getErrorMessage(e));
+      void alertMessage('Error', getErrorMessage(e));
     } finally {
       setSaving(false);
     }
@@ -120,7 +121,7 @@ export default function AdminLocalizacionesScreen() {
       await localizacionesApi.cambiarEstado(l.idLocalizacion, nuevo);
       await load();
     } catch (e) {
-      Alert.alert('Error', getErrorMessage(e));
+      void alertMessage('Error', getErrorMessage(e));
     }
   };
 

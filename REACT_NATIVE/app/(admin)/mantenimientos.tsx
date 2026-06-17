@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { mantenimientosApi } from '@/src/api/mantenimientosApi';
 import { AdminScreen } from '@/src/components/admin/AdminScreen';
@@ -15,6 +15,7 @@ import { useClientPagination } from '@/src/hooks/useClientPagination';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/layout';
 import { getErrorMessage, unwrapData } from '@/src/utils/apiResponse';
+import { alertMessage, confirmAction } from '@/src/utils/confirm';
 import { formatCurrency } from '@/src/utils/format';
 
 type Mantenimiento = {
@@ -70,7 +71,7 @@ export default function AdminMantenimientosScreen() {
 
   const handleSave = async () => {
     if (!form.idVehiculo) {
-      Alert.alert('Error', 'ID de vehículo requerido');
+      void alertMessage('Error', 'ID de vehículo requerido');
       return;
     }
     setSaving(true);
@@ -89,32 +90,26 @@ export default function AdminMantenimientosScreen() {
       } else {
         await mantenimientosApi.create(payload);
       }
-      Alert.alert('Listo', editingId ? 'Actualizado' : 'Registrado');
+      void alertMessage('Listo', editingId ? 'Actualizado' : 'Registrado');
       setShowModal(false);
       await load();
     } catch (e) {
-      Alert.alert('Error', getErrorMessage(e));
+      void alertMessage('Error', getErrorMessage(e));
     } finally {
       setSaving(false);
     }
   };
 
-  const cerrar = (id?: number) => {
+  const cerrar = async (id?: number) => {
     if (!id) return;
-    Alert.alert('Cerrar mantenimiento', '¿Confirmar cierre?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Cerrar',
-        onPress: async () => {
-          try {
-            await mantenimientosApi.cerrar(id, {});
-            await load();
-          } catch (e) {
-            Alert.alert('Error', getErrorMessage(e));
-          }
-        },
-      },
-    ]);
+    const ok = await confirmAction('Cerrar mantenimiento', '¿Confirmar cierre?', { confirmLabel: 'Cerrar' });
+    if (!ok) return;
+    try {
+      await mantenimientosApi.cerrar(id, {});
+      await load();
+    } catch (e) {
+      void alertMessage('Error', getErrorMessage(e));
+    }
   };
 
   return (

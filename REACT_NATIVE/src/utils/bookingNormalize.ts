@@ -139,6 +139,29 @@ export type VehiculoBooking = {
   aireAcondicionado?: boolean;
 };
 
+/** Rellena datos del cliente desde perfil de sesión o DTO de MS Clientes. */
+export function clienteDtoToGuestForm(c: Record<string, unknown> | null | undefined) {
+  if (!c) return null;
+  const nombres = String(c.nombres ?? c.Nombres ?? c.nombre1 ?? c.Nombre1 ?? '').trim();
+  const apellidos = String(c.apellidos ?? c.Apellidos ?? c.apellido1 ?? c.Apellido1 ?? '').trim();
+  const nombreCompleto = String(c.nombreCompleto ?? c.NombreCompleto ?? '').trim();
+  let nombre = nombres;
+  let apellido = apellidos;
+  if (!nombre && nombreCompleto) {
+    const parts = nombreCompleto.trim().split(/\s+/).filter(Boolean);
+    nombre = parts[0] || '';
+    apellido = apellido || (parts.length > 1 ? parts.slice(1).join(' ') : '');
+  }
+  return {
+    nombre,
+    apellido,
+    cedula: String(c.numeroIdentificacion ?? c.NumeroIdentificacion ?? '').trim(),
+    correo: String(c.correo ?? c.Correo ?? '').trim(),
+    telefono: String(c.telefono ?? c.Telefono ?? '').trim(),
+    direccion: String(c.direccionPrincipal ?? c.DireccionPrincipal ?? '').trim(),
+  };
+}
+
 /** Rellena datos del cliente desde perfil de sesión. */
 export function guestFormFromUserProfile(user: {
   nombres?: string;
@@ -158,6 +181,9 @@ export function guestFormFromUserProfile(user: {
     const parts = user.nombreCompleto.trim().split(/\s+/).filter(Boolean);
     nombre = parts[0] || '';
     apellido = apellido || (parts.length > 1 ? parts.slice(1).join(' ') : '');
+  }
+  if (!nombre && user.username) {
+    nombre = user.username.trim();
   }
   return {
     nombre,
