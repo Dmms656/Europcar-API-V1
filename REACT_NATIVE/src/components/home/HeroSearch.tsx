@@ -9,7 +9,7 @@ import { GradientBackground } from '@/src/components/ui/GradientBackground';
 import { Select } from '@/src/components/ui/Select';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
-import { radius, shadows, spacing } from '@/src/theme/layout';
+import { radius, spacing } from '@/src/theme/layout';
 import { fonts, text } from '@/src/theme/typography';
 import { getPayload } from '@/src/utils/bookingNormalize';
 
@@ -254,7 +254,7 @@ export function HomeCategories({ categorias }: { categorias: Categoria[] }) {
 }
 
 const styles = StyleSheet.create({
-  heroWrap: { borderRadius: radius.xl, overflow: 'hidden', marginBottom: spacing.xl, ...shadows.md },
+  heroWrap: { borderRadius: radius.xl, overflow: 'hidden', marginBottom: spacing.xl, borderWidth: 1, borderColor: colors.border },
   heroInner: { padding: spacing.xl },
   badge: { color: colors.primaryLight, fontFamily: fonts.semiBold, fontSize: 13 },
   title: { ...text.heroTitle, color: colors.text, marginTop: spacing.md },
@@ -267,7 +267,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.lg,
-    ...shadows.sm,
   },
   ctas: { marginTop: spacing.lg, gap: spacing.sm },
   outlineBtn: {

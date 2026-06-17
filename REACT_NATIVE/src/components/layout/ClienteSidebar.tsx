@@ -37,7 +37,7 @@ export function ClienteSidebar() {
         style: 'destructive',
         onPress: async () => {
           await logout();
-          router.replace('/(tabs)/');
+          router.replace('/');
         },
       },
     ]);

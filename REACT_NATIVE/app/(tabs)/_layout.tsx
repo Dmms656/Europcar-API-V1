@@ -34,6 +34,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Inicio',
+          href: '/',
           tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
         }}
       />

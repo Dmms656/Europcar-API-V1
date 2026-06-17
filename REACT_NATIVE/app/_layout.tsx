@@ -1,9 +1,8 @@
-import { Platform } from 'react-native';
+﻿import { Platform } from 'react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import * as Updates from 'expo-updates';
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -39,12 +38,15 @@ export default function RootLayout() {
   useEffect(() => {
     (async () => {
       try {
-        if (!__DEV__ && Platform.OS !== 'web' && Updates.isEnabled) {
-          const update = await Updates.checkForUpdateAsync();
-          if (update.isAvailable) {
-            await Updates.fetchUpdateAsync();
-            await Updates.reloadAsync();
-            return;
+        if (!__DEV__ && Platform.OS !== 'web') {
+          const Updates = await import('expo-updates');
+          if (Updates.isEnabled) {
+            const update = await Updates.checkForUpdateAsync();
+            if (update.isAvailable) {
+              await Updates.fetchUpdateAsync();
+              await Updates.reloadAsync();
+              return;
+            }
           }
         }
       } catch {
@@ -58,6 +60,9 @@ export default function RootLayout() {
     })();
   }, [restoreSession]);
 
+  const isBooting =
+    Platform.OS !== 'web' && (!fontsReady || !ready || !sessionChecked);
+
   useEffect(() => {
     if (!isAuthenticated || Platform.OS === 'web') return;
     import('@/src/notifications/push')
@@ -65,7 +70,7 @@ export default function RootLayout() {
       .catch(() => undefined);
   }, [isAuthenticated]);
 
-  if (!fontsReady || !ready || !sessionChecked) {
+  if (isBooting) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg }}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -84,6 +89,7 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: colors.bg },
         }}
       >
+        <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(admin)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)/login" options={{ title: 'Iniciar sesión', presentation: 'modal' }} />

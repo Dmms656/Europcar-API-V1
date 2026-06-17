@@ -47,7 +47,7 @@ export function AdminSidebar() {
         style: 'destructive',
         onPress: async () => {
           await logout();
-          router.replace('/(tabs)/');
+          router.replace('/');
         },
       },
     ]);

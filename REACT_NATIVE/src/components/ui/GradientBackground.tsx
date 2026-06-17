@@ -21,14 +21,9 @@ export function GradientBackground({ children, variant = 'hero', style }: Props)
         colors={auth
           ? ['#0a0e17', '#111827', '#0a0e17']
           : ['#0a0e17', '#0f1419', '#0a0e17']}
-        style={StyleSheet.absoluteFill}
+        style={styles.fill}
       />
-      <View
-        style={[
-          styles.glowTeal,
-          auth ? styles.glowAuthTeal : null,
-        ]}
-      />
+      <View style={[styles.glowTeal, auth ? styles.glowAuthTeal : null]} />
       <View style={[styles.glowBlue, auth ? styles.glowAuthBlue : null]} />
       {children}
     </View>
@@ -37,6 +32,7 @@ export function GradientBackground({ children, variant = 'hero', style }: Props)
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
+  fill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   glowTeal: {
     position: 'absolute',
     width: '70%',

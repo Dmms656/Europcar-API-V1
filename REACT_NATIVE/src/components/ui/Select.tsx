@@ -1,4 +1,14 @@
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import {
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/src/theme/colors';
 import { radius, spacing } from '@/src/theme/layout';
 import { fonts } from '@/src/theme/typography';
@@ -13,42 +23,59 @@ type Props = {
   placeholder?: string;
 };
 
-const webSelectStyle = {
-  width: '100%',
-  minHeight: 48,
-  padding: '12px 14px',
-  fontSize: 15,
-  fontFamily: fonts.regular,
-  color: colors.text,
-  backgroundColor: colors.surface,
-  border: `1px solid ${colors.borderLight}`,
-  borderRadius: radius.md,
-  outline: 'none',
-  cursor: 'pointer',
-} as const;
+function WebSelect({ label, value, onValueChange, options, placeholder = 'Seleccionar' }: Props) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.value === value);
 
-export function Select({ label, value, onValueChange, options, placeholder = 'Seleccionar' }: Props) {
+  const pick = (v: string) => {
+    onValueChange(v);
+    setOpen(false);
+  };
+
+  return (
+    <View style={styles.wrap}>
+      {label ? <Text style={styles.label}>{label}</Text> : null}
+      <Pressable style={styles.trigger} onPress={() => setOpen(true)}>
+        <Text style={[styles.triggerText, !selected && styles.placeholder]}>
+          {selected?.label ?? placeholder}
+        </Text>
+        <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
+      </Pressable>
+
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={styles.overlay} onPress={() => setOpen(false)}>
+          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.sheetTitle}>{label ?? placeholder}</Text>
+            <ScrollView style={styles.list}>
+              <Pressable style={styles.option} onPress={() => pick('')}>
+                <Text style={styles.optionText}>{placeholder}</Text>
+              </Pressable>
+              {options.map((o) => (
+                <Pressable
+                  key={o.value || o.label}
+                  style={[styles.option, o.value === value && styles.optionActive]}
+                  onPress={() => pick(o.value)}
+                >
+                  <Text style={[styles.optionText, o.value === value && styles.optionTextActive]}>
+                    {o.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
+export function Select(props: Props) {
   if (Platform.OS === 'web') {
-    return (
-      <View style={styles.wrap}>
-        {label ? <Text style={styles.label}>{label}</Text> : null}
-        <select
-          value={value}
-          onChange={(e) => onValueChange(e.target.value)}
-          style={webSelectStyle}
-        >
-          <option value="">{placeholder}</option>
-          {options.map((o) => (
-            <option key={o.value || o.label} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </View>
-    );
+    return <WebSelect {...props} />;
   }
 
   const { Picker } = require('@react-native-picker/picker') as typeof import('@react-native-picker/picker');
+  const { label, value, onValueChange, options, placeholder = 'Seleccionar' } = props;
 
   return (
     <View style={styles.wrap}>
@@ -74,6 +101,42 @@ export function Select({ label, value, onValueChange, options, placeholder = 'Se
 const styles = StyleSheet.create({
   wrap: { marginBottom: spacing.md },
   label: { color: colors.textSecondary, fontSize: 13, marginBottom: 6, fontFamily: fonts.semiBold },
+  trigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: radius.md,
+    minHeight: 48,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+  },
+  triggerText: { color: colors.text, fontFamily: fonts.regular, fontSize: 15, flex: 1 },
+  placeholder: { color: colors.textMuted },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    padding: spacing.lg,
+  },
+  sheet: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    maxHeight: '70%',
+    padding: spacing.lg,
+  },
+  sheetTitle: { color: colors.text, fontFamily: fonts.bold, fontSize: 17, marginBottom: spacing.md },
+  list: { maxHeight: 360 },
+  option: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.sm,
+  },
+  optionActive: { backgroundColor: colors.primaryGhost },
+  optionText: { color: colors.text, fontFamily: fonts.regular, fontSize: 15 },
+  optionTextActive: { color: colors.primaryLight, fontFamily: fonts.semiBold },
   pickerWrap: {
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -83,8 +146,6 @@ const styles = StyleSheet.create({
     minHeight: 48,
     justifyContent: 'center',
   },
-  picker: {
-    color: colors.text,
-  },
+  picker: { color: colors.text },
   iosItem: { color: colors.text, fontSize: 15 },
 });

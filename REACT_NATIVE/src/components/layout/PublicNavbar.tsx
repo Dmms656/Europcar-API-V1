@@ -3,11 +3,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
-import { spacing, radius, shadows } from '@/src/theme/layout';
+import { spacing, radius } from '@/src/theme/layout';
 import { fonts } from '@/src/theme/typography';
 
 const NAV_LINKS = [
-  { href: '/(tabs)/' as const, label: 'Inicio', match: ['/', '/(tabs)', '/(tabs)/index'] },
+  { href: '/' as const, label: 'Inicio', match: ['/', '/(tabs)', '/(tabs)/index'] },
   { href: '/(tabs)/buscar' as const, label: 'Buscar', match: ['/(tabs)/buscar'] },
   { href: '/(tabs)/catalogo' as const, label: 'Catálogo', match: ['/(tabs)/catalogo'] },
 ] as const;
@@ -84,7 +84,6 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
-    ...shadows.sm,
   },
   inner: {
     flexDirection: 'row',

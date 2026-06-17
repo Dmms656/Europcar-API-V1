@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
+import { ScrollView, StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/layout';
@@ -8,16 +8,20 @@ type Props = {
   children: ReactNode;
   scroll?: boolean;
   padded?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 };
+
+function flatStyle(style: StyleProp<ViewStyle>) {
+  return style == null ? undefined : StyleSheet.flatten(style);
+}
 
 export function Screen({ children, scroll = true, padded = true, style }: Props) {
   const content = (
-    <View style={[padded && styles.padded, style]}>{children}</View>
+    <View style={flatStyle([padded && styles.padded, style])}>{children}</View>
   );
 
   return (
-    <SafeAreaView style={[styles.safe, style]} edges={['bottom']}>
+    <SafeAreaView style={flatStyle([styles.safe, style])} edges={['bottom']}>
       {scroll ? (
         <ScrollView
           style={styles.flex}
