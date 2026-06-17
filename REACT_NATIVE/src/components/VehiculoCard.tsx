@@ -1,5 +1,6 @@
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '@/src/theme/colors';
+import { spacing } from '@/src/theme/layout';
 
 type Props = {
   vehiculo: {
@@ -21,13 +22,17 @@ export function VehiculoCard({ vehiculo, onPress }: Props) {
   const titulo = `${vehiculo.marca ?? ''} ${vehiculo.modelo ?? ''}`.trim();
   return (
     <Pressable style={styles.card} onPress={onPress}>
-      {vehiculo.imagenUrl ? (
-        <Image source={{ uri: vehiculo.imagenUrl }} style={styles.image} resizeMode="cover" />
-      ) : (
-        <View style={[styles.image, styles.imagePlaceholder]}>
-          <Text style={styles.placeholderText}>Sin imagen</Text>
-        </View>
-      )}
+      <View style={styles.imageWrap}>
+        {vehiculo.imagenUrl ? (
+          <View style={styles.imageFrame}>
+            <Image source={{ uri: vehiculo.imagenUrl }} style={styles.image} resizeMode="contain" />
+          </View>
+        ) : (
+          <View style={[styles.imageFrame, styles.imagePlaceholder]}>
+            <Text style={styles.placeholderText}>Sin imagen</Text>
+          </View>
+        )}
+      </View>
       <View style={styles.body}>
         <Text style={styles.title}>{titulo || vehiculo.codigoInterno}</Text>
         {vehiculo.categoria ? <Text style={styles.category}>{vehiculo.categoria}</Text> : null}
@@ -54,11 +59,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  image: { width: '100%', height: 160 },
+  imageWrap: {
+    width: '100%',
+    aspectRatio: 4 / 3,
+    backgroundColor: colors.surfaceAlt,
+    overflow: 'hidden',
+  },
+  imageFrame: {
+    ...StyleSheet.absoluteFillObject,
+    padding: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  image: { width: '100%', height: '100%' },
   imagePlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surfaceAlt,
   },
   placeholderText: { color: colors.textMuted },
   body: { padding: 14 },

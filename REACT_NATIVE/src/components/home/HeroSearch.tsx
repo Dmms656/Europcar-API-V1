@@ -4,7 +4,6 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { bookingApi } from '@/src/api/bookingApi';
 import { Button } from '@/src/components/ui/Button';
-import { DateTimeSelector } from '@/src/components/ui/DateTimeSelector';
 import { GradientBackground } from '@/src/components/ui/GradientBackground';
 import { Select } from '@/src/components/ui/Select';
 import { useAuthStore } from '@/src/store/useAuthStore';
@@ -16,19 +15,6 @@ import { getPayload } from '@/src/utils/bookingNormalize';
 type Ciudad = { idCiudad: number; idPais?: number; nombreCiudad?: string; nombrePais?: string };
 type Localizacion = { idLocalizacion: number; nombreLocalizacion?: string; idCiudad?: number };
 
-function defaultPickup() {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  d.setHours(10, 0, 0, 0);
-  return d;
-}
-
-function defaultReturn(pickup: Date) {
-  const d = new Date(pickup);
-  d.setDate(d.getDate() + 3);
-  return d;
-}
-
 export function HeroSearch() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const userType = useAuthStore((s) => s.userType);
@@ -38,8 +24,6 @@ export function HeroSearch() {
   const [idPais, setIdPais] = useState('');
   const [idCiudad, setIdCiudad] = useState('');
   const [idLocalizacion, setIdLocalizacion] = useState('');
-  const [fechaRecogida, setFechaRecogida] = useState(defaultPickup);
-  const [fechaDevolucion, setFechaDevolucion] = useState(() => defaultReturn(defaultPickup()));
 
   useEffect(() => {
     (async () => {
@@ -100,15 +84,13 @@ export function HeroSearch() {
   );
 
   const handleSearch = () => {
-    const fr = fechaRecogida.toISOString().slice(0, 10);
-    const fd = fechaDevolucion.toISOString().slice(0, 10);
+    const params: Record<string, string> = {};
+    if (idPais) params.pais = idPais;
+    if (idCiudad) params.ciudad = idCiudad;
+    if (idLocalizacion) params.localizacion = idLocalizacion;
     router.push({
-      pathname: '/(tabs)/buscar',
-      params: {
-        idLocalizacion: idLocalizacion || String(locsFiltradas[0]?.idLocalizacion ?? 1),
-        fechaRecogida: fr,
-        fechaDevolucion: fd,
-      },
+      pathname: '/(tabs)/catalogo',
+      params,
     });
   };
 
@@ -158,14 +140,8 @@ export function HeroSearch() {
             }))}
             placeholder="Todas las sucursales"
           />
-          <DateTimeSelector label="Recogida" value={fechaRecogida} onChange={setFechaRecogida} />
-          <DateTimeSelector
-            label="Devolución"
-            value={fechaDevolucion}
-            onChange={setFechaDevolucion}
-            minimumDate={fechaRecogida}
-          />
-          <Button label="Buscar vehículos" onPress={handleSearch} variant="client" />
+          <Text style={styles.dateHint}>Las fechas de recogida y devolución las eliges al reservar.</Text>
+          <Button label="Ver vehículos" onPress={handleSearch} variant="client" />
         </View>
 
         <View style={styles.ctas}>
@@ -268,6 +244,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: spacing.lg,
   },
+  dateHint: { color: colors.textMuted, fontSize: 12, fontFamily: fonts.regular, marginTop: spacing.xs },
   ctas: { marginTop: spacing.lg, gap: spacing.sm },
   outlineBtn: {
     flexDirection: 'row',

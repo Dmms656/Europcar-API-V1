@@ -12,9 +12,10 @@ type Props = {
   endItem: number;
   onPageChange: (page: number) => void;
   onPageSizeChange?: (size: number) => void;
+  pageSizes?: number[];
 };
 
-const PAGE_SIZES = [5, 10, 20];
+const DEFAULT_PAGE_SIZES = [5, 10, 20];
 
 export function PaginationControls({
   page,
@@ -25,6 +26,7 @@ export function PaginationControls({
   endItem,
   onPageChange,
   onPageSizeChange,
+  pageSizes = DEFAULT_PAGE_SIZES,
 }: Props) {
   if (totalItems === 0) return null;
 
@@ -58,7 +60,7 @@ export function PaginationControls({
 
       {onPageSizeChange ? (
         <View style={styles.sizes}>
-          {PAGE_SIZES.map((size) => (
+          {pageSizes.map((size) => (
             <Pressable
               key={size}
               style={[styles.sizeBtn, pageSize === size && styles.sizeBtnActive]}

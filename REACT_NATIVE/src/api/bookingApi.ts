@@ -1,7 +1,17 @@
 import api from './axiosClient';
+import { buildVehiculosSearchParams } from '@/src/utils/bookingNormalize';
 
 export const bookingApi = {
-  buscarVehiculos: (params: Record<string, unknown>) => api.get('/vehiculos', { params }),
+  buscarVehiculos: (params: Record<string, unknown>) => {
+    const safe = buildVehiculosSearchParams({
+      idLocalizacion: Number(params.idLocalizacion) || 1,
+      fechaRecogida: params.fechaRecogida as string | Date | undefined,
+      fechaDevolucion: params.fechaDevolucion as string | Date | undefined,
+      page: params.page != null ? Number(params.page) : undefined,
+      limit: params.limit != null ? Number(params.limit) : undefined,
+    });
+    return api.get('/vehiculos', { params: safe });
+  },
   getVehiculoDetalle: (id: number | string) => api.get(`/vehiculos/${id}`),
   checkDisponibilidad: (id: number | string, params: Record<string, unknown>) =>
     api.get(`/vehiculos/${id}/disponibilidad`, { params }),

@@ -46,6 +46,73 @@ export function defaultRentalDateTimeLocalRange() {
   };
 }
 
+/** ISO 8601 UTC — formato que espera GET /vehiculos (evita 422 por fechas inválidas). */
+export function formatBookingApiDate(date: Date): string {
+  return date.toISOString();
+}
+
+/** Rango interno al listar catálogo (el usuario elige fechas al reservar). */
+export function defaultCatalogApiDateRange() {
+  const start = new Date();
+  start.setDate(start.getDate() + 1);
+  start.setHours(10, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 7);
+  end.setHours(10, 0, 0, 0);
+  return {
+    fechaRecogida: formatBookingApiDate(start),
+    fechaDevolucion: formatBookingApiDate(end),
+  };
+}
+
+function parseBookingDateInput(value?: string | Date | null): Date | null {
+  if (value == null) return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+  const s = String(value).trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const d = new Date(`${s}T10:00:00`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** Parámetros seguros para GET /vehiculos — siempre fechaDevolucion > fechaRecogida. */
+export function buildVehiculosSearchParams(input: {
+  idLocalizacion: number;
+  fechaRecogida?: string | Date;
+  fechaDevolucion?: string | Date;
+  page?: number;
+  limit?: number;
+}) {
+  const defaults = defaultCatalogApiDateRange();
+  let pickup = parseBookingDateInput(input.fechaRecogida);
+  let dropoff = parseBookingDateInput(input.fechaDevolucion);
+
+  if (!pickup) pickup = new Date(defaults.fechaRecogida);
+  if (!dropoff) {
+    dropoff = new Date(pickup);
+    dropoff.setDate(dropoff.getDate() + 3);
+    dropoff.setHours(10, 0, 0, 0);
+  }
+  if (dropoff.getTime() <= pickup.getTime()) {
+    dropoff = new Date(pickup);
+    dropoff.setDate(dropoff.getDate() + 3);
+    dropoff.setHours(10, 0, 0, 0);
+  }
+
+  return {
+    idLocalizacion: input.idLocalizacion,
+    fechaRecogida: formatBookingApiDate(pickup),
+    fechaDevolucion: formatBookingApiDate(dropoff),
+    page: input.page ?? 1,
+    limit: input.limit ?? 100,
+  };
+}
+
 export type VehiculoBooking = {
   idVehiculo?: number;
   id?: number;
@@ -66,6 +133,10 @@ export type VehiculoBooking = {
   idLocalizacion?: number;
   disponible?: boolean;
   codigoInterno?: string;
+  anioFabricacion?: number;
+  capacidadPasajeros?: number;
+  capacidadMaletas?: number;
+  aireAcondicionado?: boolean;
 };
 
 /** Rellena datos del cliente desde perfil de sesión. */
@@ -168,7 +239,7 @@ export async function loadCatalogFromBooking(
   buscar: (params: Record<string, unknown>) => Promise<{ data?: unknown }>,
   options?: { maxLocations?: number; delayMs?: number },
 ) {
-  const { fechaRecogida, fechaDevolucion } = defaultRentalDateTimeLocalRange();
+  const { fechaRecogida, fechaDevolucion } = defaultCatalogApiDateRange();
   const maxLocations = options?.maxLocations ?? 8;
   const delayMs = options?.delayMs ?? 350;
   const byId = new Map<number, VehiculoBooking>();
@@ -195,5 +266,35 @@ export async function loadCatalogFromBooking(
     await sleep(delayMs);
   }
 
+  return Array.from(byId.values());
+}
+
+/** Carga flota completa en paralelo (web / catálogo público). */
+export async function loadAllCatalogVehicles(
+  localizaciones: { idLocalizacion: number }[],
+  buscar: (params: Record<string, unknown>) => Promise<{ data?: unknown }>,
+) {
+  const { fechaRecogida, fechaDevolucion } = defaultCatalogApiDateRange();
+  const results = await Promise.allSettled(
+    localizaciones.map((loc) =>
+      buscar({
+        idLocalizacion: loc.idLocalizacion,
+        fechaRecogida,
+        fechaDevolucion,
+        page: 1,
+        limit: 100,
+      }),
+    ),
+  );
+  const byId = new Map<number, VehiculoBooking>();
+  results.forEach((res) => {
+    if (res.status !== 'fulfilled') return;
+    const payload = getPayload<{ vehiculos?: Record<string, unknown>[] }>(res.value);
+    (payload.vehiculos ?? []).forEach((v) => {
+      const norm = normalizeVehiculoFromBookingList(v);
+      const key = norm.idVehiculo ?? norm.id;
+      if (key != null && !byId.has(key)) byId.set(key, norm);
+    });
+  });
   return Array.from(byId.values());
 }

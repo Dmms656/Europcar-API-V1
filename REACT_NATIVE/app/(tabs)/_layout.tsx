@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Platform } from 'react-native';
 import { ClienteWebLayout } from '@/src/components/layout/ClienteWebLayout';
 import { WebShell } from '@/src/components/layout/WebShell';
 import { useBreakpoint } from '@/src/hooks/useBreakpoint';
@@ -7,14 +8,16 @@ import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
 
 export default function TabLayout() {
-  const { showWebSidebar } = useBreakpoint();
+  const { isWeb, showWebSidebar } = useBreakpoint();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const userType = useAuthStore((s) => s.userType);
-  const hideTabBar = showWebSidebar && isAuthenticated && userType === 'cliente';
+  const hideTabBar =
+    isWeb || (showWebSidebar && isAuthenticated && userType === 'cliente');
 
   const tabs = (
     <Tabs
       screenOptions={{
+        headerShown: !isWeb,
         headerStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.text,
         headerTitleStyle: { fontWeight: '700' },
@@ -45,10 +48,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <Ionicons name="car-sport-outline" size={size} color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="buscar"
-        options={{ href: null }}
-      />
+      <Tabs.Screen name="buscar" options={{ href: null }} />
       <Tabs.Screen
         name="reservas"
         options={{
@@ -75,9 +75,13 @@ export default function TabLayout() {
     </Tabs>
   );
 
-  return (
-    <WebShell>
-      <ClienteWebLayout>{tabs}</ClienteWebLayout>
-    </WebShell>
-  );
+  if (Platform.OS === 'web') {
+    return (
+      <WebShell padded={false} maxWidth={9999}>
+        <ClienteWebLayout>{tabs}</ClienteWebLayout>
+      </WebShell>
+    );
+  }
+
+  return tabs;
 }

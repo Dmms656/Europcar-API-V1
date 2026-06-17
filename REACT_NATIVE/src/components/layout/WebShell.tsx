@@ -11,13 +11,15 @@ type Props = {
   showNavbar?: boolean;
   /** Ancho máximo del contenido en desktop */
   maxWidth?: number;
+  /** Padding horizontal del contenido (false para home/catálogo full-bleed) */
+  padded?: boolean;
 };
 
 /**
  * Contenedor responsivo para web.
  * En móvil nativo renderiza solo children (sin navbar — usa tabs del sistema).
  */
-export function WebShell({ children, showNavbar = true, maxWidth = 1280 }: Props) {
+export function WebShell({ children, showNavbar = true, maxWidth = 1280, padded = true }: Props) {
   const { isWeb, showWebNavbar } = useBreakpoint();
 
   if (!isWeb) {
@@ -28,7 +30,7 @@ export function WebShell({ children, showNavbar = true, maxWidth = 1280 }: Props
     <View style={styles.root}>
       {showNavbar && showWebNavbar && <PublicNavbar />}
       <View style={styles.main}>
-        <View style={[styles.content, { maxWidth }]}>{children}</View>
+        <View style={StyleSheet.flatten([styles.content, { maxWidth }, !padded ? styles.contentFlush : null])}>{children}</View>
       </View>
     </View>
   );
@@ -57,6 +59,9 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     paddingHorizontal: spacing.xl,
+  },
+  contentFlush: {
+    paddingHorizontal: 0,
   },
   sidebar: {
     width: 260,

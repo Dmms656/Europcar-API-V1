@@ -1,123 +1,36 @@
-import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { useEffect } from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { bookingApi } from '@/src/api/bookingApi';
-import { VehiculoCard } from '@/src/components/VehiculoCard';
 import { colors } from '@/src/theme/colors';
-import { spacing } from '@/src/theme/layout';
-import { unwrapData } from '@/src/utils/apiResponse';
 
-type Vehiculo = {
-  idVehiculo: number;
-  marca?: string;
-  modelo?: string;
-  codigoInterno?: string;
-  precioDia?: number;
-  imagenUrl?: string;
-  transmision?: string;
-};
-
+/** Redirige al catálogo completo — las fechas se eligen al reservar. */
 export default function BuscarScreen() {
   const params = useLocalSearchParams<{
     idLocalizacion?: string;
-    fechaRecogida?: string;
-    fechaDevolucion?: string;
+    localizacion?: string;
+    pais?: string;
+    ciudad?: string;
+    categoria?: string;
   }>();
 
-  const idLocalizacion = Number(params.idLocalizacion || 1);
-  const fechaRecogida = params.fechaRecogida || (() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().slice(0, 10);
-  })();
-  const fechaDevolucion = params.fechaDevolucion || (() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 4);
-    return d.toISOString().slice(0, 10);
-  })();
-
-  const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const load = useCallback(async () => {
-    const res = await bookingApi.buscarVehiculos({
-      idLocalizacion,
-      fechaRecogida: `${fechaRecogida}T10:00:00`,
-      fechaDevolucion: `${fechaDevolucion}T10:00:00`,
-      page: 1,
-      limit: 20,
-    });
-    const data = unwrapData<{ vehiculos?: Vehiculo[]; items?: Vehiculo[] }>(res);
-    setVehiculos(data?.vehiculos ?? data?.items ?? []);
-  }, [idLocalizacion, fechaRecogida, fechaDevolucion]);
-
   useEffect(() => {
-    load().finally(() => setLoading(false));
-  }, [load]);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await load();
-    setRefreshing(false);
-  };
-
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.primary} size="large" />
-      </View>
-    );
-  }
+    const q = new URLSearchParams();
+    const loc = params.localizacion ?? params.idLocalizacion;
+    if (loc) q.set('localizacion', String(loc));
+    if (params.pais) q.set('pais', String(params.pais));
+    if (params.ciudad) q.set('ciudad', String(params.ciudad));
+    if (params.categoria) q.set('categoria', String(params.categoria));
+    const qs = q.toString();
+    router.replace(qs ? `/catalogo?${qs}` : '/catalogo');
+  }, [params]);
 
   return (
-    <FlatList
-      style={styles.list}
-      contentContainerStyle={styles.content}
-      data={vehiculos}
-      keyExtractor={(item) => String(item.idVehiculo)}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-      ListHeaderComponent={
-        <View style={styles.header}>
-          <Text style={styles.title}>{vehiculos.length} vehículos disponibles</Text>
-          <Text style={styles.dates}>
-            {fechaRecogida} → {fechaDevolucion}
-          </Text>
-        </View>
-      }
-      ListEmptyComponent={<Text style={styles.empty}>No hay vehículos para esta búsqueda</Text>}
-      renderItem={({ item }) => (
-        <VehiculoCard
-          vehiculo={item}
-          onPress={() =>
-            router.push({
-              pathname: `/reservar/${item.idVehiculo}`,
-              params: {
-                idLocalizacion: String(idLocalizacion),
-                fechaRecogida,
-                fechaDevolucion,
-              },
-            })
-          }
-        />
-      )}
-    />
+    <View style={styles.center}>
+      <ActivityIndicator color={colors.primary} size="large" />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  list: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg },
-  header: { marginBottom: spacing.md },
-  title: { color: colors.text, fontWeight: '700', fontSize: 18 },
-  dates: { color: colors.textMuted, marginTop: 4 },
-  empty: { color: colors.textMuted, textAlign: 'center', marginTop: 40 },
 });

@@ -1,6 +1,7 @@
-import { Link, usePathname } from 'expo-router';
+import { Link, usePathname, router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useBreakpoint } from '@/src/hooks/useBreakpoint';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
 import { spacing, radius } from '@/src/theme/layout';
@@ -8,55 +9,78 @@ import { fonts } from '@/src/theme/typography';
 
 const NAV_LINKS = [
   { href: '/' as const, label: 'Inicio', match: ['/', '/(tabs)', '/(tabs)/index'] },
-  { href: '/(tabs)/buscar' as const, label: 'Buscar', match: ['/(tabs)/buscar'] },
-  { href: '/(tabs)/catalogo' as const, label: 'Catálogo', match: ['/(tabs)/catalogo'] },
+  { href: '/catalogo' as const, label: 'Catálogo', match: ['/catalogo', '/(tabs)/catalogo'] },
 ] as const;
 
 function isActive(pathname: string, match: readonly string[]) {
-  return match.some((m) => pathname === m || pathname.startsWith(m + '/'));
+  return match.some((m) => pathname === m || pathname.startsWith(m + '/') || pathname.startsWith(m + '?'));
 }
 
-/** Barra superior para web — oculta en móvil nativo (usa tabs). */
+/** Barra superior web — estilo marketing del frontend Vite. */
 export function PublicNavbar() {
   const pathname = usePathname();
+  const { isDesktop } = useBreakpoint();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const userType = useAuthStore((s) => s.userType);
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
 
   const accountHref =
-    userType === 'admin' ? '/(admin)/cuenta' : '/(tabs)/cuenta';
+    userType === 'admin' ? '/(admin)' : '/(tabs)/cuenta';
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace('/');
+  };
 
   return (
     <View style={styles.bar}>
       <View style={styles.inner}>
-        <View style={styles.brandRow}>
-          <Ionicons name="car-sport" size={22} color={colors.primaryLight} />
-          <Text style={styles.brand}>Europcar</Text>
-        </View>
+        <Link href="/" asChild>
+          <Pressable style={styles.brandRow}>
+            <Ionicons name="car-sport" size={22} color={colors.primaryLight} />
+            <Text style={styles.brand}>Europcar</Text>
+          </Pressable>
+        </Link>
 
         <View style={styles.links}>
           {NAV_LINKS.map((link) => (
             <Link key={link.href} href={link.href} asChild>
-              <Pressable style={styles.linkBtn}>
+              <Pressable style={StyleSheet.flatten([styles.linkBtn, isActive(pathname, link.match) ? styles.linkBtnActive : null])}>
                 <Text
-                  style={[
-                    styles.linkText,
-                    isActive(pathname, link.match) && styles.linkTextActive,
-                  ]}
+                  style={StyleSheet.flatten([styles.linkText, isActive(pathname, link.match) ? styles.linkTextActive : null])}
                 >
                   {link.label}
                 </Text>
               </Pressable>
             </Link>
           ))}
+          {isAuthenticated && userType === 'admin' ? (
+            <Link href="/(admin)" asChild>
+              <Pressable style={styles.linkBtn}>
+                <Text style={styles.linkText}>Admin</Text>
+              </Pressable>
+            </Link>
+          ) : null}
         </View>
 
         <View style={styles.actions}>
           {isAuthenticated ? (
-            <Link href={accountHref} asChild>
-              <Pressable style={styles.primaryBtn}>
-                <Text style={styles.primaryBtnText}>Mi cuenta</Text>
+            <>
+              {user?.username && isDesktop ? (
+                <Text style={styles.username}>{user.username}</Text>
+              ) : null}
+              <Link href={accountHref} asChild>
+                <Pressable style={styles.primaryBtn}>
+                  <Text style={styles.primaryBtnText}>
+                    {userType === 'admin' ? 'Panel' : 'Mi cuenta'}
+                  </Text>
+                </Pressable>
+              </Link>
+              <Pressable style={styles.iconBtn} onPress={handleLogout} accessibilityLabel="Cerrar sesión">
+                <Ionicons name="log-out-outline" size={20} color={colors.textSecondary} />
               </Pressable>
-            </Link>
+            </>
           ) : (
             <>
               <Link href="/(auth)/login" asChild>
@@ -79,7 +103,7 @@ export function PublicNavbar() {
 
 const styles = StyleSheet.create({
   bar: {
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(10,14,23,0.92)',
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     paddingHorizontal: spacing.xl,
@@ -103,11 +127,15 @@ const styles = StyleSheet.create({
   links: {
     flex: 1,
     flexDirection: 'row',
-    gap: spacing.lg,
+    gap: spacing.sm,
   },
   linkBtn: {
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
+    borderRadius: radius.full,
+  },
+  linkBtnActive: {
+    backgroundColor: colors.primaryGhost,
   },
   linkText: {
     color: colors.textSecondary,
@@ -123,10 +151,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
+  username: {
+    color: colors.textSecondary,
+    fontFamily: fonts.medium,
+    fontSize: 14,
+  },
   ghostBtn: {
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
-    borderRadius: radius.md,
+    borderRadius: radius.full,
   },
   ghostBtnText: {
     color: colors.textSecondary,
@@ -136,10 +169,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
-    borderRadius: radius.md,
+    borderRadius: radius.full,
   },
   primaryBtnText: {
     color: colors.white,
     fontFamily: fonts.bold,
+  },
+  iconBtn: {
+    padding: spacing.sm,
+    borderRadius: radius.md,
   },
 });
