@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
-import { Platform } from 'react-native';
 import { router, useSegments } from 'expo-router';
 import { useAuthStore } from '@/src/store/useAuthStore';
+import { useSidebarStore } from '@/src/store/useSidebarStore';
+import { CLIENT_PORTAL_SEGMENTS } from '@/src/utils/clientPortal';
+import { homeHref } from '@/src/utils/authActions';
 
 /** Redirige admin/cliente al stack correcto tras login o restore. */
 export function AuthRedirect() {
@@ -15,10 +17,16 @@ export function AuthRedirect() {
 
     const inAdmin = segments[0] === '(admin)';
     const inAuth = segments[0] === '(auth)';
-    const home = Platform.OS === 'web' ? '/' : '/(tabs)';
+    const home = homeHref();
+    const tabSegment = segments[0] === '(tabs)' ? segments[1] : null;
+    const inClientPortal =
+      Boolean(tabSegment) && CLIENT_PORTAL_SEGMENTS.includes(tabSegment as (typeof CLIENT_PORTAL_SEGMENTS)[number]);
 
     if (!isAuthenticated) {
-      if (inAdmin) router.replace(home);
+      useSidebarStore.getState().setSidebarOpen(false);
+      if (inAdmin || inClientPortal) {
+        router.replace(home);
+      }
       return;
     }
 

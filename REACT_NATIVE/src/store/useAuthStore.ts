@@ -12,6 +12,8 @@ export type UserProfile = {
   correo?: string;
   roles?: string[];
   nombreCompleto?: string;
+  nombres?: string;
+  apellidos?: string;
   idCliente?: number;
   telefono?: string;
   direccion?: string;

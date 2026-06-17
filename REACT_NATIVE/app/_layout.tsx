@@ -95,7 +95,7 @@ export default function RootLayout() {
         <Stack.Screen name="cuenta" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)/login" options={{ headerShown: Platform.OS !== 'web', title: 'Iniciar sesión', presentation: 'modal' }} />
         <Stack.Screen name="(auth)/register" options={{ headerShown: Platform.OS !== 'web', title: 'Crear cuenta', presentation: 'modal' }} />
-        <Stack.Screen name="reservar/[id]" options={{ title: 'Reservar' }} />
+        <Stack.Screen name="reservar/[id]" options={{ headerShown: Platform.OS !== 'web', title: 'Reservar' }} />
         <Stack.Screen name="reserva/[codigo]" options={{ title: 'Detalle reserva' }} />
       </Stack>
     </SafeAreaProvider>

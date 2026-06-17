@@ -14,6 +14,8 @@ import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/layout';
 import { getErrorMessage } from '@/src/utils/apiResponse';
 import { validators } from '@/src/utils/validation';
+import { confirmAction } from '@/src/utils/confirm';
+import { logoutAndGoHome } from '@/src/utils/authActions';
 
 export default function CuentaScreen() {
   const { isAuthenticated, user, userType, logout, refreshProfile } = useAuthStore();
@@ -34,7 +36,7 @@ export default function CuentaScreen() {
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const { showWebSidebar } = useBreakpoint();
+  const { isWeb } = useBreakpoint();
 
   if (!isAuthenticated) {
     return (
@@ -219,7 +221,7 @@ export default function CuentaScreen() {
         )}
       </Card>
 
-      {!showWebSidebar && userType === 'cliente' ? (
+      {!isWeb && userType === 'cliente' ? (
         <Card>
           <Text style={styles.cardTitle}>Accesos rápidos</Text>
           <View style={styles.quickLinks}>
@@ -234,7 +236,15 @@ export default function CuentaScreen() {
         <Button label="Ir al panel admin" onPress={() => router.replace('/(admin)')} style={{ marginBottom: spacing.md }} />
       ) : null}
 
-      <Button label="Cerrar sesión" variant="danger" onPress={logout} />
+      <Button
+        label="Cerrar sesión"
+        variant="danger"
+        onPress={async () => {
+          const ok = await confirmAction('Cerrar sesión', '¿Seguro que deseas cerrar sesión?');
+          if (!ok) return;
+          await logoutAndGoHome(logout);
+        }}
+      />
     </Screen>
   );
 }

@@ -4,15 +4,11 @@ import { Platform } from 'react-native';
 import { ClienteWebLayout } from '@/src/components/layout/ClienteWebLayout';
 import { WebShell } from '@/src/components/layout/WebShell';
 import { useBreakpoint } from '@/src/hooks/useBreakpoint';
-import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
 
 export default function TabLayout() {
-  const { isWeb, showWebSidebar } = useBreakpoint();
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const userType = useAuthStore((s) => s.userType);
-  const hideTabBar =
-    isWeb || (showWebSidebar && isAuthenticated && userType === 'cliente');
+  const { isWeb } = useBreakpoint();
+  const hideTabBar = isWeb;
 
   const tabs = (
     <Tabs

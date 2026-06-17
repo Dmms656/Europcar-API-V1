@@ -1,9 +1,12 @@
-import { Link, usePathname, router } from 'expo-router';
+import { Link, usePathname } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useBreakpoint } from '@/src/hooks/useBreakpoint';
 import { useAuthStore } from '@/src/store/useAuthStore';
+import { useSidebarStore } from '@/src/store/useSidebarStore';
 import { confirmAction } from '@/src/utils/confirm';
+import { logoutAndGoHome } from '@/src/utils/authActions';
+import { isClientPortalPath } from '@/src/utils/clientPortal';
 import { colors } from '@/src/theme/colors';
 import { spacing, radius } from '@/src/theme/layout';
 import { fonts } from '@/src/theme/typography';
@@ -25,15 +28,19 @@ export function PublicNavbar() {
   const userType = useAuthStore((s) => s.userType);
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const toggleSidebar = useSidebarStore((s) => s.toggleSidebar);
+  const sidebarOpen = useSidebarStore((s) => s.sidebarOpen);
 
   const accountHref =
     userType === 'admin' ? '/(admin)' : '/mi-cuenta';
 
+  const isClientPortalRoute = isClientPortalPath(pathname);
+  const showClientMenu = isAuthenticated && userType === 'cliente' && isClientPortalRoute;
+
   const handleLogout = async () => {
     const ok = await confirmAction('Cerrar sesión', '¿Seguro que deseas cerrar sesión?');
     if (!ok) return;
-    await logout();
-    router.replace('/');
+    await logoutAndGoHome(logout);
   };
 
   return (
@@ -68,6 +75,15 @@ export function PublicNavbar() {
         </View>
 
         <View style={styles.actions}>
+          {showClientMenu ? (
+            <Pressable
+              style={styles.iconBtn}
+              onPress={toggleSidebar}
+              accessibilityLabel={sidebarOpen ? 'Cerrar menú' : 'Abrir menú'}
+            >
+              <Ionicons name={sidebarOpen ? 'close' : 'menu'} size={22} color={colors.textSecondary} />
+            </Pressable>
+          ) : null}
           {isAuthenticated ? (
             <>
               {user?.username && isDesktop ? (

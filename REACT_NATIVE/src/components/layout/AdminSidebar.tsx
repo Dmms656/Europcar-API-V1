@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Link, usePathname, router } from 'expo-router';
+import { Link, usePathname } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
 import { radius, spacing } from '@/src/theme/layout';
 import { flatStyle } from '@/src/utils/flatStyle';
 import { confirmAction } from '@/src/utils/confirm';
+import { logoutAndGoHome } from '@/src/utils/authActions';
 
 type NavItem = {
   href: string;
@@ -44,8 +45,7 @@ export function AdminSidebar() {
   const handleLogout = async () => {
     const ok = await confirmAction('Cerrar sesión', '¿Seguro que deseas cerrar sesión?');
     if (!ok) return;
-    await logout();
-    router.replace('/');
+    await logoutAndGoHome(logout);
   };
 
   const initial = (user?.username || 'A').charAt(0).toUpperCase();

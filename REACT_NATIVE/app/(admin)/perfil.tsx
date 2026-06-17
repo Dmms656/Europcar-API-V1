@@ -1,5 +1,4 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { router } from 'expo-router';
 import { ProfileHeader } from '@/src/components/ProfileHeader';
 import { Button } from '@/src/components/ui/Button';
 import { Card } from '@/src/components/ui/Card';
@@ -7,13 +6,16 @@ import { Screen } from '@/src/components/ui/Screen';
 import { useAuthStore } from '@/src/store/useAuthStore';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/layout';
+import { confirmAction } from '@/src/utils/confirm';
+import { logoutAndGoHome } from '@/src/utils/authActions';
 
 export default function AdminCuentaScreen() {
   const { user, logout } = useAuthStore();
 
   const handleLogout = async () => {
-    await logout();
-    router.replace('/');
+    const ok = await confirmAction('Cerrar sesión', '¿Seguro que deseas cerrar sesión?');
+    if (!ok) return;
+    await logoutAndGoHome(logout);
   };
 
   return (
