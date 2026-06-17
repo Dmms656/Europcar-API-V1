@@ -1,5 +1,4 @@
 import { Platform, StyleSheet, Text, View } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import { colors } from '@/src/theme/colors';
 import { radius, spacing } from '@/src/theme/layout';
 import { fonts } from '@/src/theme/typography';
@@ -14,7 +13,43 @@ type Props = {
   placeholder?: string;
 };
 
+const webSelectStyle = {
+  width: '100%',
+  minHeight: 48,
+  padding: '12px 14px',
+  fontSize: 15,
+  fontFamily: fonts.regular,
+  color: colors.text,
+  backgroundColor: colors.surface,
+  border: `1px solid ${colors.borderLight}`,
+  borderRadius: radius.md,
+  outline: 'none',
+  cursor: 'pointer',
+} as const;
+
 export function Select({ label, value, onValueChange, options, placeholder = 'Seleccionar' }: Props) {
+  if (Platform.OS === 'web') {
+    return (
+      <View style={styles.wrap}>
+        {label ? <Text style={styles.label}>{label}</Text> : null}
+        <select
+          value={value}
+          onChange={(e) => onValueChange(e.target.value)}
+          style={webSelectStyle}
+        >
+          <option value="">{placeholder}</option>
+          {options.map((o) => (
+            <option key={o.value || o.label} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </View>
+    );
+  }
+
+  const { Picker } = require('@react-native-picker/picker') as typeof import('@react-native-picker/picker');
+
   return (
     <View style={styles.wrap}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
@@ -50,7 +85,6 @@ const styles = StyleSheet.create({
   },
   picker: {
     color: colors.text,
-    ...(Platform.OS === 'web' ? { outlineStyle: 'none' } as object : {}),
   },
   iosItem: { color: colors.text, fontSize: 15 },
 });

@@ -33,8 +33,8 @@ const EXT = new Set(['.html', '.js', '.json', '.css']);
 
 function patchFile(filePath) {
   const raw = fs.readFileSync(filePath, 'utf8');
-  if (!raw.includes(FROM) && !raw.includes('_expo')) return;
-  const next = raw.replaceAll(FROM, TO).replaceAll('_expo/', 'expo-static/');
+  if (!raw.includes(FROM)) return;
+  const next = raw.replaceAll(FROM, TO);
   if (next !== raw) fs.writeFileSync(filePath, next);
 }
 

@@ -15,11 +15,12 @@ import {
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthRedirect } from '@/src/components/AuthRedirect';
 import { useAuthStore } from '@/src/store/useAuthStore';
-import { registerForPushNotifications } from '@/src/notifications/push';
 import { colors } from '@/src/theme/colors';
 import { fonts } from '@/src/theme/typography';
 
-SplashScreen.preventAutoHideAsync();
+if (Platform.OS !== 'web') {
+  SplashScreen.preventAutoHideAsync();
+}
 
 export default function RootLayout() {
   const restoreSession = useAuthStore((s) => s.restoreSession);
@@ -51,13 +52,17 @@ export default function RootLayout() {
       }
       await restoreSession();
       setReady(true);
-      await SplashScreen.hideAsync();
+      if (Platform.OS !== 'web') {
+        await SplashScreen.hideAsync();
+      }
     })();
   }, [restoreSession]);
 
   useEffect(() => {
     if (!isAuthenticated || Platform.OS === 'web') return;
-    registerForPushNotifications().catch(() => undefined);
+    import('@/src/notifications/push')
+      .then((m) => m.registerForPushNotifications())
+      .catch(() => undefined);
   }, [isAuthenticated]);
 
   if (!fontsReady || !ready || !sessionChecked) {
