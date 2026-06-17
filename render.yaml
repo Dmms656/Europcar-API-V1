@@ -12,6 +12,7 @@ services:
       paths:
         - REACT_NATIVE/**
     routes:
+      # SPA: rutas sin archivo físico → index.html (los estáticos se sirven primero)
       - type: rewrite
         source: /*
         destination: /index.html

@@ -26,18 +26,19 @@ export default function RootLayout() {
   const sessionChecked = useAuthStore((s) => s.sessionChecked);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const [ready, setReady] = useState(false);
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
     Inter_800ExtraBold,
   });
+  const fontsReady = Platform.OS === 'web' ? true : fontsLoaded || Boolean(fontError);
 
   useEffect(() => {
     (async () => {
       try {
-        if (!__DEV__ && Updates.isEnabled) {
+        if (!__DEV__ && Platform.OS !== 'web' && Updates.isEnabled) {
           const update = await Updates.checkForUpdateAsync();
           if (update.isAvailable) {
             await Updates.fetchUpdateAsync();
@@ -59,7 +60,7 @@ export default function RootLayout() {
     registerForPushNotifications().catch(() => undefined);
   }, [isAuthenticated]);
 
-  if (!fontsLoaded || !ready || !sessionChecked) {
+  if (!fontsReady || !ready || !sessionChecked) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg }}>
         <ActivityIndicator size="large" color={colors.primary} />
