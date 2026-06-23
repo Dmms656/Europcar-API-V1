@@ -9,6 +9,7 @@ using RedCar.Reservas.Api.Messaging;
 using RedCar.Reservas.DataAccess.Context;
 using RedCar.Reservas.DataAccess.Entities;
 using RedCar.Shared.Contracts.Common;
+using RedCar.Shared.Contracts.Serialization;
 using RedCar.Shared.Events;
 using RedCar.Shared.Events.Reservas;
 using RedCar.Shared.Protos.Reservas;
@@ -58,10 +59,10 @@ public sealed class ReservasWriteService
     {
         ValidateCrearRequest(request);
 
-        var fechaInicio = DateOnly.Parse(request.FechaInicio, CultureInfo.InvariantCulture);
-        var fechaFin = DateOnly.Parse(request.FechaFin, CultureInfo.InvariantCulture);
-        var horaInicio = TimeOnly.Parse(request.HoraInicio, CultureInfo.InvariantCulture);
-        var horaFin = TimeOnly.Parse(request.HoraFin, CultureInfo.InvariantCulture);
+        var fechaInicio = FlexibleDateTimeParsing.ParseDateOnly(request.FechaInicio);
+        var fechaFin = FlexibleDateTimeParsing.ParseDateOnly(request.FechaFin);
+        var horaInicio = FlexibleDateTimeParsing.ParseTimeOnly(request.HoraInicio);
+        var horaFin = FlexibleDateTimeParsing.ParseTimeOnly(request.HoraFin);
 
         var fechaRecogida = new DateTimeOffset(fechaInicio.ToDateTime(horaInicio, DateTimeKind.Utc));
         var fechaDevolucion = new DateTimeOffset(fechaFin.ToDateTime(horaFin, DateTimeKind.Utc));

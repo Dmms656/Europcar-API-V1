@@ -7,6 +7,7 @@ using Middleware.RedCar.Api.Extensions;
 using Middleware.RedCar.Api.Middleware;
 using Middleware.RedCar.Api.Models.Common;
 using Middleware.RedCar.Api.Models.Settings;
+using RedCar.Shared.Contracts.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,6 +53,7 @@ builder.Services.AddControllers()
         o.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         o.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
         o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+        o.JsonSerializerOptions.AddFlexibleDateTimeConverters();
     });
 
 builder.Services.AddFluentValidationAutoValidation();

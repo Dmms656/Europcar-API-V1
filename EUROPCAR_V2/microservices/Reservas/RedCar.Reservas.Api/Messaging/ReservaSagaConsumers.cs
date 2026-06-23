@@ -2,6 +2,7 @@ using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using RedCar.Reservas.Api.Services;
 using RedCar.Reservas.DataAccess.Context;
+using RedCar.Shared.Contracts.Serialization;
 using RedCar.Shared.Events;
 using RedCar.Shared.Events.Reservas;
 
@@ -30,9 +31,11 @@ public sealed class ProcesarReservaBookingConsumer : IConsumer<ProcesarReservaBo
         var ct = context.CancellationToken;
 
         var fechaRecogida = new DateTimeOffset(
-            DateOnly.Parse(cmd.FechaInicio).ToDateTime(TimeOnly.Parse(cmd.HoraInicio), DateTimeKind.Utc));
+            FlexibleDateTimeParsing.ParseDateOnly(cmd.FechaInicio)
+                .ToDateTime(FlexibleDateTimeParsing.ParseTimeOnly(cmd.HoraInicio), DateTimeKind.Utc));
         var fechaDevolucion = new DateTimeOffset(
-            DateOnly.Parse(cmd.FechaFin).ToDateTime(TimeOnly.Parse(cmd.HoraFin), DateTimeKind.Utc));
+            FlexibleDateTimeParsing.ParseDateOnly(cmd.FechaFin)
+                .ToDateTime(FlexibleDateTimeParsing.ParseTimeOnly(cmd.HoraFin), DateTimeKind.Utc));
 
         var disp = await _read.VerificarDisponibilidadAsync(
             cmd.IdVehiculo, cmd.IdLocalizacionRecogida, fechaRecogida, fechaDevolucion, ct);

@@ -8,6 +8,7 @@ using RedCar.Reservas.Api.Services;
 using RedCar.Reservas.DataAccess.Context;
 using RedCar.Shared.Auth;
 using RedCar.Shared.Contracts.Common;
+using RedCar.Shared.Contracts.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -46,7 +47,8 @@ builder.Services.AddHttpClient("DownstreamCatalogo").ConfigureHttpClient(c => c.
 builder.Services.AddHttpClient("DownstreamLocalizaciones").ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(25));
 builder.Services.AddHttpClient("DownstreamClientes").ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(25));
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(o => o.JsonSerializerOptions.AddFlexibleDateTimeConverters());
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddGrpc();
